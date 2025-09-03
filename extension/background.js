@@ -1,7 +1,7 @@
 // 字流助手 - 后台脚本
 console.log('🚀 字流助手 Background Script 启动');
 
-// 字流站点配置 - 直接使用配置
+// 字流站点配置 - 通过构建脚本自动替换
 const ZILIU_CONFIG = {
   // 字流站点基础URL
   baseUrl: 'https://www.ziliu.online',
@@ -150,12 +150,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 // 处理API请求（解决跨域cookie问题）
 async function handleApiRequest(requestData) {
   console.log('🔧 handleApiRequest 开始处理请求:', requestData);
+  console.log('🔧 当前ZILIU_CONFIG.baseUrl:', ZILIU_CONFIG.baseUrl);
   
   try {
-    // 优先从存储中获取API基础URL，否则使用配置文件中的默认值
+    // 优先使用配置文件中的默认值，这样环境构建能正常工作
     const result = await chrome.storage.sync.get(['apiBaseUrl']);
-    const API_BASE_URL = result.apiBaseUrl || ZILIU_CONFIG.baseUrl;
-    console.log('🔗 使用API基础URL:', API_BASE_URL);
+    console.log('🔧 存储中的apiBaseUrl:', result.apiBaseUrl);
+    const API_BASE_URL = ZILIU_CONFIG.baseUrl || result.apiBaseUrl;
+    console.log('🔗 最终使用API基础URL:', API_BASE_URL);
     const { method = 'GET', endpoint, body, headers = {} } = requestData;
 
     // 验证endpoint
@@ -164,6 +166,7 @@ async function handleApiRequest(requestData) {
     }
 
     const url = `${API_BASE_URL}${endpoint}`;
+    console.log('🌐 最终请求URL:', url);
     const fetchOptions = {
       method: method.toUpperCase(),
       headers: {

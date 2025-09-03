@@ -59,6 +59,35 @@ export const FEATURES: Record<string, FeatureConfig> = {
     plans: ['pro']
   },
 
+  // 视频平台支持
+  'video_wechat-platform': {
+    id: 'video_wechat-platform',
+    name: '微信视频号',
+    description: '发布到微信视频号',
+    plans: ['pro']
+  },
+
+  'douyin-platform': {
+    id: 'douyin-platform',
+    name: '抖音平台',
+    description: '发布到抖音短视频',
+    plans: ['pro']
+  },
+
+  'bilibili-platform': {
+    id: 'bilibili-platform',
+    name:'B站平台',
+    description: '发布到B站视频',
+    plans: ['pro']
+  },
+
+  'xiaohongshu-platform': {
+    id: 'xiaohongshu-platform',
+    name: '小红书平台',
+    description: '发布到小红书视频',
+    plans: ['pro']
+  },
+
   // 样式功能
   'advanced-styles': {
     id: 'advanced-styles',

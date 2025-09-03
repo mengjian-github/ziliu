@@ -135,6 +135,7 @@ export default function EditArticlePage() {
     <EditorLayout
       initialTitle={article.title}
       initialContent={article.content}
+      articleId={articleId}
       onSave={handleSave}
     />
   );

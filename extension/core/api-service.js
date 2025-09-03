@@ -22,12 +22,16 @@ class ApiService {
    */
   async init() {
     try {
+      console.log('🔧 API服务开始初始化');
+      console.log('🔧 ZiliuConstants.DEFAULT_API_BASE_URL:', window.ZiliuConstants?.DEFAULT_API_BASE_URL);
       const result = await chrome.storage.sync.get(['apiBaseUrl']);
-      this.config.baseURL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
-      console.log('✅ API服务初始化完成，基础URL:', this.config.baseURL);
+      console.log('🔧 存储中的apiBaseUrl:', result.apiBaseUrl);
+      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || result.apiBaseUrl || 'https://www.ziliu.online';
+      console.log('✅ API服务初始化完成，最终基础URL:', this.config.baseURL);
     } catch (error) {
       console.error('❌ API服务初始化失败:', error);
-      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
+      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.online';
+      console.log('🔧 使用fallback URL:', this.config.baseURL);
     }
   }
 
@@ -46,6 +50,7 @@ class ApiService {
         }
 
         console.log(`🔗 发起API请求: ${endpoint}`, options);
+        console.log(`🔗 当前API服务baseURL:`, this.config.baseURL);
         console.log(`📨 发送消息给background script`);
         
         chrome.runtime.sendMessage({

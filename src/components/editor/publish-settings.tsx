@@ -31,7 +31,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
       wechat: '📱',
       zhihu: '🔵',
       juejin: '⚡',
-      zsxq: '🌟'
+      zsxq: '🌟',
+      video_wechat: '📹',
+      douyin: '🎵',
+      bilibili: '📺',
+      xiaohongshu: '📖'
     };
     return icons[platform] || '📄';
   };
@@ -42,7 +46,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
       wechat: '公众号',
       zhihu: '知乎',
       juejin: '掘金',
-      zsxq: '知识星球'
+      zsxq: '知识星球',
+      video_wechat: '微信视频号',
+      douyin: '抖音',
+      bilibili: 'B站',
+      xiaohongshu: '小红书'
     };
     return names[platform] || platform;
   };

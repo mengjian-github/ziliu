@@ -63,7 +63,7 @@ class ConfigService {
     try {
       // 从存储中获取API基础URL
       const result = await chrome.storage.sync.get(['apiBaseUrl']);
-      this.config.API_BASE_URL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
+      this.config.API_BASE_URL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || result.apiBaseUrl || 'https://www.ziliu.online';
       
       // 从插件配置加载平台配置
       this.loadPlatformConfigs();
@@ -77,7 +77,7 @@ class ConfigService {
       }
     } catch (error) {
       console.error('❌ 配置服务初始化失败:', error);
-      this.config.API_BASE_URL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
+      this.config.API_BASE_URL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.online';
       this.initialized = true;
     }
   }

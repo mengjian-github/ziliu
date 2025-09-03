@@ -85,6 +85,31 @@ class SubscriptionService {
           free: 20,
           pro: 100
         }
+      },
+      // 视频平台支持
+      'video_wechat-platform': {
+        id: 'video_wechat-platform',
+        name: '微信视频号',
+        description: '发布到微信视频号',
+        plans: ['pro']
+      },
+      'douyin-platform': {
+        id: 'douyin-platform',
+        name: '抖音平台',
+        description: '发布到抖音短视频',
+        plans: ['pro']
+      },
+      'bilibili-platform': {
+        id: 'bilibili-platform',
+        name:'B站平台',
+        description: '发布到B站视频',
+        plans: ['pro']
+      },
+      'xiaohongshu-platform': {
+        id: 'xiaohongshu-platform',
+        name: '小红书平台',
+        description: '发布到小红书视频',
+        plans: ['pro']
       }
     };
   }
@@ -352,26 +377,38 @@ class SubscriptionService {
    * 检查平台是否可用
    */
   isPlatformAvailable(platformId) {
-    const platformFeatureMap = {
-      'zhihu': 'zhihu-platform',
-      'juejin': 'juejin-platform', 
-      'zsxq': 'zsxq-platform',
-      'wechat': 'multi-platform' // 微信公众号始终可用，但多平台功能需要专业版
-    };
+    console.log('🔐 检查平台可用性:', platformId);
+    
+    // 从插件配置中获取平台信息
+    let platformConfig = null;
+    if (window.ZiliuPluginConfig && window.ZiliuPluginConfig.platforms) {
+      platformConfig = window.ZiliuPluginConfig.platforms.find(p => p.id === platformId);
+    }
 
-    const featureId = platformFeatureMap[platformId];
-    if (!featureId) {
-      // 如果没有对应的功能映射，默认为微信公众号，免费版可用
-      return platformId === 'wechat' ? { available: true } : { available: false, reason: '未知平台' };
+    console.log('🔐 找到平台配置:', platformConfig?.name, '需要权限:', platformConfig?.requiredPlan, 'featureId:', platformConfig?.featureId);
+
+    // 如果没有找到配置，返回不可用
+    if (!platformConfig) {
+      console.log('🔐 平台配置未找到');
+      return { available: false, reason: '未知平台' };
+    }
+
+    // 如果平台不需要权限验证，直接返回可用
+    if (!platformConfig.requiredPlan || !platformConfig.featureId) {
+      console.log('🔐 平台无权限限制，允许访问');
+      return { available: true };
     }
 
     // 微信公众号特殊处理 - 单独发布免费版可用
     if (platformId === 'wechat') {
+      console.log('🔐 微信公众号特殊处理，允许访问');
       return { available: true };
     }
 
     // 其他平台需要检查专业版权限
-    const accessResult = this.checkFeatureAccess(featureId);
+    console.log('🔐 检查专业版权限，featureId:', platformConfig.featureId);
+    const accessResult = this.checkFeatureAccess(platformConfig.featureId);
+    console.log('🔐 权限检查结果:', accessResult);
     return {
       available: accessResult.hasAccess,
       reason: accessResult.reason,

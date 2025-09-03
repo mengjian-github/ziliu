@@ -19,7 +19,9 @@
     const isAllowedOrigin = event.origin === window.location.origin || 
                           window.ZiliuConstants?.isAllowedOrigin?.(event.origin) ||
                           event.origin.includes('ziliu.online') ||
-                          event.origin.includes('www.ziliu.online');
+                          event.origin.includes('www.ziliu.online') ||
+                          event.origin.includes('www.ziliu.online') ||
+                          event.origin.includes('127.0.0.1:3000');
     
     if (!isAllowedOrigin) {
       console.log('🚫 拒绝来自未授权域名的消息:', event.origin);

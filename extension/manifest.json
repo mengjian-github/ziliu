@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "字流助手",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "字流助手 - 智能检测剪贴板内容并填充到公众号编辑器",
   "permissions": [
     "activeTab",
@@ -16,8 +16,13 @@
     "https://zhuanlan.zhihu.com/*",
     "https://juejin.cn/*",
     "https://wx.zsxq.com/*",
+    "https://channels.weixin.qq.com/*",
+    "https://creator.douyin.com/*",
+    "https://member.bilibili.com/*",
+    "https://creator.xiaohongshu.com/*",
     "https://www.ziliu.online/*",
-    "https://ziliu.online/*"
+    "https://ziliu.online/*",
+    "https://www.ziliu.online/*"
   ],
   "content_scripts": [
     {
@@ -137,8 +142,123 @@
     },
     {
       "matches": [
+        "https://channels.weixin.qq.com/platform/post/create*",
+        "https://channels.weixin.qq.com/platform/post/edit/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "plugins/platforms/video-wechat.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://creator.douyin.com/creator-micro/content/post/video*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "plugins/platforms/douyin.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://member.bilibili.com/platform/upload/video/frame*",
+        "https://member.bilibili.com/york/video-up*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "plugins/platforms/bilibili.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://creator.xiaohongshu.com/publish/publish*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "plugins/platforms/xiaohongshu.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
         "https://www.ziliu.online/*",
-        "https://ziliu.online/*"
+        "https://ziliu.online/*",
+        "https://www.ziliu.online/*"
       ],
       "js": [
         "core/constants.js",

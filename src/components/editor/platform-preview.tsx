@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Platform } from '@/types/platform-settings';
+import { Platform, isVideoPlatform, getPlatformType, PLATFORM_CONFIGS } from '@/types/platform-settings';
 import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy } from 'lucide-react';
 import { PublishSettings } from './publish-settings';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
@@ -14,9 +14,10 @@ import { useRouter } from 'next/navigation';
 interface PlatformPreviewProps {
   title: string;
   content: string;
+  articleId?: string;
 }
 
-export function PlatformPreview({ title, content }: PlatformPreviewProps) {
+export function PlatformPreview({ title, content, articleId }: PlatformPreviewProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>('wechat');
   const [selectedStyle, setSelectedStyle] = useState<'default' | 'tech' | 'minimal'>('default');
   const [previewHtml, setPreviewHtml] = useState('');
@@ -24,14 +25,45 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   const [appliedSettings, setAppliedSettings] = useState<any>(null);
   const [finalContent, setFinalContent] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [videoMetadata, setVideoMetadata] = useState<any>(null);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   
   // 添加订阅信息和插件检测
   const { hasFeature, checkFeatureAccess } = useUserPlan();
   const { isInstalled, isChecking } = useExtensionDetector();
   const router = useRouter();
+  
+  // 自动创建草稿功能
+  const createDraftArticle = useCallback(async () => {
+    try {
+      const response = await fetch('/api/articles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title.trim() || '未命名文章',
+          content: content,
+          status: 'draft'
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          return data.data.id;
+        }
+      }
+      
+      throw new Error('创建草稿失败');
+    } catch (error) {
+      console.error('创建草稿失败:', error);
+      throw error;
+    }
+  }, [title, content]);
 
-  // 平台配置
-  const platforms = [
+  // 图文平台配置
+  const textPlatforms = [
     {
       id: 'wechat' as Platform,
       name: '公众号',
@@ -62,6 +94,38 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
     }
   ];
 
+  // 视频平台配置
+  const videoPlatforms = [
+    {
+      id: 'video_wechat' as Platform,
+      name: '视频号',
+      icon: '📹',
+      color: 'bg-green-600',
+      description: '微信视频号发布'
+    },
+    {
+      id: 'douyin' as Platform,
+      name: '抖音',
+      icon: '🎵',
+      color: 'bg-black',
+      description: '抖音短视频发布'
+    },
+    {
+      id: 'bilibili' as Platform,
+      name: 'B站',
+      icon: '📺',
+      color: 'bg-pink-500',
+      description: 'B站视频投稿'
+    },
+    {
+      id: 'xiaohongshu' as Platform,
+      name: '小红书',
+      icon: '📖',
+      color: 'bg-red-500',
+      description: '小红书视频笔记发布'
+    }
+  ];
+
   // 应用发布设置到内容
   const applySettingsToContent = useCallback((baseContent: string, settings: any) => {
     if (!settings) return baseContent;
@@ -87,8 +151,126 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
     setFinalContent(newFinalContent);
   }, [content, appliedSettings, applySettingsToContent]);
 
-  // 转换预览
+  // 加载视频内容（先从数据库加载，没有则生成）
+  const loadVideoContent = useCallback(async (forceRegenerate = false) => {
+    if (!isVideoPlatform(selectedPlatform) || !content.trim() || !articleId) {
+      return;
+    }
+
+    setIsGeneratingVideo(true);
+    try {
+      // 如果不是强制重新生成，先尝试从数据库加载
+      if (!forceRegenerate) {
+        const loadResponse = await fetch(`/api/video/content?articleId=${articleId}&platform=${selectedPlatform}`);
+        if (loadResponse.ok) {
+          const loadData = await loadResponse.json();
+          if (loadData.success) {
+            setVideoMetadata({
+              title: loadData.data.title,
+              description: loadData.data.description,
+              speechScript: loadData.data.speechScript,
+              tags: loadData.data.tags,
+              coverSuggestion: loadData.data.coverSuggestion,
+              platformTips: loadData.data.platformTips,
+              estimatedDuration: loadData.data.estimatedDuration
+            });
+            setIsGeneratingVideo(false);
+            return;
+          }
+        }
+      }
+
+      // 数据库没有内容或强制重新生成，则调用AI生成
+      const [speechResponse, metadataResponse] = await Promise.all([
+        fetch('/api/video/convert-speech', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: finalContent || content,
+            platform: selectedPlatform,
+            title: title
+          })
+        }),
+        fetch('/api/video/generate-metadata', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: finalContent || content,
+            platform: selectedPlatform,
+            title: title
+          })
+        })
+      ]);
+
+      const speechData = await speechResponse.json();
+      const metadataData = await metadataResponse.json();
+
+      if (speechData.success && metadataData.success) {
+        const videoData = {
+          speechScript: speechData.data.speechScript,
+          ...metadataData.data,
+          estimatedDuration: speechData.data.estimatedDuration
+        };
+        
+        setVideoMetadata(videoData);
+
+        // 保存到数据库
+        await fetch('/api/video/content', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            articleId,
+            platform: selectedPlatform,
+            videoTitle: metadataData.data.title,
+            videoDescription: metadataData.data.description,
+            speechScript: speechData.data.speechScript,
+            tags: metadataData.data.tags,
+            coverSuggestion: metadataData.data.coverSuggestion,
+            platformTips: metadataData.data.platformTips,
+            estimatedDuration: speechData.data.estimatedDuration
+          })
+        });
+      } else {
+        console.error('生成视频内容失败:', speechData.error || metadataData.error);
+        alert('生成失败，请重试');
+      }
+    } catch (error) {
+      console.error('生成视频内容出错:', error);
+      alert('生成失败，请重试');
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  }, [selectedPlatform, content, finalContent, title, articleId]);
+
+  // 生成视频内容（强制重新生成）
+  const generateVideoContent = useCallback(async () => {
+    await loadVideoContent(true);
+  }, [loadVideoContent]);
+
+  // 当选择视频平台时自动加载内容
+  useEffect(() => {
+    if (isVideoPlatform(selectedPlatform) && content.trim() && articleId) {
+      loadVideoContent(false);
+    } else {
+      setVideoMetadata(null);
+    }
+  }, [selectedPlatform, loadVideoContent, articleId]);
+
+  // 转换预览（仅用于图文平台）
   const handlePreview = useCallback(async (platform: Platform, style: string) => {
+    // 视频平台不需要调用转换预览
+    if (isVideoPlatform(platform)) {
+      setPreviewHtml('');
+      setIsConverting(false);
+      return;
+    }
+
     const contentToPreview = finalContent || content;
 
     if (!contentToPreview.trim()) {
@@ -133,10 +315,32 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   }, [finalContent, selectedPlatform, selectedStyle, handlePreview]);
 
   // 平台切换时立即预览
-  const handlePlatformChange = useCallback((platform: Platform) => {
+  const handlePlatformChange = useCallback(async (platform: Platform) => {
     setSelectedPlatform(platform);
+    
+    // 如果是视频平台且没有articleId，需要先创建草稿
+    if (isVideoPlatform(platform) && !articleId) {
+      // 检查是否有足够的内容
+      if (!title.trim() && !content.trim()) {
+        alert('请先输入标题和内容再预览视频效果');
+        return;
+      }
+      
+      try {
+        // 自动创建草稿
+        const newArticleId = await createDraftArticle();
+        // 跳转到编辑页面
+        router.push(`/editor/${newArticleId}`);
+        return;
+      } catch (error) {
+        alert('创建草稿失败，请重试');
+        return;
+      }
+    }
+    
+    // 正常预览流程
     handlePreview(platform, selectedStyle);
-  }, [selectedStyle, handlePreview]);
+  }, [selectedStyle, handlePreview, articleId, title, content, createDraftArticle, router]);
 
   // 样式切换时立即预览
   const handleStyleChange = useCallback((style: string) => {
@@ -155,6 +359,14 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
         return 'https://juejin.cn/editor/drafts/new?v=2';
       case 'zsxq':
         return 'https://wx.zsxq.com/';
+      case 'video_wechat':
+        return 'https://channels.weixin.qq.com/platform/post/create';
+      case 'douyin':
+        return 'https://creator.douyin.com/creator-micro/content/post/video';
+      case 'bilibili':
+        return 'https://member.bilibili.com/platform/upload/video/frame';
+      case 'xiaohongshu':
+        return 'https://creator.xiaohongshu.com/publish/publish';
       default:
         return '';
     }
@@ -236,147 +448,260 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
 
         {/* 平台选择器 */}
         <div className="mb-4">
-          <div className="flex items-center space-x-2 mb-2">
+          <div className="flex items-center space-x-2 mb-3">
             <span className="text-sm font-medium text-gray-700">发布平台:</span>
           </div>
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            {platforms.map((platform) => {
-              const platformFeatureId = `${platform.id}-platform`;
-              const hasAccess = hasFeature(platformFeatureId);
-              const accessResult = checkFeatureAccess(platformFeatureId);
-              
-              return (
-                <div key={platform.id} className="relative">
-                  <button
-                    onClick={() => {
-                      if (hasAccess) {
-                        handlePlatformChange(platform.id);
-                      } else {
-                        alert(accessResult.reason || '此平台需要专业版权限');
-                      }
-                    }}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
-                      selectedPlatform === platform.id
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : hasAccess 
-                          ? 'text-gray-600 hover:text-gray-900'
-                          : 'text-gray-400 cursor-not-allowed opacity-60'
-                    }`}
-                    disabled={!hasAccess}
-                    title={!hasAccess ? accessResult.reason : platform.description}
-                  >
-                    <span>{platform.icon}</span>
-                    <span>{platform.name}</span>
-                    {!hasAccess && platform.id !== 'wechat' && (
-                      <span className="text-xs text-yellow-600 ml-1">💎</span>
-                    )}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 样式选择器和发布设置 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Palette className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">样式:</span>
+          
+          {/* 图文平台 */}
+          <div className="mb-3">
+            <div className="text-xs text-gray-500 mb-2">图文平台</div>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              {textPlatforms.map((platform) => {
+                const platformFeatureId = `${platform.id}-platform`;
+                const hasAccess = hasFeature(platformFeatureId);
+                const accessResult = checkFeatureAccess(platformFeatureId);
+                
+                return (
+                  <div key={platform.id} className="relative">
+                    <button
+                      onClick={() => {
+                        if (hasAccess) {
+                          handlePlatformChange(platform.id);
+                        } else {
+                          alert(accessResult.reason || '此平台需要专业版权限');
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
+                        selectedPlatform === platform.id
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : hasAccess 
+                            ? 'text-gray-600 hover:text-gray-900'
+                            : 'text-gray-400 cursor-not-allowed opacity-60'
+                      }`}
+                      disabled={!hasAccess}
+                      title={!hasAccess ? accessResult.reason : platform.description}
+                    >
+                      <span>{platform.icon}</span>
+                      <span>{platform.name}</span>
+                      {!hasAccess && platform.id !== 'wechat' && (
+                        <span className="text-xs text-yellow-600 ml-1">💎</span>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-            <select
-              value={selectedStyle}
-              onChange={(e) => {
-                const newStyle = e.target.value;
-                if (newStyle !== 'default') {
-                  const styleAccess = checkFeatureAccess('advanced-styles');
-                  if (!styleAccess.hasAccess) {
-                    alert(styleAccess.reason || '高级样式需要专业版权限');
-                    return;
-                  }
-                }
-                handleStyleChange(newStyle);
-              }}
-              className="text-sm border border-gray-200 rounded-md px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="default">默认样式</option>
-              <option value="tech" disabled={!hasFeature('advanced-styles')}>
-                技术风格 {!hasFeature('advanced-styles') ? '💎' : ''}
-              </option>
-              <option value="minimal" disabled={!hasFeature('advanced-styles')}>
-                简约风格 {!hasFeature('advanced-styles') ? '💎' : ''}
-              </option>
-            </select>
           </div>
 
-          <div className="flex items-center space-x-3">
-            {/* 发布设置 */}
-            {hasFeature('publish-presets') ? (
-              <PublishSettings
-                platform={selectedPlatform}
-                onApplySettings={(settings) => {
-                  console.log('应用发布设置:', settings);
-                  setAppliedSettings(settings);
-                  // 立即重新预览
-                  setTimeout(() => {
-                    handlePreview(selectedPlatform, selectedStyle);
-                  }, 100);
-                }}
-              />
-            ) : (
-              <button
-                onClick={() => {
-                  alert('发布设置功能仅限专业版用户使用，请升级后体验完整功能');
-                }}
-                className="flex items-center space-x-1 px-3 py-2 border border-gray-200 rounded-md text-sm font-medium bg-gray-50 text-gray-400 cursor-not-allowed transition-colors hover:bg-gray-100"
-              >
-                <Settings className="h-4 w-4" />
-                <span>发布设置</span>
-                <Crown className="h-3 w-3 text-amber-500" />
-              </button>
-            )}
-
-            {/* 去发布按钮 */}
-            {isChecking ? (
-              <button
-                disabled
-                className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
-              >
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>检测中...</span>
-              </button>
-            ) : !isInstalled ? (
-              <button
-                onClick={() => router.push('/extension')}
-                className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-orange-100 hover:bg-orange-200 text-orange-800 border border-orange-300"
-                title="需要先安装插件才能发布"
-              >
-                <Chrome className="h-4 w-4" />
-                <span>安装插件</span>
-                <ExternalLink className="h-3 w-3" />
-              </button>
-            ) : (
-              <button
-                onClick={handlePublish}
-                disabled={isPublishing || !title.trim() || !content.trim()}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  isPublishing || !title.trim() || !content.trim()
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
-                }`}
-                title={`复制内容并打开${platforms.find(p => p.id === selectedPlatform)?.name}`}
-              >
-                {isPublishing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-                <span>{isPublishing ? '准备中...' : '去平台发布'}</span>
-                <ExternalLink className="h-3 w-3" />
-              </button>
-            )}
+          {/* 视频平台 */}
+          <div>
+            <div className="text-xs text-gray-500 mb-2">视频平台</div>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              {videoPlatforms.map((platform) => {
+                const platformFeatureId = `${platform.id}-platform`;
+                const hasAccess = hasFeature(platformFeatureId);
+                const accessResult = checkFeatureAccess(platformFeatureId);
+                
+                return (
+                  <div key={platform.id} className="relative">
+                    <button
+                      onClick={() => {
+                        if (hasAccess) {
+                          handlePlatformChange(platform.id);
+                        } else {
+                          alert(accessResult.reason || '此平台需要专业版权限');
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
+                        selectedPlatform === platform.id
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : hasAccess 
+                            ? 'text-gray-600 hover:text-gray-900'
+                            : 'text-gray-400 cursor-not-allowed opacity-60'
+                      }`}
+                      disabled={!hasAccess}
+                      title={!hasAccess ? accessResult.reason : platform.description}
+                    >
+                      <span>{platform.icon}</span>
+                      <span>{platform.name}</span>
+                      {!hasAccess && platform.id !== 'wechat' && (
+                        <span className="text-xs text-yellow-600 ml-1">💎</span>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
+
+        {/* 样式选择器和发布设置 - 只对图文平台显示 */}
+        {!isVideoPlatform(selectedPlatform) && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Palette className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">样式:</span>
+              </div>
+              <select
+                value={selectedStyle}
+                onChange={(e) => {
+                  const newStyle = e.target.value;
+                  if (newStyle !== 'default') {
+                    const styleAccess = checkFeatureAccess('advanced-styles');
+                    if (!styleAccess.hasAccess) {
+                      alert(styleAccess.reason || '高级样式需要专业版权限');
+                      return;
+                    }
+                  }
+                  handleStyleChange(newStyle);
+                }}
+                className="text-sm border border-gray-200 rounded-md px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="default">默认样式</option>
+                <option value="tech" disabled={!hasFeature('advanced-styles')}>
+                  技术风格 {!hasFeature('advanced-styles') ? '💎' : ''}
+                </option>
+                <option value="minimal" disabled={!hasFeature('advanced-styles')}>
+                  简约风格 {!hasFeature('advanced-styles') ? '💎' : ''}
+                </option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              {/* 发布设置 */}
+              {hasFeature('publish-presets') ? (
+                <PublishSettings
+                  platform={selectedPlatform}
+                  onApplySettings={(settings) => {
+                    console.log('应用发布设置:', settings);
+                    setAppliedSettings(settings);
+                    // 立即重新预览
+                    setTimeout(() => {
+                      handlePreview(selectedPlatform, selectedStyle);
+                    }, 100);
+                  }}
+                />
+              ) : (
+                <button
+                  onClick={() => {
+                    alert('发布设置功能仅限专业版用户使用，请升级后体验完整功能');
+                  }}
+                  className="flex items-center space-x-1 px-3 py-2 border border-gray-200 rounded-md text-sm font-medium bg-gray-50 text-gray-400 cursor-not-allowed transition-colors hover:bg-gray-100"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>发布设置</span>
+                  <Crown className="h-3 w-3 text-amber-500" />
+                </button>
+              )}
+
+              {/* 去发布按钮 */}
+              {isChecking ? (
+                <button
+                  disabled
+                  className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>检测中...</span>
+                </button>
+              ) : !isInstalled ? (
+                <button
+                  onClick={() => router.push('/extension')}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-orange-100 hover:bg-orange-200 text-orange-800 border border-orange-300"
+                  title="需要先安装插件才能发布"
+                >
+                  <Chrome className="h-4 w-4" />
+                  <span>安装插件</span>
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              ) : (
+                <button
+                  onClick={handlePublish}
+                  disabled={isPublishing || !title.trim() || !content.trim()}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    isPublishing || !title.trim() || !content.trim()
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
+                  }`}
+                  title={`复制内容并打开${[...textPlatforms, ...videoPlatforms].find(p => p.id === selectedPlatform)?.name}`}
+                >
+                  {isPublishing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  <span>{isPublishing ? '准备中...' : '去平台发布'}</span>
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 视频平台操作区 */}
+        {isVideoPlatform(selectedPlatform) && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              {isGeneratingVideo ? (
+                <div className="flex items-center text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  正在生成视频内容...
+                </div>
+              ) : (
+                <button
+                  onClick={generateVideoContent}
+                  disabled={!content.trim()}
+                  className="flex items-center space-x-2 px-3 py-2 border border-gray-200 rounded-md text-sm font-medium bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>重新生成</span>
+                </button>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              {/* 去发布按钮 */}
+              {isChecking ? (
+                <button
+                  disabled
+                  className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>检测中...</span>
+                </button>
+              ) : !isInstalled ? (
+                <button
+                  onClick={() => router.push('/extension')}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-orange-100 hover:bg-orange-200 text-orange-800 border border-orange-300"
+                  title="需要先安装插件才能发布"
+                >
+                  <Chrome className="h-4 w-4" />
+                  <span>安装插件</span>
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    const platformUrl = getPlatformUrl(selectedPlatform);
+                    window.open(platformUrl, '_blank');
+                  }}
+                  disabled={!videoMetadata || isGeneratingVideo}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    !videoMetadata || isGeneratingVideo
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
+                  }`}
+                  title={`去${videoPlatforms.find(p => p.id === selectedPlatform)?.name}发布`}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span>去{videoPlatforms.find(p => p.id === selectedPlatform)?.name}发布</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 显示当前应用的设置 */}
         {appliedSettings && (
@@ -400,61 +725,253 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
 
       {/* 预览内容 */}
       <div className="flex-1 overflow-auto flex flex-col">
-        {isConverting || !content ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              {isConverting ? (
-                <div className="flex items-center justify-center space-x-2 text-gray-500">
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm">转换中...</span>
+        {/* 图文平台预览 */}
+        {!isVideoPlatform(selectedPlatform) && (
+          <>
+            {isConverting || !content ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  {isConverting ? (
+                    <div className="flex items-center justify-center space-x-2 text-gray-500">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm">转换中...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-gray-400">
+                      <div className="text-2xl">📝</div>
+                      <div className="text-sm">开始输入内容以查看预览</div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-2 text-gray-400">
-                  <div className="text-2xl">📝</div>
-                  <div className="text-sm">开始输入内容以查看预览</div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1">
+                  {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
+                  {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
+                  {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
+                  {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
                 </div>
-              )}
-            </div>
-          </div>
-        ) : (
+
+                {/* 升级提示区域 */}
+                <div className="p-4 bg-gray-50 border-t border-gray-200">
+                  {/* 平台权限提示 */}
+                  {selectedPlatform !== 'wechat' && !hasFeature(`${selectedPlatform}-platform`) && (
+                    <div className="mb-3">
+                      <UpgradePrompt scenario="platform-locked" style="inline" />
+                    </div>
+                  )}
+
+                  {/* 样式权限提示 */}
+                  {selectedStyle !== 'default' && !hasFeature('advanced-styles') && (
+                    <div className="mb-3">
+                      <UpgradePrompt scenario="style-locked" style="inline" />
+                    </div>
+                  )}
+
+                  {/* 发布预设提示 */}
+                  {selectedPlatform !== 'wechat' && !hasFeature('publish-presets') && !appliedSettings && (
+                    <div className="mb-3">
+                      <UpgradePrompt scenario="preset-locked" style="inline" />
+                    </div>
+                  )}
+
+                  {/* 如果没有任何限制，显示一般升级提示 */}
+                  {selectedPlatform === 'wechat' && selectedStyle === 'default' && (
+                    <UpgradePrompt scenario="dashboard-upgrade" style="inline" />
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 视频平台预览 */}
+        {isVideoPlatform(selectedPlatform) && (
           <div className="flex-1 flex flex-col">
-            <div className="flex-1">
-              {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
-              {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
-              {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
-              {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
-            </div>
-
-            {/* 升级提示区域 */}
-            <div className="p-4 bg-gray-50 border-t border-gray-200">
-              {/* 平台权限提示 */}
-              {selectedPlatform !== 'wechat' && !hasFeature(`${selectedPlatform}-platform`) && (
-                <div className="mb-3">
-                  <UpgradePrompt scenario="platform-locked" style="inline" />
+            {isGeneratingVideo || !content ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  {isGeneratingVideo ? (
+                    <div className="flex items-center justify-center space-x-2 text-gray-500">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm">生成视频内容中...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-gray-400">
+                      <div className="text-2xl">🎬</div>
+                      <div className="text-sm">开始输入内容以生成视频素材</div>
+                    </div>
+                  )}
                 </div>
-              )}
-
-              {/* 样式权限提示 */}
-              {selectedStyle !== 'default' && !hasFeature('advanced-styles') && (
-                <div className="mb-3">
-                  <UpgradePrompt scenario="style-locked" style="inline" />
+              </div>
+            ) : videoMetadata ? (
+              <VideoPreview 
+                platform={selectedPlatform} 
+                metadata={videoMetadata} 
+                title={title}
+                platformInfo={videoPlatforms.find(p => p.id === selectedPlatform)}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-2 text-gray-400">
+                  <div className="text-2xl">⚠️</div>
+                  <div className="text-sm">生成视频内容失败，请重试</div>
                 </div>
-              )}
-
-              {/* 发布预设提示 */}
-              {selectedPlatform !== 'wechat' && !hasFeature('publish-presets') && !appliedSettings && (
-                <div className="mb-3">
-                  <UpgradePrompt scenario="preset-locked" style="inline" />
-                </div>
-              )}
-
-              {/* 如果没有任何限制，显示一般升级提示 */}
-              {selectedPlatform === 'wechat' && selectedStyle === 'default' && (
-                <UpgradePrompt scenario="dashboard-upgrade" style="inline" />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// 视频平台预览
+function VideoPreview({ platform, metadata, title, platformInfo }: { 
+  platform: Platform; 
+  metadata: any; 
+  title: string;
+  platformInfo?: { id: Platform; name: string; icon: string; color: string; description: string };
+}) {
+  if (!platformInfo || !metadata) {
+    return null;
+  }
+
+  // 复制内容到剪贴板
+  const copyToClipboard = async (text: string, type: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // 这里可以添加toast提示
+    } catch (error) {
+      console.error('复制失败:', error);
+    }
+  };
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-full">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+        {/* 视频平台头部 */}
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className={`w-12 h-12 ${platformInfo.color} rounded-lg flex items-center justify-center text-white text-2xl shadow-sm`}>
+              {platformInfo.icon}
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900">{platformInfo.name}发布预览</h2>
+              <p className="text-sm text-gray-500 mt-1">{platformInfo.description}</p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-500">预计时长</div>
+              <div className="text-lg font-semibold text-gray-900">{metadata.estimatedDuration}秒</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 视频内容区域 */}
+        <div className="p-6 space-y-6">
+          {/* 标题 */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">视频标题</h3>
+              <button
+                onClick={() => copyToClipboard(metadata.title, '标题')}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              >
+                复制
+              </button>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-lg border">
+              <p className="text-gray-800 font-medium">{metadata.title}</p>
+            </div>
+          </div>
+
+          {/* 描述 */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">视频描述</h3>
+              <button
+                onClick={() => copyToClipboard(metadata.description, '描述')}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              >
+                复制
+              </button>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-lg border">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{metadata.description}</p>
+            </div>
+          </div>
+
+          {/* 标签 */}
+          {metadata.tags && metadata.tags.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">标签</h3>
+                <button
+                  onClick={() => copyToClipboard(metadata.tags.map((tag: string) => `#${tag}`).join(' '), '标签')}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  复制
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {metadata.tags.map((tag: string, index: number) => (
+                  <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 封面建议 */}
+          {metadata.coverSuggestion && (
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-gray-900">封面建议</h3>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-blue-800">{metadata.coverSuggestion}</p>
+              </div>
+            </div>
+          )}
+
+          {/* 口播稿 */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">口播稿</h3>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-gray-500">{metadata.speechScript?.length || 0}字</span>
+                <button
+                  onClick={() => copyToClipboard(metadata.speechScript, '口播稿')}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  复制
+                </button>
+              </div>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-lg border">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap font-mono text-sm">
+                {metadata.speechScript}
+              </p>
+            </div>
+          </div>
+
+          {/* 平台建议 */}
+          {metadata.platformTips && metadata.platformTips.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-gray-900">平台发布建议</h3>
+              <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <ul className="space-y-2">
+                  {metadata.platformTips.map((tip: string, index: number) => (
+                    <li key={index} className="flex items-start space-x-2 text-yellow-800">
+                      <span className="text-yellow-600 mt-0.5">💡</span>
+                      <span className="text-sm">{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

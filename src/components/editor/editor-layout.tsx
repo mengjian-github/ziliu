@@ -23,12 +23,14 @@ export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'zsxq';
 interface EditorLayoutProps {
   initialTitle?: string;
   initialContent?: string;
+  articleId?: string;
   onSave?: (title: string, content: string) => Promise<void>;
 }
 
 export function EditorLayout({
   initialTitle = '',
   initialContent = '',
+  articleId,
   onSave
 }: EditorLayoutProps) {
   const [title, setTitle] = useState(initialTitle);
@@ -194,6 +196,7 @@ export function EditorLayout({
             <PlatformPreview
               title={title}
               content={content}
+              articleId={articleId}
             />
           </div>
         </div>

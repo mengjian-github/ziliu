@@ -32,32 +32,56 @@ class ZiliuContentService {
       // 获取文章详情
       const articleDetail = await this.fetchArticleDetail(data.articleId);
       
-      // 根据平台转换文章格式
+      // 根据平台类型决定处理方式
       const platformId = currentPlatform?.id;
-      const targetFormat = platformId === 'zhihu' ? 'zhihu' : 'wechat';
+      const isVideoPlatform = ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu'].includes(platformId);
       
-      console.log('🔄 转换文章格式:', targetFormat);
-      const sourceContent = articleDetail.originalContent || articleDetail.content;
-      console.log('🔍 源内容详情:', {
-        hasOriginalContent: !!articleDetail.originalContent,
-        hasContent: !!articleDetail.content,
-        sourceLength: sourceContent?.length,
-        sourcePreview: sourceContent?.substring(0, 100) + '...'
+      console.log('🔍 平台类型分析:', {
+        platformId,
+        isVideoPlatform,
+        displayName: currentPlatform?.displayName
       });
-      
-      const convertedContent = await this.convertArticleFormat(
-        sourceContent,
-        targetFormat,
-        articleDetail.style || 'default'
-      );
 
-      // 获取原始Markdown（用于特定平台）
-      let originalMarkdown = '';
-      try {
-        const markdownData = await this.fetchArticleMarkdown(data.articleId);
-        originalMarkdown = markdownData.content || '';
-      } catch (error) {
-        console.warn('获取原始Markdown失败，将使用HTML内容:', error);
+      let baseData = {};
+
+      if (isVideoPlatform) {
+        // 视频平台：获取AI转换后的视频数据
+        console.log('📹 处理视频平台数据，获取AI转换后的视频内容');
+        const videoData = await this.getVideoContent(data.articleId, platformId);
+        
+        // 同时保留原始文章数据作为回退
+        baseData = {
+          title: articleDetail.title,
+          content: articleDetail.originalContent || articleDetail.content,
+          // 包含AI转换后的视频数据
+          ...videoData
+        };
+      } else {
+        // 普通平台：处理文章格式转换
+        const targetFormat = platformId === 'zhihu' ? 'zhihu' : 'wechat';
+        console.log('📝 处理普通平台数据，转换格式:', targetFormat);
+        
+        const sourceContent = articleDetail.originalContent || articleDetail.content;
+        const convertedContent = await this.convertArticleFormat(
+          sourceContent,
+          targetFormat,
+          articleDetail.style || 'default'
+        );
+
+        // 获取原始Markdown
+        let originalMarkdown = '';
+        try {
+          const markdownData = await this.fetchArticleMarkdown(data.articleId);
+          originalMarkdown = markdownData.content || '';
+        } catch (error) {
+          console.warn('获取原始Markdown失败，将使用HTML内容:', error);
+        }
+
+        baseData = {
+          title: articleDetail.title,
+          content: convertedContent,
+          originalMarkdown: originalMarkdown
+        };
       }
 
       // 获取预设信息
@@ -65,9 +89,7 @@ class ZiliuContentService {
       
       // 构建完整的填充数据
       return {
-        title: articleDetail.title,
-        content: convertedContent,
-        originalMarkdown: originalMarkdown,
+        ...baseData,
         author: data.author || preset?.author,
         preset: preset
       };
@@ -117,6 +139,62 @@ class ZiliuContentService {
       throw new Error(response.error || '获取Markdown失败');
     }
     return response.data;
+  }
+
+  /**
+   * 获取视频平台的AI转换后内容
+   */
+  async getVideoContent(articleId, platform) {
+    try {
+      console.log('🎬 获取视频平台内容:', { articleId, platform });
+      
+      // 通过background script发送API请求，避免CORS问题
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          action: 'apiRequest',
+          data: {
+            method: 'GET',
+            endpoint: `/api/video/content?articleId=${articleId}&platform=${platform}`
+          }
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || '获取视频内容失败');
+      }
+
+      console.log('🎬 获取到的视频数据:', response.data);
+
+      // 转换API数据格式到插件期望的格式
+      return {
+        videoTitle: response.data.title,
+        videoDescription: response.data.description,
+        speechScript: response.data.speechScript,
+        tags: response.data.tags,
+        coverSuggestion: response.data.coverSuggestion,
+        platformTips: response.data.platformTips,
+        estimatedDuration: response.data.estimatedDuration
+      };
+
+    } catch (error) {
+      console.error('❌ 获取视频内容失败:', error);
+      // 如果获取失败，返回空的视频数据结构，让插件能够继续运行
+      return {
+        videoTitle: '',
+        videoDescription: '',
+        speechScript: '',
+        tags: [],
+        coverSuggestion: '',
+        platformTips: [],
+        estimatedDuration: 0
+      };
+    }
   }
 }
 

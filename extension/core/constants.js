@@ -2,14 +2,13 @@
  * 字流插件统一配置常量
  */
 class ZiliuConstants {
-  // 环境配置
-  static get PRODUCTION_URL() { return 'https://www.ziliu.online'; }
-  static get DEVELOPMENT_URL() { return 'http://localhost:3000'; }
-  
-  // 根据环境自动选择URL
+  // 环境配置 - 生产环境
   static get DEFAULT_API_BASE_URL() {
-    // 可以通过manifest或其他方式检测环境
-    return this.PRODUCTION_URL;
+    return 'https://ziliu.online';
+  }
+  
+  static get DEFAULT_SITE_URL() {
+    return 'https://ziliu.online';
   }
   
   // API端点
@@ -39,7 +38,7 @@ class ZiliuConstants {
   // 插件配置
   static get PLUGIN() {
     return {
-      VERSION: '1.1.0',
+      VERSION: '1.2.0',
       PANEL_ID: 'ziliu-assistant-panel'
     };
   }
@@ -53,8 +52,7 @@ class ZiliuConstants {
   static get ALLOWED_ORIGINS() {
     return [
       'www.ziliu.online',
-      'ziliu.online',      // 兼容性保留
-      'localhost:3000'     // 开发环境保留
+      'ziliu.online'      // 生产环境
     ];
   }
   
@@ -74,3 +72,4 @@ if (typeof window !== 'undefined') {
 }
 
 console.log('✅ 字流配置常量已加载');
+console.log('🔧 当前DEFAULT_API_BASE_URL:', ZiliuConstants.DEFAULT_API_BASE_URL);

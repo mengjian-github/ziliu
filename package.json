@@ -13,7 +13,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
-    "r2:create-bucket": "node ./scripts/create-r2-bucket.js"
+    "r2:create-bucket": "node ./scripts/create-r2-bucket.js",
+    "ext:dev": "node ./scripts/build-extension.js development",
+    "ext:build": "node ./scripts/build-extension.js production"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.10.0",

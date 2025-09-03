@@ -32,7 +32,7 @@ export const publishRecords = sqliteTable('publish_records', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   articleId: text('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  platform: text('platform', { enum: ['wechat', 'zhihu', 'juejin', 'zsxq'] }).notNull(),
+  platform: text('platform', { enum: ['wechat', 'zhihu', 'juejin', 'zsxq', 'video_wechat', 'douyin', 'bilibili', 'xiaohongshu'] }).notNull(),
   status: text('status', { enum: ['pending', 'success', 'failed'] }).notNull().default('pending'),
   platformArticleId: text('platform_article_id'), // 平台返回的文章ID
   platformUrl: text('platform_url'), // 发布后的URL
@@ -89,6 +89,26 @@ export const imageUsageStats = sqliteTable('image_usage_stats', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// 视频内容元数据表
+export const videoContents = sqliteTable('video_contents', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  articleId: text('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: text('platform', { enum: ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu'] }).notNull(),
+  
+  // 视频元数据
+  videoTitle: text('video_title'), // 视频标题
+  videoDescription: text('video_description'), // 视频描述
+  speechScript: text('speech_script'), // 口播稿
+  tags: text('tags'), // JSON数组，存储标签
+  coverSuggestion: text('cover_suggestion'), // 封面建议
+  platformTips: text('platform_tips'), // JSON数组，存储平台特定建议
+  estimatedDuration: integer('estimated_duration'), // 预计时长（秒）
+  
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -102,3 +122,5 @@ export type RedeemCode = typeof redeemCodes.$inferSelect;
 export type NewRedeemCode = typeof redeemCodes.$inferInsert;
 export type ImageUsageStat = typeof imageUsageStats.$inferSelect;
 export type NewImageUsageStat = typeof imageUsageStats.$inferInsert;
+export type VideoContent = typeof videoContents.$inferSelect;
+export type NewVideoContent = typeof videoContents.$inferInsert;

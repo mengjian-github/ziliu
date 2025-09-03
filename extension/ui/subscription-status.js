@@ -358,7 +358,7 @@ class SubscriptionStatus {
    */
   getUpgradeUrl() {
     // 优先使用API服务的配置，然后使用统一常量配置
-    const baseUrl = window.ZiliuApiService?.config?.baseURL || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
+    const baseUrl = window.ZiliuApiService?.config?.baseURL || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.online';
     return window.ZiliuConstants?.URLS?.PRICING || `${baseUrl}/pricing`;
   }
 

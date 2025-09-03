@@ -180,7 +180,7 @@ class ZiliuFeatures {
         } catch (error) {
           console.error('获取登录URL失败:', error);
           // 兜底使用配置中的登录URL
-          window.open(window.ZiliuConstants?.URLS?.LOGIN || 'https://ziliu.online/login', '_blank');
+          window.open(window.ZiliuConstants?.URLS?.LOGIN || 'https://www.ziliu.online/login', '_blank');
         }
       });
     }

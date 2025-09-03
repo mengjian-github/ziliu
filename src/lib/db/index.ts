@@ -2,6 +2,8 @@ import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
 import * as schema from './schema';
 
+console.log(process.env.TURSO_DATABASE_URL)
+
 // 创建数据库客户端
 const client = createClient({
   url: process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || 'file:./dev.db',
