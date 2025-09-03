@@ -86,9 +86,12 @@ Thumbs.db
 extension/build/
 extension/dist/
 extension/*.zip
-*.zip
 *.crx
 *.pem
+
+# Exclude zip files except for plugin releases in public directory
+*.zip
+!public/ziliu-extension-*.zip
 
 # Logs
 logs/
