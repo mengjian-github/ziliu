@@ -37,10 +37,11 @@
     "@uiw/react-md-editor": "^4.0.8",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^12.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.1",
-    "drizzle-orm": "^0.44.3",
+    "drizzle-orm": "^0.44.5",
     "lucide-react": "^0.525.0",
     "marked": "^16.1.1",
     "next": "15.4.3",
@@ -64,3 +65,4 @@
     "typescript": "^5"
   }
 }
+
