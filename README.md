@@ -12,6 +12,12 @@
   <p>一次创作，智能适配公众号、知乎、掘金、知识星球、视频号、抖音、B站、小红书等多个内容平台</p>
 </div>
 
+## 📱 产品截图
+
+<div align="center">
+  <img src="./public/screenshot.png" alt="字流产品界面截图" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+</div>
+
 ## ✨ 产品特性
 
 ### 🚀 核心功能
