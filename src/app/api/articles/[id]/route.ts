@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { db, articles } from '@/lib/db';
+import { ensureArticleStyleColumn } from '@/lib/db/utils';
 import { eq, and } from 'drizzle-orm';
 import { convertToWechatInline, WECHAT_STYLES } from '@/lib/converter';
 
@@ -46,6 +47,7 @@ export async function GET(
 ) {
   try {
     const { id: articleId } = await context.params;
+    await ensureArticleStyleColumn();
     const session = await getServerSession();
     if (!session?.user?.id) {
       const response = NextResponse.json({
@@ -77,7 +79,14 @@ export async function GET(
 
     // 获取查询参数
     const { searchParams } = new URL(request.url);
-    const style = searchParams.get('style') || 'default';
+    // 样式优先级：URL参数 > 文章保存的样式 > 默认
+    const requestedStyle = searchParams.get('style');
+    let style = 'default';
+    if (requestedStyle) {
+      style = requestedStyle;
+    } else if (article && (article as any).style) {
+      style = (article as any).style as string;
+    }
     const format = searchParams.get('format') || 'raw'; // 'raw', 'html', 'inline'
 
     let processedContent = article.content;
@@ -136,6 +145,7 @@ export async function PUT(
 ) {
   try {
     const { id: articleId } = await context.params;
+    await ensureArticleStyleColumn();
     const session = await getServerSession();
     if (!session?.user?.id) {
       const response = NextResponse.json({
@@ -146,7 +156,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, content, status } = body;
+    const { title, content, status, style } = body;
 
     // 验证文章是否存在且属于当前用户
     const existingArticle = await db.query.articles.findFirst({
@@ -170,6 +180,7 @@ export async function PUT(
         title: title || existingArticle.title,
         content: content || existingArticle.content,
         status: status || existingArticle.status,
+        style: style || (existingArticle as any).style || 'default',
         updatedAt: new Date(),
       })
       .where(eq(articles.id, articleId))
@@ -200,6 +211,7 @@ export async function DELETE(
 ) {
   try {
     const { id: articleId } = await context.params;
+    await ensureArticleStyleColumn();
     const session = await getServerSession();
     if (!session?.user?.id) {
       const response = NextResponse.json({

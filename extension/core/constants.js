@@ -52,7 +52,9 @@ class ZiliuConstants {
   static get ALLOWED_ORIGINS() {
     return [
       'www.ziliu.online',
-      'ziliu.online'      // 生产环境
+      'ziliu.online',      // 生产环境
+      'localhost',         // 本地开发
+      '127.0.0.1'         // 本地开发
     ];
   }
   

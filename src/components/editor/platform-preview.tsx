@@ -19,7 +19,7 @@ interface PlatformPreviewProps {
 
 export function PlatformPreview({ title, content, articleId }: PlatformPreviewProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>('wechat');
-  const [selectedStyle, setSelectedStyle] = useState<'default' | 'tech' | 'minimal'>('default');
+  const [selectedStyle, setSelectedStyle] = useState<'default' | 'tech' | 'minimal' | 'elegant'>('default');
   const [previewHtml, setPreviewHtml] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [appliedSettings, setAppliedSettings] = useState<any>(null);
@@ -44,7 +44,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         body: JSON.stringify({
           title: title.trim() || '未命名文章',
           content: content,
-          status: 'draft'
+          status: 'draft',
+          style: selectedStyle
         }),
       });
       
@@ -60,7 +61,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       console.error('创建草稿失败:', error);
       throw error;
     }
-  }, [title, content]);
+  }, [title, content, selectedStyle]);
 
   // 图文平台配置
   const textPlatforms = [
@@ -262,6 +263,23 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     }
   }, [selectedPlatform, loadVideoContent, articleId]);
 
+  // 加载文章已保存的样式作为初始选择
+  useEffect(() => {
+    const fetchStyle = async () => {
+      if (!articleId) return;
+      try {
+        const res = await fetch(`/api/articles/${articleId}`);
+        const data = await res.json();
+        if (data?.success && data.data?.style) {
+          setSelectedStyle(data.data.style);
+        }
+      } catch (e) {
+        console.warn('获取文章样式失败，使用默认样式');
+      }
+    };
+    fetchStyle();
+  }, [articleId]);
+
   // 转换预览（仅用于图文平台）
   const handlePreview = useCallback(async (platform: Platform, style: string) => {
     // 视频平台不需要调用转换预览
@@ -346,6 +364,14 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   const handleStyleChange = useCallback((style: string) => {
     setSelectedStyle(style as any);
     handlePreview(selectedPlatform, style);
+    // 同步保存样式到文章
+    if (articleId) {
+      fetch(`/api/articles/${articleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ style })
+      }).catch(() => {});
+    }
   }, [selectedPlatform, handlePreview]);
 
   // 获取平台发布URL
@@ -411,6 +437,22 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         }
       }
 
+      // 将当前文章ID与所选样式告知插件，方便插件拉取对应样式
+      try {
+        if (typeof window !== 'undefined' && (window as any).chrome?.runtime && articleId) {
+          (window as any).chrome.runtime.sendMessage({
+            action: 'storeContent',
+            data: {
+              articleId,
+              style: selectedStyle,
+              platform: selectedPlatform
+            }
+          }, () => {});
+        }
+      } catch (e) {
+        console.warn('通知插件所选样式失败，不影响发布', e);
+      }
+
       // 复制到剪贴板并打开平台页面
       try {
         await navigator.clipboard.writeText(contentToCopy);
@@ -462,13 +504,13 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 const accessResult = checkFeatureAccess(platformFeatureId);
                 
                 return (
-                  <div key={platform.id} className="relative">
+                  <div key={platform.id} className="relative flex items-center">
                     <button
                       onClick={() => {
                         if (hasAccess) {
                           handlePlatformChange(platform.id);
                         } else {
-                          alert(accessResult.reason || '此平台需要专业版权限');
+                          // 锁定平台采用tooltip提示，不再弹窗
                         }
                       }}
                       className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
@@ -484,13 +526,19 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                       <span>{platform.icon}</span>
                       <span>{platform.name}</span>
                       {!hasAccess && platform.id !== 'wechat' && (
-                        <span className="text-xs text-yellow-600 ml-1">💎</span>
+                        <Crown className="h-3 w-3 text-amber-500 ml-1" />
                       )}
                     </button>
+                    {!hasAccess && (
+                      <div className="ml-1">
+                        <UpgradePrompt scenario="platform-locked" style="tooltip" />
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
+            {/* 提示简化：平台按钮已含禁用态与tooltip，不再额外占位 */}
           </div>
 
           {/* 视频平台 */}
@@ -503,13 +551,13 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 const accessResult = checkFeatureAccess(platformFeatureId);
                 
                 return (
-                  <div key={platform.id} className="relative">
+                  <div key={platform.id} className="relative flex items-center">
                     <button
                       onClick={() => {
                         if (hasAccess) {
                           handlePlatformChange(platform.id);
                         } else {
-                          alert(accessResult.reason || '此平台需要专业版权限');
+                          // 锁定平台采用tooltip提示，不再弹窗
                         }
                       }}
                       className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
@@ -525,13 +573,19 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                       <span>{platform.icon}</span>
                       <span>{platform.name}</span>
                       {!hasAccess && platform.id !== 'wechat' && (
-                        <span className="text-xs text-yellow-600 ml-1">💎</span>
+                        <Crown className="h-3 w-3 text-amber-500 ml-1" />
                       )}
                     </button>
+                    {!hasAccess && (
+                      <div className="ml-1">
+                        <UpgradePrompt scenario="platform-locked" style="tooltip" />
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
+            {/* 提示简化：仅保留按钮tooltip，避免大块提示 */}
           </div>
         </div>
 
@@ -560,12 +614,20 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               >
                 <option value="default">默认样式</option>
                 <option value="tech" disabled={!hasFeature('advanced-styles')}>
-                  技术风格 {!hasFeature('advanced-styles') ? '💎' : ''}
+                  技术风格（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
                 </option>
                 <option value="minimal" disabled={!hasFeature('advanced-styles')}>
-                  简约风格 {!hasFeature('advanced-styles') ? '💎' : ''}
+                  简约风格（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                </option>
+                <option value="elegant" disabled={!hasFeature('advanced-styles')}>
+                  雅致杂志（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
                 </option>
               </select>
+              {!hasFeature('advanced-styles') && (
+                <div className="ml-1">
+                  <UpgradePrompt scenario="style-locked" style="tooltip" />
+                </div>
+              )}
             </div>
 
             <div className="flex items-center space-x-3">
@@ -583,16 +645,17 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                   }}
                 />
               ) : (
-                <button
-                  onClick={() => {
-                    alert('发布设置功能仅限专业版用户使用，请升级后体验完整功能');
-                  }}
-                  className="flex items-center space-x-1 px-3 py-2 border border-gray-200 rounded-md text-sm font-medium bg-gray-50 text-gray-400 cursor-not-allowed transition-colors hover:bg-gray-100"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>发布设置</span>
-                  <Crown className="h-3 w-3 text-amber-500" />
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    className="flex items-center space-x-1 px-3 py-2 border border-gray-200 rounded-md text-sm font-medium bg-gray-50 text-gray-400 cursor-not-allowed transition-colors hover:bg-gray-100"
+                    title="发布设置功能仅限专业版用户使用"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>发布设置</span>
+                    <Crown className="h-3 w-3 text-amber-500" />
+                  </button>
+                  <UpgradePrompt scenario="preset-locked" style="tooltip" />
+                </div>
               )}
 
               {/* 去发布按钮 */}
@@ -753,34 +816,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                   {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
                 </div>
 
-                {/* 升级提示区域 */}
-                <div className="p-4 bg-gray-50 border-t border-gray-200">
-                  {/* 平台权限提示 */}
-                  {selectedPlatform !== 'wechat' && !hasFeature(`${selectedPlatform}-platform`) && (
-                    <div className="mb-3">
-                      <UpgradePrompt scenario="platform-locked" style="inline" />
-                    </div>
-                  )}
-
-                  {/* 样式权限提示 */}
-                  {selectedStyle !== 'default' && !hasFeature('advanced-styles') && (
-                    <div className="mb-3">
-                      <UpgradePrompt scenario="style-locked" style="inline" />
-                    </div>
-                  )}
-
-                  {/* 发布预设提示 */}
-                  {selectedPlatform !== 'wechat' && !hasFeature('publish-presets') && !appliedSettings && (
-                    <div className="mb-3">
-                      <UpgradePrompt scenario="preset-locked" style="inline" />
-                    </div>
-                  )}
-
-                  {/* 如果没有任何限制，显示一般升级提示 */}
-                  {selectedPlatform === 'wechat' && selectedStyle === 'default' && (
-                    <UpgradePrompt scenario="dashboard-upgrade" style="inline" />
-                  )}
-                </div>
+                {/* 底部引导已移除，根据需求不再展示升级提示 */}
               </div>
             )}
           </>

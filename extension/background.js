@@ -1,22 +1,28 @@
 // 字流助手 - 后台脚本
 console.log('🚀 字流助手 Background Script 启动');
 
-// 字流站点配置 - 通过构建脚本自动替换
+// 站点配置解析：优先使用 ApiService 的 baseURL，其次使用 fallback
+function resolveBaseUrl() {
+  try {
+    const api = window.ZiliuApiService;
+    const url = api?.config?.baseURL;
+    if (url && typeof url === 'string' && url.length > 0) return url;
+  } catch (e) {
+    // ignore
+  }
+  return 'https://www.ziliu.online';
+}
+
+// 统一的动态配置对象（通过 getter 实时取值）
 const ZILIU_CONFIG = {
-  // 字流站点基础URL
-  baseUrl: 'https://www.ziliu.online',
-  
-  // 获取完整的API URL
+  get baseUrl() { return resolveBaseUrl(); },
   getApiUrl(path = '') {
-    return path.startsWith('/') ? `${this.baseUrl}${path}` : `${this.baseUrl}/${path}`;
+    const base = this.baseUrl;
+    return path.startsWith('/') ? `${base}${path}` : `${base}/${path}`;
   },
-  
-  // 获取编辑器URL
   getEditorUrl(articleId) {
     return `${this.baseUrl}/editor/${articleId}`;
   },
-  
-  // 获取登录URL
   getLoginUrl() {
     return `${this.baseUrl}/login`;
   }
@@ -128,6 +134,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           editorUrl: data?.articleId ? ZILIU_CONFIG.getEditorUrl(data.articleId) : null
         }
       };
+    },
+
+    // 动态设置 API 基础地址（来自网页 /api/config 或插件设置）
+    setBaseURL: async ({ baseUrl }) => {
+      try {
+        if (!baseUrl) return { success: false, error: 'baseUrl 为空' };
+        await chrome.storage.sync.set({ apiBaseUrl: baseUrl });
+        console.log('✅ 已设置 API Base URL:', baseUrl);
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: (e && e.message) || '设置失败' };
+      }
     }
   };
 
@@ -153,10 +171,10 @@ async function handleApiRequest(requestData) {
   console.log('🔧 当前ZILIU_CONFIG.baseUrl:', ZILIU_CONFIG.baseUrl);
   
   try {
-    // 优先使用配置文件中的默认值，这样环境构建能正常工作
+    // 优先使用存储中的值，再退回到动态配置
     const result = await chrome.storage.sync.get(['apiBaseUrl']);
     console.log('🔧 存储中的apiBaseUrl:', result.apiBaseUrl);
-    const API_BASE_URL = ZILIU_CONFIG.baseUrl || result.apiBaseUrl;
+    const API_BASE_URL = result.apiBaseUrl || ZILIU_CONFIG.baseUrl;
     console.log('🔗 最终使用API基础URL:', API_BASE_URL);
     const { method = 'GET', endpoint, body, headers = {} } = requestData;
 

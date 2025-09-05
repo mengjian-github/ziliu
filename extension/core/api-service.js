@@ -26,7 +26,8 @@ class ApiService {
       console.log('🔧 ZiliuConstants.DEFAULT_API_BASE_URL:', window.ZiliuConstants?.DEFAULT_API_BASE_URL);
       const result = await chrome.storage.sync.get(['apiBaseUrl']);
       console.log('🔧 存储中的apiBaseUrl:', result.apiBaseUrl);
-      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || result.apiBaseUrl || 'https://www.ziliu.online';
+      // 优先使用存储中的值，其次默认常量，最后兜底线上
+      this.config.baseURL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.online';
       console.log('✅ API服务初始化完成，最终基础URL:', this.config.baseURL);
     } catch (error) {
       console.error('❌ API服务初始化失败:', error);
@@ -123,8 +124,22 @@ class ApiService {
         return this.cachedRequest(`/api/articles?${params}`);
       },
       
-      get: async (id, format = 'inline') => {
-        return this.cachedRequest(`/api/articles/${id}?format=${format}`);
+      get: async (id, format = 'inline', style) => {
+        let finalStyle = style;
+        try {
+          if (!finalStyle && format === 'inline') {
+            const result = await chrome.storage.local.get(['ziliu_content']);
+            const stored = result?.ziliu_content;
+            if (stored?.style) {
+              finalStyle = stored.style;
+            }
+          }
+        } catch (e) {
+          console.warn('读取存储的发布样式失败，使用默认样式', e);
+        }
+
+        const styleQuery = format === 'inline' && finalStyle ? `&style=${encodeURIComponent(finalStyle)}` : '';
+        return this.cachedRequest(`/api/articles/${id}?format=${format}${styleQuery}`);
       },
       
       create: async (articleData) => {

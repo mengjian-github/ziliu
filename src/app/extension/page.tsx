@@ -19,6 +19,15 @@ import {
 export default function ExtensionPage() {
   const [extensionStatus, setExtensionStatus] = useState<'checking' | 'installed' | 'not-installed'>('checking');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [latest, setLatest] = useState<{ version?: string; url?: string } | null>(null);
+
+  // 加载最新插件包信息
+  useEffect(() => {
+    fetch('/extension-latest.json')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setLatest(data))
+      .catch(() => setLatest(null));
+  }, []);
 
   // 检测插件是否已安装
   useEffect(() => {
@@ -75,8 +84,9 @@ export default function ExtensionPage() {
     try {
       // 创建下载链接
       const link = document.createElement('a');
-      link.href = '/ziliu-extension-v1.2.0.zip'; // 需要将zip文件放到public目录
-      link.download = 'ziliu-extension-v1.2.0.zip';
+      const href = latest?.url || '/ziliu-extension-v1.2.0.zip';
+      link.href = href; // 默认回退
+      link.download = href.split('/').pop() || 'ziliu-extension.zip';
       link.click();
     } catch (error) {
       console.error('下载失败:', error);
@@ -182,7 +192,7 @@ export default function ExtensionPage() {
                   ) : (
                     <>
                       <Download className="mr-2" />
-                      下载插件文件 (v1.2.0)
+                      下载插件文件 {latest?.version ? `(v${latest.version})` : ''}
                     </>
                   )}
                 </Button>
@@ -209,7 +219,7 @@ export default function ExtensionPage() {
                   </div>
                   <div>
                     <h3 className="font-medium">下载并解压插件文件</h3>
-                    <p className="text-gray-600">点击上方按钮下载 ziliu-extension-v1.2.0.zip，然后解压到任意文件夹</p>
+                    <p className="text-gray-600">点击上方按钮下载最新 zip 文件{latest?.version ? `（v${latest.version}）` : ''}，然后解压到任意文件夹</p>
                   </div>
                 </div>
 

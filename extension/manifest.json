@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "字流助手",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "字流助手 - 智能检测剪贴板内容并填充到公众号编辑器",
   "permissions": [
     "activeTab",
@@ -22,7 +22,9 @@
     "https://creator.xiaohongshu.com/*",
     "https://www.ziliu.online/*",
     "https://ziliu.online/*",
-    "https://www.ziliu.online/*"
+    "https://www.ziliu.online/*",
+    "http://localhost:*/*",
+    "https://localhost:*/*"
   ],
   "content_scripts": [
     {
@@ -259,6 +261,18 @@
         "https://www.ziliu.online/*",
         "https://ziliu.online/*",
         "https://www.ziliu.online/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "website-detector.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "http://localhost:*/*",
+        "https://localhost:*/*"
       ],
       "js": [
         "core/constants.js",

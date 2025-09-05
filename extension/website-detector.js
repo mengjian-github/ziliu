@@ -9,8 +9,13 @@
 
   // 监听来自网页的插件检测消息
   window.addEventListener('message', (event) => {
-    // 只处理来自同源的消息
-    if (event.origin !== window.location.origin) {
+    // 处理来自同源的消息，或者localhost的消息
+    const isAllowedOrigin = event.origin === window.location.origin ||
+                          event.origin.includes('localhost') ||
+                          event.origin.includes('127.0.0.1') ||
+                          event.origin.includes('ziliu.online');
+    
+    if (!isAllowedOrigin) {
       return;
     }
 

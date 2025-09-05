@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { db, articles } from '@/lib/db';
+import { ensureArticleStyleColumn } from '@/lib/db/utils';
 import { eq, desc, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { countWords, calculateReadingTime } from '@/lib/utils';
@@ -45,6 +46,7 @@ const createArticleSchema = z.object({
   title: z.string().min(1, '标题不能为空').max(500, '标题过长'),
   content: z.string().min(1, '内容不能为空'),
   status: z.enum(['draft', 'published']).default('published'),
+  style: z.enum(['default', 'tech', 'minimal', 'elegant']).optional()
 });
 
 // 创建文章
@@ -60,17 +62,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content, status } = createArticleSchema.parse(body);
+    const { title, content, status, style } = createArticleSchema.parse(body);
 
     // 计算字数和阅读时间
     const wordCount = countWords(content);
     const readingTime = calculateReadingTime(content);
 
     // 创建文章
+    await ensureArticleStyleColumn();
+
     const [newArticle] = await db.insert(articles).values({
       userId: session.user.id,
       title,
       content,
+      style: style || 'default',
       status,
       wordCount,
       readingTime,
@@ -131,6 +136,7 @@ export async function GET(request: NextRequest) {
     const total = totalResult.count;
 
     // 查询文章
+    await ensureArticleStyleColumn();
     const userArticles = await db.query.articles.findMany({
       where: whereCondition,
       orderBy: (articles, { desc }) => [desc(articles.updatedAt)],
