@@ -469,9 +469,9 @@ function preprocessHtmlForWechat(html: string, styleKey: keyof typeof WECHAT_STY
   const h3Style = headingInline.h3 || '';
 
   processedHtml = processedHtml
-    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_m, text) => `<p style="${h1Style}">${text}</p>`)
-    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_m, text) => `<p style="${h2Style}">${text}</p>`)
-    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_m, text) => `<p style="${h3Style}">${text}</p>`);
+    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_m, text) => `<p data-heading="h1" style="${h1Style}">${text}</p>`)
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_m, text) => `<p data-heading="h2" style="${h2Style}">${text}</p>`)
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_m, text) => `<p data-heading="h3" style="${h3Style}">${text}</p>`);
 
   // 2.6 扩展：步骤徽章与结论卡片（通过标记触发，兼容微信编辑器）
   // 触发写法：
@@ -625,6 +625,11 @@ function applyInlineStyles(html: string, styles: Record<string, string>): string
   Object.entries(styles).forEach(([tag, style]) => {
     const regex = new RegExp(`<${tag}([^>]*)>`, 'gi');
     styledHtml = styledHtml.replace(regex, (match, attributes) => {
+      // 跳过已经被标记为标题的p标签
+      if (tag === 'p' && attributes && attributes.includes('data-heading=')) {
+        return match; // 不修改
+      }
+      
       // 清理和规范化样式
       const cleanStyle = style.replace(/\s+/g, ' ').trim();
 

@@ -91,7 +91,8 @@ class ZiliuContentService {
       return {
         ...baseData,
         author: data.author || preset?.author,
-        preset: preset
+        preset: preset,
+        style: articleDetail.style || 'default'  // 确保传递文章样式
       };
     } catch (error) {
       console.error('❌ 处理文章数据失败:', error);

@@ -179,16 +179,20 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       if (data.preset) {
         console.log('🔧 应用发布预设:', data.preset.name);
 
+        // 获取文章样式，默认为'default'
+        const articleStyle = data.style || 'default';
+        console.log('🎨 使用文章样式:', articleStyle);
+
         // 转换开头内容的Markdown为HTML
         if (data.preset.headerContent) {
-          const headerHtml = await this.convertMarkdownToHtml(data.preset.headerContent);
+          const headerHtml = await this.convertMarkdownToHtml(data.preset.headerContent, articleStyle);
           fullContent = headerHtml + fullContent;
           console.log('✅ 开头内容已添加并转换为HTML');
         }
 
         // 转换结尾内容的Markdown为HTML
         if (data.preset.footerContent) {
-          const footerHtml = await this.convertMarkdownToHtml(data.preset.footerContent);
+          const footerHtml = await this.convertMarkdownToHtml(data.preset.footerContent, articleStyle);
           fullContent = fullContent + footerHtml;
           console.log('✅ 结尾内容已添加并转换为HTML');
         }
@@ -380,7 +384,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
   /**
    * 将Markdown转换为HTML
    */
-  async convertMarkdownToHtml(markdown) {
+  async convertMarkdownToHtml(markdown, style = 'default') {
     try {
       console.log('🔄 转换Markdown为HTML:', markdown.substring(0, 50) + '...');
 
@@ -388,7 +392,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       const data = await window.ZiliuApiService.content.convert(
         markdown,
         'wechat', 
-        'default'
+        style
       );
 
       if (data.success && data.data.inlineHtml) {
@@ -1069,31 +1073,9 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
   cleanHtmlContent(html) {
     if (!html) return '';
 
-    // 处理块级代码块
-    let processedHtml = html.replace(
-      /<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/g,
-      (match, codeContent) => {
-        const cleanCode = codeContent
-          .replace(/^\s+|\s+$/g, '')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&amp;/g, '&');
-        
-        return `<section style="margin: 16px 0; padding: 16px; background: #f6f8fa; border-radius: 6px; border-left: 4px solid #0969da; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 14px; line-height: 1.45; overflow-x: auto;"><pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">${cleanCode}</pre></section>`;
-      }
-    );
-
-    // 处理行内代码
-    processedHtml = processedHtml.replace(
-      /<code[^>]*>(.*?)<\/code>/g,
-      '<code style="background: #f6f8fa; padding: 2px 4px; border-radius: 3px; font-family: \'SFMono-Regular\', Consolas, \'Liberation Mono\', Menlo, monospace; font-size: 0.9em;">$1</code>'
-    );
-
-    // 处理引用块
-    processedHtml = processedHtml.replace(
-      /<blockquote[^>]*>([\s\S]*?)<\/blockquote>/g,
-      '<section style="margin: 16px 0; padding: 16px; background: #f6f8fa; border-left: 4px solid #d1d9e0; color: #656d76;">$1</section>'
-    );
+    // 注意：不再处理代码块和引用块的样式，因为convert接口已经处理过了
+    // 只保留必要的HTML清理，不覆盖已有的内联样式
+    let processedHtml = html;
 
     // 处理有序列表 - 用div模拟，避免微信ol问题
     processedHtml = processedHtml.replace(
