@@ -155,7 +155,11 @@ export default function R2StorageConfig() {
             <Info className="h-4 w-4" />
             <AlertDescription>
               自定义R2存储功能仅限专业版用户使用。
-              <Button variant="link" className="p-0 h-auto font-normal">
+              <Button 
+                variant="link" 
+                className="p-0 h-auto font-normal"
+                onClick={() => window.open('/pricing', '_blank')}
+              >
                 升级到专业版
               </Button>
               即可解锁此功能。
