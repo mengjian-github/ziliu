@@ -18,15 +18,50 @@ interface PlatformPreviewProps {
 }
 
 export function PlatformPreview({ title, content, articleId }: PlatformPreviewProps) {
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform>('wechat');
-  const [selectedStyle, setSelectedStyle] = useState<'default' | 'tech' | 'minimal' | 'elegant'>('default');
+  // 状态持久化key
+  const storageKey = `editor-preview-state-${articleId || 'new'}`;
+  
+  // 从localStorage获取保存的状态
+  const getSavedState = () => {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      console.warn('Failed to load preview state:', error);
+      return null;
+    }
+  };
+
+  const savedState = getSavedState();
+  
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(savedState?.platform || 'wechat');
+  const [selectedStyle, setSelectedStyle] = useState<'default' | 'tech' | 'minimal' | 'elegant'>(savedState?.style || 'default');
   const [previewHtml, setPreviewHtml] = useState('');
   const [isConverting, setIsConverting] = useState(false);
-  const [appliedSettings, setAppliedSettings] = useState<any>(null);
+  const [appliedSettings, setAppliedSettings] = useState<any>(savedState?.settings || null);
   const [finalContent, setFinalContent] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const [videoMetadata, setVideoMetadata] = useState<any>(null);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+
+  // 保存状态到localStorage
+  const saveState = useCallback((platform: Platform, style: string, settings: any) => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const state = {
+        platform,
+        style,
+        settings,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch (error) {
+      console.warn('Failed to save preview state:', error);
+    }
+  }, [storageKey]);
   
   // 添加订阅信息和插件检测
   const { hasFeature, checkFeatureAccess } = useUserPlan();
@@ -263,6 +298,36 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     }
   }, [selectedPlatform, loadVideoContent, articleId]);
 
+  // 组件卸载时清理旧的状态缓存（可选，防止localStorage积累过多数据）
+  useEffect(() => {
+    return () => {
+      // 清理超过7天的旧状态缓存
+      if (typeof window !== 'undefined') {
+        try {
+          const keys = Object.keys(localStorage);
+          const now = Date.now();
+          const weekMs = 7 * 24 * 60 * 60 * 1000; // 7天
+          
+          keys.forEach(key => {
+            if (key.startsWith('editor-preview-state-')) {
+              try {
+                const data = JSON.parse(localStorage.getItem(key) || '{}');
+                if (data.timestamp && (now - data.timestamp) > weekMs) {
+                  localStorage.removeItem(key);
+                }
+              } catch (e) {
+                // 清理无效数据
+                localStorage.removeItem(key);
+              }
+            }
+          });
+        } catch (error) {
+          console.warn('Failed to cleanup old preview states:', error);
+        }
+      }
+    };
+  }, []);
+
   // 加载文章已保存的样式作为初始选择
   useEffect(() => {
     const fetchStyle = async () => {
@@ -336,6 +401,9 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   const handlePlatformChange = useCallback(async (platform: Platform) => {
     setSelectedPlatform(platform);
     
+    // 保存状态
+    saveState(platform, selectedStyle, appliedSettings);
+    
     // 如果是视频平台且没有articleId，需要先创建草稿
     if (isVideoPlatform(platform) && !articleId) {
       // 检查是否有足够的内容
@@ -358,11 +426,15 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     
     // 正常预览流程
     handlePreview(platform, selectedStyle);
-  }, [selectedStyle, handlePreview, articleId, title, content, createDraftArticle, router]);
+  }, [selectedStyle, handlePreview, articleId, title, content, createDraftArticle, router, saveState, appliedSettings]);
 
   // 样式切换时立即预览
   const handleStyleChange = useCallback((style: string) => {
     setSelectedStyle(style as any);
+    
+    // 保存状态
+    saveState(selectedPlatform, style, appliedSettings);
+    
     handlePreview(selectedPlatform, style);
     // 同步保存样式到文章
     if (articleId) {
@@ -372,7 +444,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         body: JSON.stringify({ style })
       }).catch(() => {});
     }
-  }, [selectedPlatform, handlePreview]);
+  }, [selectedPlatform, handlePreview, saveState, appliedSettings]);
 
   // 获取平台发布URL
   const getPlatformUrl = (platform: Platform) => {
@@ -638,6 +710,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                   onApplySettings={(settings) => {
                     console.log('应用发布设置:', settings);
                     setAppliedSettings(settings);
+                    
+                    // 保存状态
+                    saveState(selectedPlatform, selectedStyle, settings);
+                    
                     // 立即重新预览
                     setTimeout(() => {
                       handlePreview(selectedPlatform, selectedStyle);

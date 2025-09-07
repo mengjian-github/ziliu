@@ -16,6 +16,24 @@ interface PublishSettingsProps {
 }
 
 export function PublishSettings({ platform, onApplySettings }: PublishSettingsProps) {
+  // 状态持久化key
+  const storageKey = `publish-settings-ui-state-${platform}`;
+  
+  // 从localStorage获取保存的UI状态
+  const getSavedUIState = () => {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      console.warn('Failed to load publish settings UI state:', error);
+      return null;
+    }
+  };
+
+  const savedUIState = getSavedUIState();
+  
   const [settings, setSettings] = useState<PlatformSettings[]>([]);
   const [selectedSettingId, setSelectedSettingId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +42,28 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
   const [editingSettings, setEditingSettings] = useState<PlatformSettings | null>(null);
   const [showHeaderPreview, setShowHeaderPreview] = useState(false);
   const [showFooterPreview, setShowFooterPreview] = useState(false);
+
+  // 保存编辑中的内容到localStorage
+  const saveEditingContent = useCallback((settings: PlatformSettings | null) => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const state = {
+        editingSettings: settings,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch (error) {
+      console.warn('Failed to save editing content:', error);
+    }
+  }, [storageKey]);
+
+  // 恢复编辑中的内容
+  useEffect(() => {
+    if (savedUIState?.editingSettings && showCreateForm) {
+      setEditingSettings(savedUIState.editingSettings);
+    }
+  }, [savedUIState, showCreateForm]);
 
   // 获取平台图标
   const getPlatformIcon = (platform: Platform) => {
@@ -313,6 +353,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                 onClick={() => {
                   setShowCreateForm(false);
                   setEditingSettings(null);
+                  saveEditingContent(null);
                 }}
                 className="h-6 w-6 p-0"
               >
@@ -327,7 +368,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                 </label>
                 <Input
                   value={editingSettings?.name || ''}
-                  onChange={(e) => setEditingSettings(prev => prev ? {...prev, name: e.target.value} : null)}
+                  onChange={(e) => {
+                    const newSettings = editingSettings ? {...editingSettings, name: e.target.value} : null;
+                    setEditingSettings(newSettings);
+                    saveEditingContent(newSettings);
+                  }}
                   placeholder="输入设置名称"
                 />
               </div>
@@ -341,7 +386,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     </label>
                     <Input
                       value={editingSettings?.authorName || ''}
-                      onChange={(e) => setEditingSettings(prev => prev ? {...prev, authorName: e.target.value} : null)}
+                      onChange={(e) => {
+                        const newSettings = editingSettings ? {...editingSettings, authorName: e.target.value} : null;
+                        setEditingSettings(newSettings);
+                        saveEditingContent(newSettings);
+                      }}
                       placeholder="输入作者名称"
                     />
                   </div>
@@ -371,7 +420,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     ) : (
                       <Textarea
                         value={editingSettings?.headerContent || ''}
-                        onChange={(e) => setEditingSettings(prev => prev ? {...prev, headerContent: e.target.value} : null)}
+                        onChange={(e) => {
+                          const newSettings = editingSettings ? {...editingSettings, headerContent: e.target.value} : null;
+                          setEditingSettings(newSettings);
+                          saveEditingContent(newSettings);
+                        }}
                         placeholder="输入文章开头的固定内容（支持Markdown）"
                         rows={3}
                       />
@@ -403,7 +456,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     ) : (
                       <Textarea
                         value={editingSettings?.footerContent || ''}
-                        onChange={(e) => setEditingSettings(prev => prev ? {...prev, footerContent: e.target.value} : null)}
+                        onChange={(e) => {
+                          const newSettings = editingSettings ? {...editingSettings, footerContent: e.target.value} : null;
+                          setEditingSettings(newSettings);
+                          saveEditingContent(newSettings);
+                        }}
                         placeholder="输入文章结尾的固定内容（支持Markdown）"
                         rows={3}
                       />
@@ -441,7 +498,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     ) : (
                       <Textarea
                         value={editingSettings?.headerContent || ''}
-                        onChange={(e) => setEditingSettings(prev => prev ? {...prev, headerContent: e.target.value} : null)}
+                        onChange={(e) => {
+                          const newSettings = editingSettings ? {...editingSettings, headerContent: e.target.value} : null;
+                          setEditingSettings(newSettings);
+                          saveEditingContent(newSettings);
+                        }}
                         placeholder="输入文章开头的固定内容（支持Markdown）"
                         rows={3}
                       />
@@ -473,7 +534,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     ) : (
                       <Textarea
                         value={editingSettings?.footerContent || ''}
-                        onChange={(e) => setEditingSettings(prev => prev ? {...prev, footerContent: e.target.value} : null)}
+                        onChange={(e) => {
+                          const newSettings = editingSettings ? {...editingSettings, footerContent: e.target.value} : null;
+                          setEditingSettings(newSettings);
+                          saveEditingContent(newSettings);
+                        }}
                         placeholder="输入文章结尾的固定内容（支持Markdown）"
                         rows={3}
                       />
@@ -510,7 +575,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     ) : (
                       <Textarea
                         value={editingSettings?.headerContent || ''}
-                        onChange={(e) => setEditingSettings(prev => prev ? {...prev, headerContent: e.target.value} : null)}
+                        onChange={(e) => {
+                          const newSettings = editingSettings ? {...editingSettings, headerContent: e.target.value} : null;
+                          setEditingSettings(newSettings);
+                          saveEditingContent(newSettings);
+                        }}
                         placeholder="输入文章开头的固定内容（支持Markdown）"
                         rows={3}
                       />
@@ -541,7 +610,11 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     ) : (
                       <Textarea
                         value={editingSettings?.footerContent || ''}
-                        onChange={(e) => setEditingSettings(prev => prev ? {...prev, footerContent: e.target.value} : null)}
+                        onChange={(e) => {
+                          const newSettings = editingSettings ? {...editingSettings, footerContent: e.target.value} : null;
+                          setEditingSettings(newSettings);
+                          saveEditingContent(newSettings);
+                        }}
                         placeholder="输入文章结尾的固定内容（支持Markdown）"
                         rows={3}
                       />
@@ -565,6 +638,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                   onClick={() => {
                     setShowCreateForm(false);
                     setEditingSettings(null);
+                    saveEditingContent(null);
                   }}
                 >
                   取消
@@ -604,6 +678,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                         await loadSettings();
                         setShowCreateForm(false);
                         setEditingSettings(null);
+                        saveEditingContent(null);
                       } else {
                         alert('保存失败：' + data.error);
                       }
