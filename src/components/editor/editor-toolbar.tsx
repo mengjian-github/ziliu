@@ -48,11 +48,11 @@ export function EditorToolbar({
         switch (e.key) {
           case 'b':
             e.preventDefault();
-            insertMarkdown('**', '**', '粗体文字');
+            insertMarkdownWithSelection('**', '**', '粗体文字');
             break;
           case 'i':
             e.preventDefault();
-            insertMarkdown('*', '*', '斜体文字');
+            insertMarkdownWithSelection('*', '*', '斜体文字');
             break;
           case 'k':
             e.preventDefault();
@@ -72,6 +72,36 @@ export function EditorToolbar({
       onInsertText(`${before}${placeholder}${after}`, before.length);
     } else {
       onInsertText(`${before}${after}`, before.length);
+    }
+  };
+
+  // 处理选中文本的插入函数
+  const insertMarkdownWithSelection = (before: string, after: string = '', placeholder: string = '') => {
+    const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = textarea.value.substring(start, end);
+
+      console.log('=== insertMarkdownWithSelection Debug ===');
+      console.log('before:', before);
+      console.log('after:', after);
+      console.log('placeholder:', placeholder);
+      console.log('selectedText:', `"${selectedText}"`);
+      console.log('selectedText.length:', selectedText.length);
+      
+      if (selectedText.length > 0) {
+        // 有选中文本，直接在前后添加标记
+        onInsertText(`${before}${selectedText}${after}`, before.length + selectedText.length + after.length);
+        console.log('有选中文本，插入:', `${before}${selectedText}${after}`);
+      } else {
+        // 没有选中文本，插入占位符
+        onInsertText(`${before}${placeholder}${after}`, before.length);
+        console.log('无选中文本，插入:', `${before}${placeholder}${after}`);
+      }
+    } else {
+      // 兜底方案
+      insertMarkdown(before, after, placeholder);
     }
   };
 
@@ -104,22 +134,22 @@ export function EditorToolbar({
         {
           icon: Bold,
           title: '粗体 (Ctrl+B)',
-          action: () => insertMarkdown('**', '**', '粗体文字'),
+          action: () => insertMarkdownWithSelection('**', '**', '粗体文字'),
         },
         {
           icon: Italic,
           title: '斜体 (Ctrl+I)',
-          action: () => insertMarkdown('*', '*', '斜体文字'),
+          action: () => insertMarkdownWithSelection('*', '*', '斜体文字'),
         },
         {
           icon: Strikethrough,
           title: '删除线',
-          action: () => insertMarkdown('~~', '~~', '删除线文字'),
+          action: () => insertMarkdownWithSelection('~~', '~~', '删除线文字'),
         },
         {
           icon: Code,
           title: '行内代码',
-          action: () => insertMarkdown('`', '`', '代码'),
+          action: () => insertMarkdownWithSelection('`', '`', '代码'),
         },
       ],
     },
@@ -130,17 +160,17 @@ export function EditorToolbar({
         {
           icon: Heading1,
           title: '一级标题',
-          action: () => insertMarkdown('# ', '', '一级标题'),
+          action: () => insertMarkdownWithSelection('# ', '', '一级标题'),
         },
         {
           icon: Heading2,
           title: '二级标题',
-          action: () => insertMarkdown('## ', '', '二级标题'),
+          action: () => insertMarkdownWithSelection('## ', '', '二级标题'),
         },
         {
           icon: Heading3,
           title: '三级标题',
-          action: () => insertMarkdown('### ', '', '三级标题'),
+          action: () => insertMarkdownWithSelection('### ', '', '三级标题'),
         },
       ],
     },
@@ -151,17 +181,17 @@ export function EditorToolbar({
         {
           icon: List,
           title: '无序列表',
-          action: () => insertMarkdown('- ', '', '列表项'),
+          action: () => insertMarkdownWithSelection('- ', '', '列表项'),
         },
         {
           icon: ListOrdered,
           title: '有序列表',
-          action: () => insertMarkdown('1. ', '', '列表项'),
+          action: () => insertMarkdownWithSelection('1. ', '', '列表项'),
         },
         {
           icon: Quote,
           title: '引用',
-          action: () => insertMarkdown('> ', '', '引用内容'),
+          action: () => insertMarkdownWithSelection('> ', '', '引用内容'),
         },
       ],
     },
@@ -224,7 +254,7 @@ export function EditorToolbar({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => insertMarkdown('```\n', '\n```', '代码内容')}
+            onClick={() => insertMarkdownWithSelection('```\n', '\n```', '代码内容')}
             disabled={disabled}
             title="代码块"
             className="h-8 px-2 hover:bg-gray-100 text-xs"

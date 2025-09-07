@@ -22,13 +22,52 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
     const end = textarea.selectionEnd;
     const selectedText = value.substring(start, end);
 
-    const newText = value.substring(0, start) + before + selectedText + after + value.substring(end);
+    console.log('=== insertText Debug ===');
+    console.log('before:', before);
+    console.log('after:', after);
+    console.log('start:', start);
+    console.log('end:', end);
+    console.log('selectedText:', `"${selectedText}"`);
+    console.log('selectedText.length:', selectedText.length);
+    console.log('current value:', `"${value}"`);
+
+    // 如果有选中文本，在前后添加标记；如果没有选中文本，插入占位符
+    let insertContent: string;
+    let cursorPosition: number;
+    
+    if (selectedText) {
+      // 有选中文本，直接在前后添加标记
+      insertContent = before + selectedText + after;
+      cursorPosition = start + before.length + selectedText.length + after.length;
+      console.log('有选中文本，insertContent:', `"${insertContent}"`);
+    } else {
+      // 没有选中文本，插入带占位符的标记
+      const placeholder = before === '**' ? '粗体文字' : 
+                         before === '*' ? '斜体文字' : 
+                         before === '> ' ? '引用内容' :
+                         before === '- ' ? '列表项' :
+                         before === '1. ' ? '列表项' : '文字';
+      insertContent = before + placeholder + after;
+      cursorPosition = start + before.length + placeholder.length;
+      console.log('无选中文本，placeholder:', placeholder);
+      console.log('insertContent:', `"${insertContent}"`);
+    }
+
+    const newText = value.substring(0, start) + insertContent + value.substring(end);
+    console.log('newText:', `"${newText}"`);
     onChange(newText);
 
     // 恢复光标位置
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+      if (selectedText) {
+        // 如果原来有选中文本，保持选中状态
+        textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+      } else {
+        // 如果没有选中文本，选中占位符
+        const placeholderLength = insertContent.length - before.length - after.length;
+        textarea.setSelectionRange(start + before.length, start + before.length + placeholderLength);
+      }
     }, 0);
   };
 
