@@ -21,12 +21,18 @@ import {
   AlignCenter,
   AlignRight,
   Table,
+  Undo,
+  Redo,
 } from 'lucide-react';
 
 interface EditorToolbarProps {
   onInsertText: (text: string, cursorOffset?: number) => void;
   onImageUpload: (url: string, fileName: string) => void;
   onImageUploadError: (error: string, upgradeRequired?: boolean) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   showPreview?: boolean;
   onTogglePreview?: () => void;
   disabled?: boolean;
@@ -36,6 +42,10 @@ export function EditorToolbar({
   onInsertText,
   onImageUpload,
   onImageUploadError,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
   showPreview,
   onTogglePreview,
   disabled = false
@@ -58,13 +68,29 @@ export function EditorToolbar({
             e.preventDefault();
             insertLink();
             break;
+          case 'z':
+            if (e.shiftKey) {
+              // Ctrl+Shift+Z 或 Cmd+Shift+Z 重做
+              e.preventDefault();
+              onRedo?.();
+            } else {
+              // Ctrl+Z 或 Cmd+Z 撤销
+              e.preventDefault();
+              onUndo?.();
+            }
+            break;
+          case 'y':
+            // Ctrl+Y 或 Cmd+Y 重做（Windows 常用）
+            e.preventDefault();
+            onRedo?.();
+            break;
         }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [onUndo, onRedo]);
 
   // 插入文本的辅助函数
   const insertMarkdown = (before: string, after: string = '', placeholder: string = '') => {
@@ -127,6 +153,24 @@ export function EditorToolbar({
 
   // 工具栏按钮组
   const toolbarGroups = [
+    // 撤销重做组
+    {
+      name: '编辑操作',
+      buttons: [
+        {
+          icon: Undo,
+          title: '撤销 (Ctrl+Z)',
+          action: () => onUndo?.(),
+          disabled: !canUndo
+        },
+        {
+          icon: Redo,
+          title: '重做 (Ctrl+Y)',
+          action: () => onRedo?.(),
+          disabled: !canRedo
+        },
+      ],
+    },
     // 文本格式组
     {
       name: '文本格式',
@@ -229,7 +273,7 @@ export function EditorToolbar({
                     variant="ghost"
                     size="sm"
                     onClick={button.action}
-                    disabled={disabled}
+                    disabled={disabled || button.disabled}
                     title={button.title}
                     className="h-8 w-8 p-0 hover:bg-gray-100"
                   >
@@ -281,6 +325,8 @@ export function EditorToolbar({
       {/* 快捷键提示 */}
       <div className="mt-2 text-xs text-gray-500 border-t pt-2">
         <span>💡 快捷键：</span>
+        <span className="ml-2">Ctrl+Z 撤销</span>
+        <span className="ml-2">Ctrl+Y 重做</span>
         <span className="ml-2">Ctrl+B 粗体</span>
         <span className="ml-2">Ctrl+I 斜体</span>
         <span className="ml-2">Ctrl+K 链接</span>

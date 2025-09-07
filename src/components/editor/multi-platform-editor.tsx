@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Upload, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { EditorToolbar } from './editor-toolbar';
 import { useImageUploadService } from '@/lib/services/imageUploadService';
 import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
+import { useEditorHistory } from '@/hooks/use-editor-history';
 
 
 interface EditorProps {
@@ -31,6 +32,27 @@ export function MultiPlatformEditor({
   // 使用统一的图片上传服务
   const imageUploadService = useImageUploadService();
 
+  // 历史记录管理
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const { canUndo, canRedo, undo, redo, pushState } = useEditorHistory(
+    { title, content },
+    useCallback((state) => {
+      onTitleChange(state.title);
+      onContentChange(state.content);
+    }, [onTitleChange, onContentChange])
+  );
+
+  // 防抖保存历史记录
+  const debouncePushState = useCallback((newTitle: string, newContent: string) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    debounceTimer.current = setTimeout(() => {
+      pushState({ title: newTitle, content: newContent });
+    }, 500); // 500ms 防抖
+  }, [pushState]);
+
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ visible: true, message, type });
     window.setTimeout(() => {
@@ -46,19 +68,24 @@ export function MultiPlatformEditor({
   const handleImageUpload = useCallback((url: string, fileName: string) => {
     const markdownImage = `![${fileName}](${url})`;
     const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+    let newContent: string;
+    
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-      const newContent = content.slice(0, start) + markdownImage + content.slice(end);
+      newContent = content.slice(0, start) + markdownImage + content.slice(end);
       onContentChange(newContent);
       setTimeout(() => {
         textarea.setSelectionRange(start + markdownImage.length, start + markdownImage.length);
         textarea.focus();
       }, 0);
     } else {
-      onContentChange(content + '\n\n' + markdownImage);
+      newContent = content + '\n\n' + markdownImage;
+      onContentChange(newContent);
     }
-  }, [content, onContentChange]);
+    
+    debouncePushState(title, newContent);
+  }, [content, onContentChange, title, debouncePushState]);
 
   // 处理图片上传错误
   const handleImageUploadError = useCallback((error: string, upgradeRequired?: boolean) => {
@@ -79,6 +106,7 @@ export function MultiPlatformEditor({
       const end = textarea.selectionEnd;
       const newContent = content.slice(0, start) + text + content.slice(end);
       onContentChange(newContent);
+      debouncePushState(title, newContent);
 
       setTimeout(() => {
         const newCursorPos = cursorOffset !== undefined
@@ -88,9 +116,11 @@ export function MultiPlatformEditor({
         textarea.focus();
       }, 0);
     } else {
-      onContentChange(content + text);
+      const newContent = content + text;
+      onContentChange(newContent);
+      debouncePushState(title, newContent);
     }
-  }, [content, onContentChange]);
+  }, [content, onContentChange, title, debouncePushState]);
 
 
 
@@ -220,6 +250,14 @@ export function MultiPlatformEditor({
     }
   }, [handleImageUpload, handleImageUploadError, onContentChange, imageUploadService]);
 
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
 
 
@@ -245,7 +283,9 @@ export function MultiPlatformEditor({
           <Input
             value={title}
             onChange={(e) => {
-              onTitleChange(e.target.value);
+              const newTitle = e.target.value;
+              onTitleChange(newTitle);
+              debouncePushState(newTitle, content);
             }}
             placeholder="请输入文章标题..."
             className="text-xl font-semibold border-none px-0 focus-visible:ring-0 placeholder:text-gray-400"
@@ -257,6 +297,10 @@ export function MultiPlatformEditor({
           onInsertText={handleInsertText}
           onImageUpload={handleImageUpload}
           onImageUploadError={handleImageUploadError}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
         />
 
         {/* 内容编辑器 */}
@@ -269,7 +313,9 @@ export function MultiPlatformEditor({
           <Textarea
             value={content}
             onChange={(e) => {
-              onContentChange(e.target.value);
+              const newContent = e.target.value;
+              onContentChange(newContent);
+              debouncePushState(title, newContent);
             }}
             onPaste={handlePaste}
             placeholder={`请输入Markdown内容...
