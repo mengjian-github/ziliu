@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { FEATURES } from '../subscription/config/features';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+import { getUserR2Config, CustomR2Service } from './custom-r2-service';
 
 // 配置 Cloudflare R2 客户端
 const r2Client = new S3Client({
@@ -200,9 +201,62 @@ export async function updateImageUsageStats(userEmail: string): Promise<void> {
 }
 
 /**
- * 上传图片到R2存储
+ * 上传图片到R2存储（支持用户自定义R2）
  */
 export async function uploadImageToR2(
+  file: File | Blob, 
+  fileName: string, 
+  userEmail: string
+): Promise<ImageUploadResult> {
+  try {
+    // 验证图片文件
+    const validation = await validateImageFile(file, userEmail);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
+    // 检查用户是否配置了自定义R2
+    const userR2Config = await getUserR2Config(userEmail);
+    console.log(`[图片上传] 用户 ${userEmail} 的自定义R2配置:`, userR2Config ? '已配置' : '未配置');
+    
+    if (userR2Config) {
+      console.log(`[图片上传] 使用用户自定义R2存储上传图片: ${fileName}`);
+      // 使用用户自定义R2存储（无需检查配额）
+      const customR2Service = new CustomR2Service(userR2Config);
+      const uploadResult = await customR2Service.uploadImage(file, fileName);
+      
+      if (uploadResult.success) {
+        console.log(`[图片上传] 自定义R2上传成功: ${uploadResult.url}`);
+        return {
+          success: true,
+          url: uploadResult.url!,
+          fileName,
+          fileSize: file.size,
+          fileType: file.type || 'image/jpeg',
+          uploadPath: 'custom-r2', // 标记为自定义R2上传
+        };
+      } else {
+        console.log(`[图片上传] 自定义R2上传失败: ${uploadResult.error}`);
+        return { success: false, error: uploadResult.error };
+      }
+    }
+
+    // 使用平台默认R2存储
+    return await uploadImageToPlatformR2(file, fileName, userEmail);
+
+  } catch (error) {
+    console.error('图片上传失败:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '上传失败'
+    };
+  }
+}
+
+/**
+ * 上传图片到平台默认R2存储
+ */
+async function uploadImageToPlatformR2(
   file: File | Blob, 
   fileName: string, 
   userEmail: string
@@ -212,12 +266,6 @@ export async function uploadImageToR2(
     if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || 
         !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
       return { success: false, error: '服务器配置错误' };
-    }
-
-    // 验证图片文件
-    const validation = await validateImageFile(file, userEmail);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
     }
 
     // 检查用户配额
@@ -238,7 +286,7 @@ export async function uploadImageToR2(
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 上传到 R2
+    // 上传到平台 R2
     const uploadCommand = new PutObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME,
       Key: filePath,

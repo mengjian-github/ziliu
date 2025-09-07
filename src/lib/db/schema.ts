@@ -10,6 +10,13 @@ export const users = sqliteTable('users', {
   avatar: text('avatar'),
   plan: text('plan', { enum: ['free', 'pro'] }).notNull().default('free'),
   planExpiredAt: integer('plan_expired_at', { mode: 'timestamp' }),
+  // 自定义R2存储配置
+  useCustomR2: integer('use_custom_r2', { mode: 'boolean' }).default(false),
+  customR2AccountId: text('custom_r2_account_id'),
+  customR2AccessKeyId: text('custom_r2_access_key_id'),
+  customR2SecretAccessKey: text('custom_r2_secret_access_key'),
+  customR2BucketName: text('custom_r2_bucket_name'),
+  customR2PublicUrl: text('custom_r2_public_url'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

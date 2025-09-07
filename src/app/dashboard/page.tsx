@@ -6,12 +6,21 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, FileText, LogOut, User, ChevronLeft, ChevronRight, Crown, Gift } from 'lucide-react';
+import { PlusCircle, FileText, LogOut, User, ChevronLeft, ChevronRight, Crown, Gift, Settings, ChevronDown } from 'lucide-react';
 import { RedeemCodeDialog } from '@/components/ui/redeem-code-dialog';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
 import { ArticleCreationGuard } from '@/lib/subscription/components/FeatureGuard';
 import { CustomerSupportButton } from '@/components/ui/customer-support-button';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Article {
   id: string;
@@ -134,74 +143,102 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* 订阅状态 */}
-              <div className={`flex items-center space-x-3 px-3 py-2 rounded-full border ${
-                isPro 
-                  ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200' 
-                  : 'bg-white/60 border-white/40'
-              }`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  isPro 
-                    ? 'bg-gradient-to-br from-yellow-500 to-orange-500' 
-                    : 'bg-gradient-to-br from-blue-500 to-indigo-500'
-                }`}>
-                  {isPro ? (
-                    <Crown className="h-3 w-3 text-white" />
-                  ) : (
-                    <User className="h-3 w-3 text-white" />
-                  )}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-gray-700">
-                    {session.user?.name}
-                  </span>
-                  {isPro ? (
-                    <span className="text-xs text-yellow-600">
-                      专业版 · 至{formatExpiredDate(planExpiredAt)}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-gray-500">
-                      免费版 · {articleLimit > 0 && `${totalArticles}/${articleLimit}文章`}
-                    </span>
-                  )}
-                </div>
-              </div>
-              
-              {/* 订阅管理区域 */}
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowRedeemDialog(true)}
-                  className="bg-white/60 border-white/40 hover:bg-white/80 backdrop-blur-sm"
-                >
-                  <Gift className="h-4 w-4 mr-2" />
-                  兑换码
-                </Button>
+              {/* 升级提示 - 仅在非专业版时显示 */}
+              {!isPro && (
+                <Link href="/pricing">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 text-yellow-700 hover:from-yellow-100 hover:to-orange-100 hover:border-yellow-300"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    升级专业版
+                  </Button>
+                </Link>
+              )}
+
+              {/* 用户头像下拉菜单 */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 px-3 bg-white/60 border border-white/40 hover:bg-white/80 backdrop-blur-sm rounded-full">
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={session.user?.image || undefined} alt={session.user?.name || "用户头像"} />
+                        <AvatarFallback className={`text-xs font-medium text-white ${
+                          isPro 
+                            ? 'bg-gradient-to-br from-yellow-500 to-orange-500' 
+                            : 'bg-gradient-to-br from-blue-500 to-indigo-500'
+                        }`}>
+                          {isPro ? (
+                            <Crown className="h-3 w-3" />
+                          ) : (
+                            session.user?.name?.charAt(0)?.toUpperCase() || 'U'
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex flex-col items-start min-w-0">
+                        <span className="text-sm font-medium text-gray-700 truncate max-w-[120px]">
+                          {session.user?.name}
+                        </span>
+                        {isPro ? (
+                          <span className="text-xs text-yellow-600 flex items-center">
+                            <Crown className="h-3 w-3 mr-1" />
+                            专业版
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            免费版 · {articleLimit > 0 && `${totalArticles}/${articleLimit}`}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
                 
-                {!isPro && (
-                  <Link href="/pricing">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 text-yellow-700 hover:from-yellow-100 hover:to-orange-100 hover:border-yellow-300"
-                    >
-                      <Crown className="h-4 w-4 mr-2" />
-                      了解专业版
-                    </Button>
+                <DropdownMenuContent className="w-64 mr-4" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1.5">
+                      <p className="text-sm font-medium leading-none text-gray-900">{session.user?.name}</p>
+                      <p className="text-xs leading-none text-gray-500">
+                        {session.user?.email}
+                      </p>
+                      {isPro && planExpiredAt && (
+                        <div className="flex items-center text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded-md">
+                          <Crown className="h-3 w-3 mr-1" />
+                          专业版至 {formatExpiredDate(planExpiredAt)}
+                        </div>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <Link href="/dashboard/settings">
+                    <DropdownMenuItem className="group">
+                      <Settings className="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                      <span>设置</span>
+                    </DropdownMenuItem>
                   </Link>
-                )}
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSignOut}
-                className="bg-white/60 border-white/40 hover:bg-white/80 backdrop-blur-sm"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                退出
-              </Button>
+                  
+                  <DropdownMenuItem onClick={() => setShowRedeemDialog(true)} className="group">
+                    <Gift className="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                    <span>兑换码</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem 
+                    onClick={handleSignOut} 
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 focus:text-red-700 focus:bg-red-50 group"
+                  >
+                    <LogOut className="mr-3 h-4 w-4" />
+                    <span>退出登录</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

@@ -71,15 +71,32 @@ export const authOptions: NextAuthOptions = {
     signIn: '/auth/signin',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
       }
+      
+      // 当session.update()被调用时，重新从数据库获取最新用户信息
+      if (trigger === 'update' && token.id) {
+        const updatedUser = await db.query.users.findFirst({
+          where: eq(users.id, token.id as string)
+        });
+        
+        if (updatedUser) {
+          token.name = updatedUser.name;
+          token.email = updatedUser.email;
+          token.image = updatedUser.avatar;
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
+        session.user.image = token.image as string;
       }
       return session;
     },

@@ -114,6 +114,14 @@ export const FEATURES: Record<string, FeatureConfig> = {
       free: 20, // 免费版20张/月
       pro: 500, // 专业版500张/月
     }
+  },
+
+  // 自定义R2存储
+  'custom-r2': {
+    id: 'custom-r2',
+    name: '自定义R2存储',
+    description: '使用您自己的Cloudflare R2存储，无限制上传图片',
+    plans: ['pro']
   }
 };
 
