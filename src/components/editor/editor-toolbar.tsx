@@ -273,7 +273,7 @@ export function EditorToolbar({
                     variant="ghost"
                     size="sm"
                     onClick={button.action}
-                    disabled={disabled || button.disabled}
+                    disabled={disabled || ('disabled' in button && button.disabled)}
                     title={button.title}
                     className="h-8 w-8 p-0 hover:bg-gray-100"
                   >
