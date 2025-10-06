@@ -120,7 +120,7 @@ ${content}
       },
       body: JSON.stringify({
         // 选择性价比高的模型，比如Claude-3-haiku或GPT-3.5
-        model: 'anthropic/claude-3-haiku', 
+        model: 'deepseek/deepseek-chat-v3.1:free', 
         messages: [
           {
             role: 'user',

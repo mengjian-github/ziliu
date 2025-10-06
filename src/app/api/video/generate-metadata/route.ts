@@ -130,7 +130,7 @@ ${content}
         'X-Title': 'Ziliu Video Metadata Generation',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3-haiku', // 使用性价比高的模型
+        model: 'deepseek/deepseek-chat-v3.1:free', // 使用性价比高的模型
         messages: [
           {
             role: 'user',
