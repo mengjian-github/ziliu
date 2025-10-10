@@ -23,6 +23,8 @@ import {
   Table,
   Undo,
   Redo,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 
 interface EditorToolbarProps {
@@ -36,6 +38,8 @@ interface EditorToolbarProps {
   showPreview?: boolean;
   onTogglePreview?: () => void;
   disabled?: boolean;
+  onConvertMarkdownImages?: () => void;
+  isConvertingMarkdownImages?: boolean;
 }
 
 export function EditorToolbar({
@@ -48,7 +52,9 @@ export function EditorToolbar({
   canRedo = false,
   showPreview,
   onTogglePreview,
-  disabled = false
+  disabled = false,
+  onConvertMarkdownImages,
+  isConvertingMarkdownImages = false
 }: EditorToolbarProps) {
 
   // 键盘快捷键支持
@@ -292,6 +298,24 @@ export function EditorToolbar({
             disabled={disabled}
             className="h-8"
           />
+
+          {onConvertMarkdownImages && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onConvertMarkdownImages}
+              disabled={disabled || isConvertingMarkdownImages}
+              title="一键将Markdown图片上传到图床"
+              className="h-8 px-2 hover:bg-gray-100 text-xs flex items-center space-x-1"
+            >
+              {isConvertingMarkdownImages ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              <span>图床转换</span>
+            </Button>
+          )}
 
           {/* 代码块 */}
           <div className="h-6 w-px bg-gray-300 mx-2"></div>

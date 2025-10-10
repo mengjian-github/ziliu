@@ -28,6 +28,7 @@ export function MultiPlatformEditor({
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({ visible: false, message: '', type: 'success' });
   const [showImageUpgradePrompt, setShowImageUpgradePrompt] = useState(false);
+  const [isConvertingMarkdownImages, setIsConvertingMarkdownImages] = useState(false);
   
   // 使用统一的图片上传服务
   const imageUploadService = useImageUploadService();
@@ -250,6 +251,55 @@ export function MultiPlatformEditor({
     }
   }, [handleImageUpload, handleImageUploadError, onContentChange, imageUploadService]);
 
+  const handleConvertMarkdownImages = useCallback(async () => {
+    const markdownImagePattern = /!\[[^\]]*\]\([^)]*\)/;
+    if (!markdownImagePattern.test(content)) {
+      showToast('当前内容没有可转换的Markdown图片', 'info');
+      return;
+    }
+
+    setIsConvertingMarkdownImages(true);
+
+    try {
+      const response = await fetch('/api/markdown/convert-images', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ markdown: content }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || '图片批量转换失败');
+      }
+
+      if (data.processedImages > 0) {
+        onContentChange(data.markdown);
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current);
+          debounceTimer.current = null;
+        }
+        pushState({ title, content: data.markdown });
+
+        if (data.imageWarning) {
+          showToast(data.imageWarning, 'info');
+        } else {
+          showToast(`已成功上传 ${data.processedImages} 张图片到图床`, 'success');
+        }
+      } else {
+        showToast(data.imageWarning || '没有需要处理的图片', 'info');
+      }
+    } catch (error) {
+      console.error('Markdown图片转换失败:', error);
+      const message = error instanceof Error ? error.message : '图片批量转换失败，请稍后重试';
+      showToast(message, 'error');
+    } finally {
+      setIsConvertingMarkdownImages(false);
+    }
+  }, [content, onContentChange, pushState, showToast, title]);
+
   // 清理定时器
   useEffect(() => {
     return () => {
@@ -301,6 +351,8 @@ export function MultiPlatformEditor({
           onRedo={redo}
           canUndo={canUndo}
           canRedo={canRedo}
+          onConvertMarkdownImages={handleConvertMarkdownImages}
+          isConvertingMarkdownImages={isConvertingMarkdownImages}
         />
 
         {/* 内容编辑器 */}
