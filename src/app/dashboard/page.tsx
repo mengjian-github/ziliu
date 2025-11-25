@@ -124,21 +124,21 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(0,102,255,0.12),transparent_38%),radial-gradient(circle_at_82%_10%,rgba(0,212,255,0.12),transparent_36%),radial-gradient(120%_90%_at_60%_90%,rgba(0,26,77,0.08),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.22),transparent_38%),linear-gradient(240deg,rgba(255,255,255,0.18),transparent_32%)]" />
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-white/40 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">字</span>
+              <Link href="/" className="flex items-center space-x-3 hover:opacity-90 transition-opacity">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary via-[#2a80ff] to-secondary rounded-2xl flex items-center justify-center text-white shadow-[0_18px_40px_-18px_rgba(0,102,255,0.75)]">
+                  <span className="text-sm font-semibold">Z</span>
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                    字流
-                  </h1>
-                </div>
+                <h1 className="text-xl font-semibold text-foreground">
+                  字流
+                </h1>
               </Link>
             </div>
 

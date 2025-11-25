@@ -9,15 +9,15 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', ...props }, ref) => {
-    const baseStyles = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-95"
+    const baseStyles = "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-semibold tracking-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:translate-y-px"
 
     const variants = {
-      default: "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:-translate-y-0.5",
-      destructive: "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg hover:from-red-600 hover:to-red-700 hover:shadow-xl hover:-translate-y-0.5",
-      outline: "border-2 border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-gray-50 hover:border-blue-400 hover:shadow-md hover:-translate-y-0.5",
-      secondary: "bg-gray-100 text-gray-900 shadow-sm hover:bg-gray-200 hover:shadow-md hover:-translate-y-0.5",
-      ghost: "text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:-translate-y-0.5",
-      link: "text-blue-600 underline-offset-4 hover:underline hover:text-blue-700",
+      default: "bg-gradient-to-r from-[#0066ff] via-[#2a80ff] to-[#00d4ff] text-white shadow-[0_18px_40px_-16px_rgba(0,102,255,0.65)] hover:shadow-[0_24px_60px_-18px_rgba(0,102,255,0.75)] hover:-translate-y-0.5",
+      destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:shadow-md hover:-translate-y-0.5",
+      outline: "border border-primary/25 bg-white/70 text-foreground shadow-[0_10px_30px_-20px_rgba(0,26,77,0.35)] hover:border-primary/40 hover:bg-white hover:shadow-[0_14px_40px_-22px_rgba(0,26,77,0.45)] hover:-translate-y-0.5",
+      secondary: "bg-secondary text-secondary-foreground shadow-[0_14px_40px_-22px_rgba(0,212,255,0.55)] hover:bg-secondary/90 hover:-translate-y-0.5",
+      ghost: "text-foreground hover:bg-primary/8 hover:text-foreground hover:-translate-y-0.5",
+      link: "text-primary underline-offset-4 hover:underline",
     }
 
     const sizes = {

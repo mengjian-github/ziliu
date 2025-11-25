@@ -40,37 +40,36 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">字</span>
-            </div>
+    <div className="relative min-h-screen px-4 py-12 sm:px-6 lg:px-8 flex items-center justify-center">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(0,102,255,0.14),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(0,212,255,0.12),transparent_35%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.24),transparent_38%),linear-gradient(240deg,rgba(255,255,255,0.24),transparent_32%)]" />
+
+      <div className="relative z-10 w-full max-w-xl space-y-8">
+        <div className="text-center space-y-3">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-[#2a80ff] to-secondary text-white shadow-[0_18px_40px_-18px_rgba(0,102,255,0.75)]">
+            <span className="text-lg font-semibold">Z</span>
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            字流
-          </h1>
-          <p className="mt-2 text-gray-600">让文字如流水般顺畅发布</p>
+          <h1 className="text-3xl font-semibold text-foreground">登录字流</h1>
+          <p className="text-sm text-muted-foreground">让文字如流水般顺畅发布</p>
         </div>
 
-        <Card className="bg-white/80 backdrop-blur-sm shadow-2xl border-0">
-          <CardHeader className="text-center pb-8">
-            <CardTitle className="text-2xl font-bold text-gray-900">欢迎回来</CardTitle>
-            <CardDescription className="text-gray-600 text-base">
-              输入您的邮箱和密码来登录账户
+        <Card className="border border-primary/10 bg-white/80 backdrop-blur-xl shadow-[0_24px_80px_-40px_rgba(0,26,77,0.6)]">
+          <CardHeader className="text-center pb-6">
+            <CardTitle className="text-2xl font-semibold text-foreground">欢迎回来</CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
+              输入邮箱和密码即可开始创作
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-5">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+                <div className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-sm text-red-700">
                   {error}
                 </div>
               )}
               
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label htmlFor="email" className="block text-sm font-semibold text-foreground/80">
                   邮箱
                 </label>
                 <Input
@@ -78,13 +77,13 @@ export default function SignInPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="请输入邮箱"
+                  placeholder="name@example.com"
                   required
                 />
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-foreground/80">
                   密码
                 </label>
                 <Input
@@ -99,20 +98,18 @@ export default function SignInPage() {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full rounded-xl"
                 disabled={isLoading}
               >
                 {isLoading ? '登录中...' : '登录'}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                还没有账户？{' '}
-                <Link href="/auth/signup" className="text-blue-600 hover:text-blue-500">
-                  立即注册
-                </Link>
-              </p>
+            <div className="text-center text-sm text-muted-foreground">
+              还没有账户？{' '}
+              <Link href="/auth/signup" className="font-semibold text-primary">
+                立即注册
+              </Link>
             </div>
           </CardContent>
         </Card>
