@@ -1,19 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Download, 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2, 
-  Chrome, 
-  Settings, 
+import {
+  Download,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Chrome,
+  Settings,
   FolderOpen,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
 
 export default function ExtensionPage() {
@@ -96,213 +99,218 @@ export default function ExtensionPage() {
   };
 
   return (
-    <div className="container mx-auto py-12 max-w-4xl">
-      {/* 页面标题 */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <Chrome className="text-blue-600" size={48} />
-          <h1 className="text-4xl font-bold">字流助手浏览器插件</h1>
-        </div>
-        <p className="text-gray-600 text-lg">
-          一键智能填充，让多平台内容发布更高效！
-        </p>
-      </div>
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(0,102,255,0.10),transparent_45%),radial-gradient(circle_at_82%_10%,rgba(0,212,255,0.10),transparent_38%),radial-gradient(120%_90%_at_60%_90%,rgba(0,26,77,0.08),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.24),transparent_36%),linear-gradient(245deg,rgba(255,255,255,0.22),transparent_40%)]" />
 
-      {/* 插件状态检测 */}
-      <Card className="mb-8">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-lg font-medium">插件状态检测</div>
-              {extensionStatus === 'checking' && (
-                <Badge variant="secondary" className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" size={14} />
-                  检测中...
-                </Badge>
-              )}
-              {extensionStatus === 'installed' && (
-                <Badge className="bg-green-600 flex items-center gap-2">
-                  <CheckCircle2 size={14} />
-                  已安装
-                </Badge>
-              )}
-              {extensionStatus === 'not-installed' && (
-                <Badge variant="destructive" className="flex items-center gap-2">
-                  <AlertCircle size={14} />
-                  未安装
-                </Badge>
-              )}
-            </div>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={recheckExtension}
-              disabled={extensionStatus === 'checking'}
-            >
+      <main className="relative z-10">
+        <section className="container mx-auto px-6 pt-12 pb-10 max-w-5xl text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-primary shadow-[0_8px_30px_-20px_rgba(0,102,255,0.8)]">
+            浏览器插件 · 字流助手
+          </div>
+          <h1 className="mt-6 text-4xl md:text-5xl font-semibold text-foreground">
+            一键填充，多平台发布更顺畅
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">
+            通过 Chrome / Edge 插件，直接把已适配的内容填充到目标平台，省去复制粘贴与格式修正。
+          </p>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Badge variant="outline" className="gap-2 border-primary/30 text-primary bg-primary/10">
+              <Chrome size={14} /> 支持 Chrome / Edge
+            </Badge>
+            <Badge variant="outline" className="gap-2 border-primary/30 text-primary bg-primary/10">
+              <Shield size={14} /> 只读权限，安全可控
+            </Badge>
+            <Badge variant="outline" className="gap-2 border-primary/30 text-primary bg-primary/10">
+              <Sparkles size={14} /> 智能填充
+            </Badge>
+          </div>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {extensionStatus === 'installed' ? (
+              <Button size="lg" className="rounded-xl px-6 py-3 shadow-[0_20px_50px_-22px_rgba(0,102,255,0.7)]" onClick={() => window.open('/editor/new', '_blank')}>
+                已安装 · 去工作台体验
+                <ExternalLink className="h-5 w-5 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                className="rounded-xl px-6 py-3 shadow-[0_20px_50px_-22px_rgba(0,102,255,0.7)]"
+                onClick={downloadExtension}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="mr-2 animate-spin" />
+                    下载中...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2" />
+                    下载插件 {latest?.version ? `(v${latest.version})` : ''}
+                  </>
+                )}
+              </Button>
+            )}
+            <Button variant="outline" size="lg" className="rounded-xl px-6 py-3 border-primary/30" onClick={recheckExtension} disabled={extensionStatus === 'checking'}>
               <RefreshCw size={16} className="mr-2" />
               重新检测
             </Button>
           </div>
+        </section>
 
-          {extensionStatus === 'installed' && (
-            <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center gap-2 text-green-800">
-                <CheckCircle2 size={18} />
-                <span className="font-medium">插件已成功安装！</span>
+        <section className="container mx-auto px-6 pb-10 max-w-5xl">
+          <Card className="bg-white/80 backdrop-blur border border-primary/10 shadow-[0_20px_60px_-36px_rgba(0,26,77,0.55)]">
+            <CardContent className="p-6">
+              <div className="flex flex-wrap items-center gap-4">
+                <p className="text-base font-medium text-foreground">当前状态</p>
+                {extensionStatus === 'checking' && (
+                  <Badge variant="secondary" className="flex items-center gap-2">
+                    <Loader2 className="animate-spin" size={14} />
+                    检测中…
+                  </Badge>
+                )}
+                {extensionStatus === 'installed' && (
+                  <Badge className="flex items-center gap-2 bg-primary text-primary-foreground">
+                    <CheckCircle2 size={14} />
+                    已安装
+                  </Badge>
+                )}
+                {extensionStatus === 'not-installed' && (
+                  <Badge variant="destructive" className="flex items-center gap-2">
+                    <AlertCircle size={14} />
+                    未检测到插件
+                  </Badge>
+                )}
               </div>
-              <p className="text-green-700 mt-2">
-                你现在可以在编辑器中使用一键发布功能了。
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto text-green-700 underline ml-2"
-                  onClick={() => window.open('/editor/new', '_blank')}
-                >
-                  立即体验 <ExternalLink size={14} className="ml-1" />
-                </Button>
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {extensionStatus !== 'installed' && (
-        <>
-          {/* 插件下载 */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Download className="text-blue-600" />
-                下载插件
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">
-                <Button 
-                  size="lg" 
-                  className="bg-blue-600 hover:bg-blue-700"
-                  onClick={downloadExtension}
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 className="mr-2 animate-spin" />
-                      下载中...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="mr-2" />
-                      下载插件文件 {latest?.version ? `(v${latest.version})` : ''}
-                    </>
-                  )}
-                </Button>
-                <p className="text-sm text-gray-500 mt-2">
-                  文件大小约 50KB，支持 Chrome、Edge 等浏览器
-                </p>
-              </div>
+              {extensionStatus === 'installed' ? (
+                <div className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-4 text-sm text-primary">
+                  已检测到插件，刷新编辑器即可使用一键填充。
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-primary/10 bg-primary/5 p-4 text-sm text-muted-foreground">
+                    <p className="font-semibold text-foreground mb-1">还没安装？</p>
+                    点击上方“下载插件”，按照下方步骤加载即可。
+                  </div>
+                  <div className="rounded-xl border border-primary/10 bg-white/80 p-4 text-sm text-muted-foreground">
+                    <p className="font-semibold text-foreground mb-1">已安装但未识别？</p>
+                    请在扩展管理里确保插件启用，再点击“重新检测”。
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
+        </section>
 
-          {/* 安装指南 */}
-          <Card className="mb-8">
+        <section className="container mx-auto px-6 pb-10 max-w-5xl">
+          <div className="grid lg:grid-cols-2 gap-6">
+            <Card className="bg-white/80 backdrop-blur border border-primary/10 shadow-[0_20px_60px_-36px_rgba(0,26,77,0.55)]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Download className="text-primary" />
+                  下载 / 安装插件
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <p>插件体积小（约 50KB），适配 Chrome / Edge。</p>
+                <div className="flex gap-3 flex-wrap">
+                  <Button
+                    onClick={downloadExtension}
+                    disabled={isDownloading}
+                    className="rounded-xl px-4 py-2 shadow-sm"
+                  >
+                    {isDownloading ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+                    立即下载
+                  </Button>
+                  <Button variant="outline" className="rounded-xl px-4 py-2 border-primary/30" onClick={recheckExtension} disabled={extensionStatus === 'checking'}>
+                    <RefreshCw size={16} className="mr-2" />
+                    重新检测
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/80 backdrop-blur border border-primary/10 shadow-[0_20px_60px_-36px_rgba(0,26,77,0.55)]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Settings className="text-primary" />
+                  安装步骤
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[
+                  '下载并解压 zip 包到任意文件夹',
+                  '打开 chrome://extensions 并开启开发者模式',
+                  '点击“加载已解压的扩展程序”选择解压目录',
+                  '返回本页点击“重新检测”确认安装状态',
+                ].map((step, idx) => (
+                  <div key={step} className="flex gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+                      {idx + 1}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{step}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <section className="container mx-auto px-6 pb-16 max-w-5xl">
+          <Card className="bg-white/80 backdrop-blur border border-primary/10 shadow-[0_20px_60px_-36px_rgba(0,26,77,0.55)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="text-green-600" />
-                安装指南
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <Sparkles className="text-primary" />
+                功能亮点
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
-                    1
-                  </div>
-                  <div>
-                    <h3 className="font-medium">下载并解压插件文件</h3>
-                    <p className="text-gray-600">点击上方按钮下载最新 zip 文件{latest?.version ? `（v${latest.version}）` : ''}，然后解压到任意文件夹</p>
-                  </div>
+            <CardContent className="grid md:grid-cols-2 gap-6 text-sm text-muted-foreground">
+              {[
+                { title: '多平台支持', desc: '微信公众平台、知乎、掘金、视频号、抖音、B站、小红书等主流渠道。' },
+                { title: '智能检测', desc: '自动检测剪贴板与当前页面，判断目标平台并提示填充。' },
+                { title: '一键填充', desc: '在字流编辑器完成适配后，点击插件即可一键带格式填充。' },
+                { title: '格式适配', desc: '自动处理标题、段落、代码块与图片链接，减少人工修正。' },
+              ].map((item) => (
+                <div key={item.title}>
+                  <h3 className="font-semibold text-foreground mb-2">{item.title}</h3>
+                  <p>{item.desc}</p>
                 </div>
-
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
-                    2
-                  </div>
-                  <div>
-                    <h3 className="font-medium flex items-center gap-2">
-                      打开浏览器扩展管理页面
-                      <Chrome size={16} />
-                    </h3>
-                    <p className="text-gray-600">在地址栏输入 
-                      <code className="mx-1 px-2 py-1 bg-gray-100 rounded text-sm">chrome://extensions/</code>
-                      并回车
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
-                    3
-                  </div>
-                  <div>
-                    <h3 className="font-medium">启用开发者模式</h3>
-                    <p className="text-gray-600">在页面右上角找到"开发者模式"开关并开启</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
-                    4
-                  </div>
-                  <div>
-                    <h3 className="font-medium flex items-center gap-2">
-                      加载解压的扩展程序
-                      <FolderOpen size={16} />
-                    </h3>
-                    <p className="text-gray-600">点击"加载已解压的扩展程序"按钮，选择解压后的插件文件夹</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
-                    ✓
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-green-700">安装完成</h3>
-                    <p className="text-gray-600">安装成功后，刷新本页面即可看到"已安装"状态，然后就可以使用一键发布功能了</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </CardContent>
           </Card>
-        </>
-      )}
+        </section>
 
-      {/* 功能介绍 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>🚀 功能特色</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium mb-2">📱 多平台支持</h3>
-              <p className="text-gray-600 text-sm">支持微信公众号、知乎、掘金、知识星球、视频号、抖音、B站、小红书等主流内容平台</p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">🎯 智能检测</h3>
-              <p className="text-gray-600 text-sm">自动检测剪贴板内容，智能识别需要发布的平台页面</p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">⚡ 一键填充</h3>
-              <p className="text-gray-600 text-sm">在字流网站编辑完成后，一键发布到目标平台，无需手动复制粘贴</p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">🔄 格式适配</h3>
-              <p className="text-gray-600 text-sm">根据不同平台自动调整内容格式，确保最佳显示效果</p>
+        <section className="container mx-auto px-6 pb-16 max-w-5xl">
+          <div className="rounded-2xl border border-primary/15 bg-white/85 backdrop-blur shadow-[0_24px_80px_-48px_rgba(0,26,77,0.45)] px-6 py-8 text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary mb-3">READY</p>
+            <h2 className="text-3xl font-semibold text-foreground mb-4">现在安装，立刻加速分发流程</h2>
+            <p className="text-base text-muted-foreground mb-6">不到 1 分钟完成安装，开启一键填充的顺滑体验。</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button
+                size="lg"
+                className="rounded-xl px-6 py-3 shadow-[0_20px_50px_-22px_rgba(0,102,255,0.7)]"
+                onClick={downloadExtension}
+                disabled={isDownloading}
+              >
+                {isDownloading ? <Loader2 className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+                立即下载
+              </Button>
+              <Button variant="outline" size="lg" className="rounded-xl px-6 py-3 border-primary/30" onClick={recheckExtension} disabled={extensionStatus === 'checking'}>
+                <RefreshCw size={16} className="mr-2" />
+                已安装？重新检测
+              </Button>
+              <Link href="/dashboard">
+                <Button variant="ghost" size="lg" className="rounded-xl px-6 py-3">
+                  返回工作台
+                </Button>
+              </Link>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </section>
+      </main>
     </div>
   );
 }

@@ -1,15 +1,66 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #0066ff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #00d4ff;
+  --color-secondary-foreground: #ffffff;
+  --color-accent: #e8f3ff;
+  --color-accent-foreground: #0f2a55;
+  --color-background: #f5f7fb;
+  --color-foreground: #102347;
+  --color-muted: #eef3fb;
+  --color-muted-foreground: #5a6b86;
+  --color-card: #ffffff;
+  --color-card-foreground: #102347;
+  --color-border: #d6e2f5;
+  --color-input: #d6e2f5;
 
+  --radius-lg: 1rem;
+  --radius-md: 0.75rem;
+  --radius-sm: 0.5rem;
+
+  --font-sans: "Inter", "Segoe UI", "HarmonyOS Sans SC", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --background: 220 43% 97%;
+  --foreground: 219 63% 17%;
+  --card: 0 0% 100%;
+  --card-foreground: 219 63% 17%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 219 63% 17%;
+  --primary: 216 100% 50%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 190 100% 50%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 216 100% 95.5%;
+  --muted-foreground: 218 19% 44%;
+  --accent: 190 100% 94%;
+  --accent-foreground: 219 63% 17%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 218 35% 88%;
+  --input: 218 35% 88%;
+  --ring: 216 100% 50%;
+  --radius: 1rem;
+}
 
 * {
-  border-color: #e5e7eb;
+  border-color: hsl(var(--border));
 }
 
 body {
-  background-color: #ffffff;
-  color: #111827;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: radial-gradient(120% 80% at 18% 18%, rgba(0, 102, 255, 0.12) 0, rgba(0, 212, 255, 0.08) 32%, transparent 55%), radial-gradient(110% 90% at 78% 5%, rgba(0, 229, 129, 0.07) 0, transparent 48%), hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(0, 102, 255, 0.15);
+  color: hsl(var(--foreground));
 }
 
 /* 平台预览样式 */
@@ -216,4 +267,3 @@ body {
   padding: 0;
   color: inherit;
 }
-

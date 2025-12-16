@@ -38,13 +38,13 @@ export function WechatGuideDialog({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md mx-auto bg-white">
-        <CardHeader className="text-center border-b">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <Card className="w-full max-w-md mx-auto bg-white/90 backdrop-blur border border-primary/10 shadow-[0_24px_80px_-48px_rgba(0,26,77,0.45)] rounded-2xl">
+        <CardHeader className="text-center border-b border-border/60">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2 flex-1 justify-center">
-              <MessageCircle className="h-6 w-6 text-green-600" />
-              <CardTitle className="text-xl font-bold text-gray-900">{title}</CardTitle>
+              <MessageCircle className="h-6 w-6 text-primary" />
+              <CardTitle className="text-xl font-bold text-foreground">{title}</CardTitle>
             </div>
             <Button
               variant="ghost"
@@ -55,35 +55,35 @@ export function WechatGuideDialog({
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <p className="text-gray-600 text-sm">{description}</p>
+          <p className="text-muted-foreground text-sm">{description}</p>
         </CardHeader>
         
-        <CardContent className="p-6">
+        <CardContent className="p-6 space-y-5">
           {/* 二维码区域 */}
-          <div className="text-center mb-6">
-            <div className="inline-block p-4 bg-gray-50 rounded-2xl shadow-inner mb-4">
+          <div className="text-center">
+            <div className="inline-block p-4 bg-primary/5 rounded-2xl shadow-inner border border-primary/10 mb-4">
               <Image
                 src="/wx.jpg"
                 alt="微信二维码"
                 width={192}
                 height={192}
-                className="w-48 h-48 rounded-xl border-2 border-green-200 object-cover"
+                className="w-48 h-48 rounded-xl border border-primary/20 object-cover bg-white"
                 priority
               />
             </div>
             
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-              <p className="text-sm font-medium text-green-800 mb-1">✅ 扫码添加客服微信</p>
-              <p className="text-xs text-green-700">立即获取专业版兑换码，解锁全部功能</p>
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+              <p className="text-sm font-medium text-primary mb-1">扫码添加客服微信</p>
+              <p className="text-xs text-muted-foreground">获取帮助、反馈问题或加入用户群</p>
             </div>
           </div>
 
           {/* 微信号 */}
-          <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="bg-muted/60 rounded-lg p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">微信号</p>
-                <p className="font-mono font-semibold text-gray-900">{wechatId}</p>
+                <p className="text-sm text-muted-foreground">微信号</p>
+                <p className="font-mono font-semibold text-foreground">{wechatId}</p>
               </div>
               <Button
                 size="sm"
@@ -107,20 +107,20 @@ export function WechatGuideDialog({
           </div>
 
           {/* 获取流程 */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h4 className="text-sm font-semibold text-blue-900 mb-2">💡 获取步骤：</h4>
-            <div className="space-y-2 text-xs text-blue-800">
+          <div className="bg-primary/5 border border-primary/15 rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-primary mb-2">获取步骤</h4>
+            <div className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-start space-x-2">
-                <span className="inline-block w-4 h-4 bg-blue-200 text-blue-800 rounded-full text-center text-xs font-bold flex-shrink-0 mt-0.5">1</span>
-                <span>扫描上方二维码或搜索微信号添加客服</span>
+                <span className="inline-block w-4 h-4 bg-primary/15 text-primary rounded-full text-center text-[10px] font-bold flex-shrink-0 mt-0.5">1</span>
+                <span>扫码或搜索微信号添加客服</span>
               </div>
               <div className="flex items-start space-x-2">
-                <span className="inline-block w-4 h-4 bg-blue-200 text-blue-800 rounded-full text-center text-xs font-bold flex-shrink-0 mt-0.5">2</span>
-                <span>联系客服说明需要兑换码（月卡¥19.9 / 年卡¥199）</span>
+                <span className="inline-block w-4 h-4 bg-primary/15 text-primary rounded-full text-center text-[10px] font-bold flex-shrink-0 mt-0.5">2</span>
+                <span>说明需求（问题咨询 / 反馈 / 购买专业版）</span>
               </div>
               <div className="flex items-start space-x-2">
-                <span className="inline-block w-4 h-4 bg-blue-200 text-blue-800 rounded-full text-center text-xs font-bold flex-shrink-0 mt-0.5">3</span>
-                <span>获得12位兑换码后，点击下方按钮进行兑换</span>
+                <span className="inline-block w-4 h-4 bg-primary/15 text-primary rounded-full text-center text-[10px] font-bold flex-shrink-0 mt-0.5">3</span>
+                <span>有兑换码可直接兑换，或让客服为你开通</span>
               </div>
             </div>
           </div>
@@ -136,7 +136,7 @@ export function WechatGuideDialog({
             </Button>
             <Button
               onClick={onProceedToRedeem}
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              className="flex-1 bg-primary hover:bg-primary/90"
             >
               <Gift className="h-4 w-4 mr-2" />
               已有兑换码
@@ -146,7 +146,7 @@ export function WechatGuideDialog({
 
           {/* 底部提示 */}
           <div className="mt-4 text-center">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               🔒 安全提醒：请认准官方客服，谨防诈骗
             </p>
           </div>
