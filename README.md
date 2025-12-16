@@ -48,7 +48,7 @@
 
 ### 后端技术栈
 - **运行时**: Next.js API Routes
-- **数据库**: SQLite (开发) / Turso (生产)
+- **数据库**: SQLite (可选，本地) / Turso (线上/生产，本地调试可直连)
 - **ORM**: Drizzle ORM
 - **认证**: NextAuth.js
 - **文件存储**: AWS S3 兼容服务
@@ -81,6 +81,7 @@ npm install
 
 ```bash
 # 数据库配置
+# 默认走本地 SQLite；本地调试如需使用线上/远程 Turso：填写 TURSO_*（会优先使用）
 DATABASE_URL="file:./dev.db"
 TURSO_DATABASE_URL="your-turso-url"
 TURSO_AUTH_TOKEN="your-turso-token"
@@ -95,6 +96,8 @@ R2_ACCESS_KEY_ID="your-r2-access-key"
 R2_SECRET_ACCESS_KEY="your-r2-secret-key"
 R2_BUCKET_NAME="your-bucket-name"
 ```
+
+⚠️ 直连线上数据库调试有数据污染风险，建议使用 Turso 的独立 dev/staging 库或只读 token。
 
 ### 4. 初始化数据库
 ```bash

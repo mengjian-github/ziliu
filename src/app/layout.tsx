@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   authors: [{ name: "字流团队" }],
   creator: "字流团队",
   publisher: "字流团队",
+  applicationName: "字流",
   robots: {
     index: true,
     follow: true,
@@ -35,6 +36,15 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+  },
+  manifest: "/manifest.webmanifest",
+  themeColor: "#0066ff",
   openGraph: {
     type: "website",
     locale: "zh_CN",
