@@ -29,7 +29,7 @@ export function MultiPlatformEditor({
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({ visible: false, message: '', type: 'success' });
   const [showImageUpgradePrompt, setShowImageUpgradePrompt] = useState(false);
   const [isConvertingMarkdownImages, setIsConvertingMarkdownImages] = useState(false);
-  
+
   // 使用统一的图片上传服务
   const imageUploadService = useImageUploadService();
 
@@ -48,7 +48,7 @@ export function MultiPlatformEditor({
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    
+
     debounceTimer.current = setTimeout(() => {
       pushState({ title: newTitle, content: newContent });
     }, 500); // 500ms 防抖
@@ -70,7 +70,7 @@ export function MultiPlatformEditor({
     const markdownImage = `![${fileName}](${url})`;
     const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
     let newContent: string;
-    
+
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -84,7 +84,7 @@ export function MultiPlatformEditor({
       newContent = content + '\n\n' + markdownImage;
       onContentChange(newContent);
     }
-    
+
     debouncePushState(title, newContent);
   }, [content, onContentChange, title, debouncePushState]);
 
@@ -207,7 +207,7 @@ export function MultiPlatformEditor({
         if (data.success) {
           // 直接替换编辑器内容
           onContentChange(data.markdown);
-          
+
           // 检查是否有图片警告
           if (data.imageWarning) {
             showToast(`飞书内容导入成功！${data.imageWarning}`, 'info');
@@ -313,23 +313,23 @@ export function MultiPlatformEditor({
 
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-transparent">
       {/* 编辑器区域 */}
-      <div className="flex-1 flex flex-col relative bg-white">
+      <div className="flex-1 flex flex-col relative bg-transparent">
         {/* 拖拽覆盖层 */}
         {isDraggingFile && (
-          <div className="absolute inset-0 z-10 bg-blue-500/10 border-2 border-dashed border-blue-500 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+          <div className="absolute inset-0 z-10 bg-primary/10 border-2 border-dashed border-primary flex items-center justify-center backdrop-blur-sm">
+            <div className="bg-black/80 rounded-xl p-6 shadow-2xl border border-white/10 backdrop-blur-xl">
               <div className="text-center">
-                <Upload className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-blue-700">释放以上传图片</p>
+                <Upload className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-sm font-medium text-primary">释放以上传图片</p>
               </div>
             </div>
           </div>
         )}
 
         {/* 标题输入 */}
-        <div className="p-6 border-b border-gray-100">
+        <div className="p-6 border-b border-white/5">
           <Input
             value={title}
             onChange={(e) => {
@@ -338,7 +338,7 @@ export function MultiPlatformEditor({
               debouncePushState(newTitle, content);
             }}
             placeholder="请输入文章标题..."
-            className="text-xl font-semibold border-none px-0 focus-visible:ring-0 placeholder:text-gray-400"
+            className="text-2xl font-bold border-none px-0 focus-visible:ring-0 placeholder:text-zinc-600 bg-transparent text-white h-auto"
           />
         </div>
 
@@ -391,7 +391,7 @@ console.log('代码示例');
 - 可以直接拖拽图片到编辑器
 - 可以粘贴剪贴板中的图片
 - 点击工具栏的「上传图片」按钮选择文件`}
-            className="h-full resize-none border-none px-0 focus-visible:ring-0 font-mono text-sm placeholder:text-gray-400"
+            className="h-full resize-none border-none px-0 focus-visible:ring-0 font-mono text-base placeholder:text-zinc-600 bg-transparent text-zinc-300 leading-relaxed"
           />
         </div>
       </div>
@@ -400,10 +400,10 @@ console.log('代码示例');
       {toast.visible && (
         <div className="fixed bottom-4 right-4 z-50">
           <div className={`
-            flex items-center space-x-2 px-4 py-3 rounded-lg shadow-lg border
-            ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : ''}
-            ${toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : ''}
-            ${toast.type === 'info' ? 'bg-blue-50 border-blue-200 text-blue-800' : ''}
+            flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-xl
+            ${toast.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : ''}
+            ${toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : ''}
+            ${toast.type === 'info' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : ''}
           `}>
             {toast.type === 'success' && <CheckCircle2 className="h-4 w-4 flex-shrink-0" />}
             {toast.type === 'error' && <AlertTriangle className="h-4 w-4 flex-shrink-0" />}
@@ -415,8 +415,8 @@ console.log('代码示例');
 
       {/* 图片超限订阅引导弹窗 */}
       {showImageUpgradePrompt && (
-        <UpgradePrompt 
-          scenario="cloud-images-limit" 
+        <UpgradePrompt
+          scenario="cloud-images-limit"
           style="modal"
           onClose={() => setShowImageUpgradePrompt(false)}
         />

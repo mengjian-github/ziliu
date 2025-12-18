@@ -5,6 +5,10 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface PresetForm {
   name: string;
@@ -107,80 +111,80 @@ export default function EditPresetPage() {
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">加载中...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-zinc-400">加载中...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto py-8 px-4">
+    <div className="min-h-screen bg-[#020617] text-zinc-200">
+      <div className="max-w-3xl mx-auto py-8 px-4">
         {/* 面包屑导航 */}
         <Breadcrumb
           items={[
             { label: '发布预设', href: '/dashboard/presets' },
             { label: '编辑预设' }
           ]}
-          className="mb-6"
+          className="mb-6 text-zinc-400"
         />
 
         {/* 页面标题 */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => router.push('/dashboard/presets')}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-2 text-zinc-400 hover:text-white transition-colors hover:bg-white/10 rounded-lg"
             title="返回预设管理"
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">编辑发布预设</h1>
-            <p className="mt-2 text-gray-600">修改预设模板配置</p>
+            <h1 className="text-3xl font-bold text-white">编辑发布预设</h1>
+            <p className="mt-2 text-zinc-400">修改预设模板配置</p>
           </div>
         </div>
 
         {/* 错误提示 */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{error}</p>
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <p className="text-red-400">{error}</p>
           </div>
         )}
 
         {/* 表单 */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 md:p-8 shadow-xl">
+          <div className="space-y-8">
             {/* 基本信息 */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">基本信息</h3>
-              <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white mb-4 border-b border-white/10 pb-2">基本信息</h3>
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    预设名称 *
-                  </label>
-                  <input
+                  <Label className="text-zinc-300 mb-2 block">
+                    预设名称 <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
                     type="text"
                     value={form.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     placeholder="例如：技术文章预设"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="bg-black/20 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-primary/50"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Label className="text-zinc-300 mb-2 block">
                     作者名称
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     value={form.authorName}
                     onChange={(e) => handleInputChange('authorName', e.target.value)}
                     placeholder="例如：孟健"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="bg-black/20 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-primary/50"
                   />
                 </div>
               </div>
@@ -188,19 +192,24 @@ export default function EditPresetPage() {
 
             {/* 发布设置 */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">发布设置</h3>
+              <h3 className="text-lg font-semibold text-white mb-4 border-b border-white/10 pb-2">发布设置</h3>
               <div className="space-y-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="autoGenerateDigest"
-                    checked={form.autoGenerateDigest}
-                    onChange={(e) => handleInputChange('autoGenerateDigest', e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="autoGenerateDigest" className="ml-2 block text-sm text-gray-900">
-                    自动生成摘要
-                  </label>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="autoGenerateDigest"
+                      checked={form.autoGenerateDigest}
+                      onChange={(e) => handleInputChange('autoGenerateDigest', e.target.checked)}
+                      className="h-5 w-5 text-primary rounded border-white/20 bg-white/10 focus:ring-primary/50"
+                    />
+                    <div>
+                      <label htmlFor="autoGenerateDigest" className="block text-sm font-medium text-zinc-200 cursor-pointer">
+                        自动生成摘要
+                      </label>
+                      <p className="text-xs text-zinc-500 mt-1">插件会自动提取正文前120个字符作为摘要</p>
+                    </div>
+                  </div>
                 </div>
 
               </div>
@@ -208,8 +217,10 @@ export default function EditPresetPage() {
 
             {/* 内容定制设置 */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">内容定制设置</h3>
+              <h3 className="text-lg font-semibold text-white mb-4 border-b border-white/10 pb-2">内容定制设置</h3>
+
               <div className="space-y-6">
+                {/* 开头定制内容 */}
                 <MarkdownEditor
                   label="开头定制内容"
                   value={form.headerContent}
@@ -218,6 +229,7 @@ export default function EditPresetPage() {
                   className="mt-2"
                 />
 
+                {/* 末尾定制内容 */}
                 <MarkdownEditor
                   label="末尾定制内容"
                   value={form.footerContent}
@@ -230,18 +242,19 @@ export default function EditPresetPage() {
           </div>
 
           {/* 提交按钮 */}
-          <div className="mt-8 flex justify-end gap-4">
-            <button
+          <div className="mt-8 flex justify-end gap-3 border-t border-white/10 pt-6">
+            <Button
               type="button"
+              variant="outline"
               onClick={() => router.push('/dashboard/presets')}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white"
             >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -249,7 +262,7 @@ export default function EditPresetPage() {
                 <Save className="w-4 h-4 mr-2" />
               )}
               {loading ? '保存中...' : '保存更改'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

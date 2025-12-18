@@ -33,7 +33,7 @@ export default function R2StorageConfig() {
     hasAccessKey: false,
     hasSecretKey: false,
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -140,60 +140,59 @@ export default function R2StorageConfig() {
 
   if (!hasCustomR2Access) {
     return (
-      <Card className="border-0 bg-white/70 backdrop-blur-sm shadow-sm">
-        <CardHeader className="pb-6">
-          <CardTitle className="flex items-center gap-2 text-xl font-bold text-gray-900">
+      <div className="space-y-6">
+        <div className="pb-6">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-white">
             <AlertTriangle className="h-6 w-6 text-amber-500" />
             自定义R2存储
-          </CardTitle>
-          <CardDescription className="text-gray-600">
+          </h2>
+          <p className="text-zinc-400 mt-2">
             使用您自己的Cloudflare R2存储，突破500张/月的限制
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              自定义R2存储功能仅限专业版用户使用。
-              <Button 
-                variant="link" 
-                className="p-0 h-auto font-normal"
-                onClick={() => window.open('/pricing', '_blank')}
-              >
-                升级到专业版
-              </Button>
-              即可解锁此功能。
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            自定义R2存储功能仅限专业版用户使用。
+            <Button
+              variant="link"
+              className="p-0 h-auto font-normal text-primary hover:text-primary/80 mx-1"
+              onClick={() => window.open('/pricing', '_blank')}
+            >
+              升级到专业版
+            </Button>
+            即可解锁此功能。
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <Card className="border-0 bg-white/70 backdrop-blur-sm shadow-sm">
-      <CardHeader className="pb-6">
-        <CardTitle className="flex items-center gap-2 text-xl font-bold text-gray-900">
+    <div className="space-y-6">
+      <div className="pb-6 border-b border-white/10">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-white">
           <CheckCircle className="h-6 w-6 text-green-500" />
           自定义R2存储
-        </CardTitle>
-        <CardDescription className="text-gray-600">
+        </h2>
+        <p className="text-zinc-400 mt-2">
           配置您的Cloudflare R2存储，享受无限制的图片存储空间
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+        </p>
+      </div>
+
+      <div className="space-y-6">
         {loading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-8 text-zinc-400">
             <Loader2 className="h-6 w-6 animate-spin" />
             <span className="ml-2">加载配置中...</span>
           </div>
         ) : (
           <>
             {/* 启用开关 */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-xl hover:border-white/10 transition-colors">
               <div className="space-y-0.5">
-                <Label className="text-sm font-medium text-gray-900">启用自定义R2存储</Label>
-                <div className="text-xs text-gray-600">
+                <Label className="text-base font-medium text-white">启用自定义R2存储</Label>
+                <div className="text-sm text-zinc-500">
                   启用后将使用您的R2存储，不计入平台配额
                 </div>
               </div>
@@ -208,71 +207,72 @@ export default function R2StorageConfig() {
                 {/* 配置表单 */}
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="accountId" className="text-sm font-medium text-gray-700">Account ID *</Label>
+                    <Label htmlFor="accountId" className="text-sm font-medium text-zinc-300">Account ID *</Label>
                     <Input
                       id="accountId"
                       value={config.accountId}
                       onChange={(e) => setConfig({ ...config, accountId: e.target.value })}
                       placeholder="您的Cloudflare账户ID"
-                      className="text-sm"
+                      className="bg-black/20 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-primary/50"
                     />
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="accessKeyId" className="text-sm font-medium text-gray-700">Access Key ID *</Label>
+                    <Label htmlFor="accessKeyId" className="text-sm font-medium text-zinc-300">Access Key ID *</Label>
                     <Input
                       id="accessKeyId"
                       value={config.accessKeyId}
                       onChange={(e) => setConfig({ ...config, accessKeyId: e.target.value })}
                       placeholder={config.hasAccessKey ? '••••••••••••••••' : 'R2访问密钥ID'}
-                      className="text-sm"
+                      className="bg-black/20 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-primary/50"
                     />
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="secretAccessKey" className="text-sm font-medium text-gray-700">Secret Access Key *</Label>
+                    <Label htmlFor="secretAccessKey" className="text-sm font-medium text-zinc-300">Secret Access Key *</Label>
                     <Input
                       id="secretAccessKey"
                       type="password"
                       value={config.secretAccessKey}
                       onChange={(e) => setConfig({ ...config, secretAccessKey: e.target.value })}
                       placeholder={config.hasSecretKey ? '••••••••••••••••' : 'R2访问密钥'}
-                      className="text-sm"
+                      className="bg-black/20 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-primary/50"
                     />
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="bucketName" className="text-sm font-medium text-gray-700">Bucket Name *</Label>
+                    <Label htmlFor="bucketName" className="text-sm font-medium text-zinc-300">Bucket Name *</Label>
                     <Input
                       id="bucketName"
                       value={config.bucketName}
                       onChange={(e) => setConfig({ ...config, bucketName: e.target.value })}
                       placeholder="您的R2存储桶名称"
-                      className="text-sm"
+                      className="bg-black/20 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-primary/50"
                     />
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="publicUrl" className="text-sm font-medium text-gray-700">公开访问URL（可选）</Label>
+                    <Label htmlFor="publicUrl" className="text-sm font-medium text-zinc-300">公开访问URL（可选）</Label>
                     <Input
                       id="publicUrl"
                       value={config.publicUrl}
                       onChange={(e) => setConfig({ ...config, publicUrl: e.target.value })}
                       placeholder="https://your-domain.com"
-                      className="text-sm"
+                      className="bg-black/20 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-primary/50"
                     />
-                    <div className="text-xs text-gray-600">
+                    <div className="text-xs text-zinc-500">
                       如果您配置了自定义域名，请填写此项
                     </div>
                   </div>
                 </div>
 
                 {/* 操作按钮 */}
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <Button
                     variant="outline"
                     onClick={testConnection}
                     disabled={testing || !config.accountId || !config.accessKeyId || !config.secretAccessKey || !config.bucketName}
+                    className="bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white"
                   >
                     {testing ? (
                       <>
@@ -287,7 +287,7 @@ export default function R2StorageConfig() {
                     )}
                   </Button>
 
-                  <Button onClick={saveConfig} disabled={saving}>
+                  <Button onClick={saveConfig} disabled={saving} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
                     {saving ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -306,7 +306,7 @@ export default function R2StorageConfig() {
 
             {!config.enabled && (
               <div className="flex gap-2">
-                <Button onClick={saveConfig} disabled={saving}>
+                <Button onClick={saveConfig} disabled={saving} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -324,7 +324,7 @@ export default function R2StorageConfig() {
 
             {/* 消息提示 */}
             {message && (
-              <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
+              <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className="backdrop-blur-sm">
                 {message.type === 'success' ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : message.type === 'error' ? (
@@ -337,18 +337,18 @@ export default function R2StorageConfig() {
             )}
 
             {/* 帮助信息 */}
-            <Alert>
-              <Info className="h-4 w-4" />
+            <Alert className="bg-blue-500/5 text-blue-200 border-blue-500/20 backdrop-blur-sm">
+              <Info className="h-4 w-4 text-blue-400" />
               <AlertDescription>
                 <div className="space-y-1">
-                  <div className="font-medium">配置说明：</div>
-                  <ol className="text-sm space-y-1 list-decimal list-inside ml-2">
+                  <div className="font-medium text-blue-300">配置说明：</div>
+                  <ol className="text-sm space-y-1 list-decimal list-inside ml-2 text-blue-200/80">
                     <li>在Cloudflare控制台创建R2存储桶</li>
                     <li>生成R2访问令牌（API Token）</li>
                     <li>配置存储桶的公开访问权限</li>
                     <li>填写上述配置信息并测试连接</li>
                   </ol>
-                  <div className="text-xs text-muted-foreground mt-2">
+                  <div className="text-xs text-blue-300/60 mt-2">
                     启用自定义R2后，您的图片将直接上传到您的存储桶，不计入平台500张/月的限制。
                   </div>
                 </div>
@@ -356,7 +356,7 @@ export default function R2StorageConfig() {
             </Alert>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

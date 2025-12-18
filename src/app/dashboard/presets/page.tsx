@@ -213,7 +213,7 @@ export default function PresetsPage() {
                   <div className="flex items-center gap-2 ml-4">
                     <button
                       onClick={() => router.push(`/dashboard/presets/${preset.id}/apply`)}
-                      className="p-2 text-gray-400 hover:text-green-600 transition-colors"
+                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
                       title="应用预设"
                     >
                       <Play className="w-5 h-5" />

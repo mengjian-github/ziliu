@@ -69,16 +69,16 @@ export function FeishuImportDialog({
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         // 更新图片处理进度
         if (data.imageCount > 0) {
-          setImageProgress({ 
-            total: data.imageCount, 
-            processed: data.processedImages || 0 
+          setImageProgress({
+            total: data.imageCount,
+            processed: data.processedImages || 0
           });
           setProcessingStatus(
-            data.processedImages > 0 
+            data.processedImages > 0
               ? `成功处理 ${data.processedImages}/${data.imageCount} 张图片`
               : '图片处理完成'
           );
@@ -92,7 +92,7 @@ export function FeishuImportDialog({
         // 直接导入到编辑器
         onImport(data.title || '', data.markdown || '');
         handleClose();
-        
+
         // 显示处理结果提示
         if (onShowToast) {
           if (data.imageWarning) {
@@ -106,12 +106,12 @@ export function FeishuImportDialog({
       } else {
         setProcessingStatus('API处理失败，使用备用方案...');
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // 降级处理：简单的HTML到Markdown转换
         const simpleMarkdown = convertHtmlToMarkdown(content);
         onImport('', simpleMarkdown);
         handleClose();
-        
+
         if (onShowToast) {
           onShowToast('使用备用方案导入，部分功能可能不完整', 'error');
         }
@@ -120,12 +120,12 @@ export function FeishuImportDialog({
       console.error('解析失败:', error);
       setProcessingStatus('处理出错，使用备用方案...');
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // 降级处理
       const simpleMarkdown = convertHtmlToMarkdown(content);
       onImport('', simpleMarkdown);
       handleClose();
-      
+
       if (onShowToast) {
         onShowToast('导入时出现问题，已尝试使用备用方案', 'error');
       }
@@ -156,43 +156,43 @@ export function FeishuImportDialog({
       .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
       .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
       .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n')
-      
+
       // 段落
       .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
-      
+
       // 粗体和斜体
       .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
       .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
       .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
       .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-      
+
       // 列表
       .replace(/<ul[^>]*>/gi, '')
       .replace(/<\/ul>/gi, '\n')
       .replace(/<ol[^>]*>/gi, '')
       .replace(/<\/ol>/gi, '\n')
       .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
-      
+
       // 引用
       .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n\n')
-      
+
       // 代码
       .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
       .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gi, '```\n$1\n```\n\n')
-      
+
       // 链接
       .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-      
+
       // 图片
       .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)\n\n')
       .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)\n\n')
-      
+
       // 换行
       .replace(/<br\s*\/?>/gi, '\n')
-      
+
       // 清理HTML标签
       .replace(/<[^>]*>/g, '')
-      
+
       // 清理HTML实体
       .replace(/&nbsp;/g, ' ')
       .replace(/&lt;/g, '<')
@@ -231,20 +231,20 @@ export function FeishuImportDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 背景遮罩 */}
       <div
-        className="fixed inset-0 bg-black/50"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
 
       {/* 弹框内容 */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+      <div className="relative bg-[#0b0b0c] rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden border border-white/10 flex flex-col">
         {/* 头部 */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/[0.02]">
           <div>
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Upload className="h-5 w-5 text-blue-500" />
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
+              <Upload className="h-5 w-5 text-primary" />
               导入飞书文档
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-zinc-400 mt-1">
               粘贴飞书内容，自动转换并导入到编辑器
             </p>
           </div>
@@ -252,17 +252,17 @@ export function FeishuImportDialog({
             variant="ghost"
             size="sm"
             onClick={handleClose}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 hover:bg-white/10 text-zinc-400 hover:text-white"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* 主体内容 */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           <div className="flex flex-col">
-            <label className="text-sm font-medium mb-2">粘贴飞书内容</label>
-            
+            <label className="text-sm font-medium mb-2 text-zinc-300">粘贴飞书内容</label>
+
             <Textarea
               value={rawContent}
               onChange={(e) => setRawContent(e.target.value)}
@@ -273,22 +273,22 @@ export function FeishuImportDialog({
 1. 在飞书文档中选择要导入的内容
 2. 使用 Ctrl+C (Windows) 或 Cmd+C (Mac) 复制
 3. 粘贴后会自动解析并导入到编辑器"
-              className="h-64 resize-none font-mono text-sm"
+              className="h-64 resize-none font-mono text-sm bg-black/20 border-white/10 text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-primary/50"
               disabled={isProcessing}
             />
-            
+
             {isProcessing && (
-              <div className="mt-3 space-y-3">
+              <div className="mt-4 space-y-3">
                 {/* 基本状态提示 */}
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
                   <div className="flex items-center gap-3">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-500 flex-shrink-0" />
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-400 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-blue-900">
+                      <div className="text-sm font-medium text-blue-300">
                         {processingStatus || '正在处理内容...'}
                       </div>
                       {imageProgress && (
-                        <div className="text-xs text-blue-700 mt-1">
+                        <div className="text-xs text-blue-400/80 mt-1">
                           处理图片中，请耐心等待...
                         </div>
                       )}
@@ -298,30 +298,30 @@ export function FeishuImportDialog({
 
                 {/* 图片处理进度条 */}
                 {imageProgress && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-green-900">
+                      <span className="text-sm font-medium text-green-400">
                         图片处理进度
                       </span>
-                      <span className="text-xs text-green-700">
+                      <span className="text-xs text-green-500/80">
                         {imageProgress.processed}/{imageProgress.total}
                       </span>
                     </div>
-                    
+
                     {/* 进度条 */}
-                    <div className="w-full bg-green-100 rounded-full h-2">
-                      <div 
-                        className="bg-green-500 h-2 rounded-full transition-all duration-300 ease-out"
-                        style={{ 
-                          width: `${(imageProgress.processed / imageProgress.total) * 100}%` 
+                    <div className="w-full bg-green-500/20 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-green-500 h-2 rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+                        style={{
+                          width: `${(imageProgress.processed / imageProgress.total) * 100}%`
                         }}
                       />
                     </div>
-                    
+
                     {imageProgress.processed < imageProgress.total && (
                       <div className="flex items-center gap-2 mt-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-xs text-green-600">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
+                        <span className="text-xs text-green-500/80">
                           正在上传图片到云存储...
                         </span>
                       </div>
@@ -330,7 +330,7 @@ export function FeishuImportDialog({
                 )}
 
                 {/* 处理提示 */}
-                <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded border-l-2 border-gray-300">
+                <div className="text-xs text-zinc-400 bg-white/5 p-3 rounded-lg border-l-2 border-zinc-600">
                   💡 由于需要处理图片上传，首次导入可能需要稍长时间，请保持页面不要关闭
                 </div>
               </div>
@@ -339,13 +339,18 @@ export function FeishuImportDialog({
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex items-center justify-end gap-2 p-6 border-t bg-gray-50">
-          <Button variant="outline" onClick={handleClose}>
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-white/10 bg-white/[0.02]">
+          <Button
+            variant="ghost"
+            onClick={handleClose}
+            className="hover:bg-white/10 text-zinc-400 hover:text-white"
+          >
             取消
           </Button>
           <Button
             onClick={handleManualImport}
             disabled={!rawContent.trim() || isProcessing}
+            className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
           >
             {isProcessing ? (
               <>

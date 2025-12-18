@@ -42,20 +42,20 @@ export function CustomerSupportButton({
             <span className="text-white text-xs font-bold">?</span>
           </div>
 
-          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-white/95 text-foreground text-xs px-2 py-1 rounded-xl whitespace-nowrap opacity-90 border border-primary/10 shadow-sm">
+          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded-xl whitespace-nowrap opacity-90 border border-white/10 shadow-sm backdrop-blur-sm">
             客服
           </div>
         </Button>
 
         <div className="absolute bottom-20 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-          <div className="bg-white text-foreground text-sm px-3 py-2 rounded-xl shadow-[0_14px_40px_-24px_rgba(0,26,77,0.45)] whitespace-nowrap border border-primary/10 relative">
+          <div className="bg-black/80 text-white text-sm px-3 py-2 rounded-xl shadow-xl whitespace-nowrap border border-white/10 relative backdrop-blur-sm">
             💬 联系客服获取帮助
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white/80"></div>
           </div>
         </div>
 
         <div className="absolute -top-2 -left-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-          <div className="text-xs text-muted-foreground bg-white px-2 py-1 rounded-lg shadow-sm whitespace-nowrap border border-primary/10">
+          <div className="text-xs text-zinc-400 bg-black/80 px-2 py-1 rounded-lg shadow-sm whitespace-nowrap border border-white/10 backdrop-blur-sm">
             问题反馈・用户群・兑换码
           </div>
         </div>

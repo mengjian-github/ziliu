@@ -121,7 +121,7 @@ export function EditorToolbar({
       console.log('placeholder:', placeholder);
       console.log('selectedText:', `"${selectedText}"`);
       console.log('selectedText.length:', selectedText.length);
-      
+
       if (selectedText.length > 0) {
         // 有选中文本，直接在前后添加标记
         onInsertText(`${before}${selectedText}${after}`, before.length + selectedText.length + after.length);
@@ -264,13 +264,13 @@ export function EditorToolbar({
   ];
 
   return (
-    <div className="border-b bg-white px-4 py-2">
+    <div className="border-b border-white/5 bg-black/20 backdrop-blur-xl px-4 py-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-1">
           {toolbarGroups.map((group, groupIndex) => (
             <div key={group.name} className="flex items-center">
               {groupIndex > 0 && (
-                <div className="h-6 w-px bg-gray-300 mx-2"></div>
+                <div className="h-6 w-px bg-white/10 mx-2"></div>
               )}
               <div className="flex items-center space-x-1">
                 {group.buttons.map((button, buttonIndex) => (
@@ -281,7 +281,7 @@ export function EditorToolbar({
                     onClick={button.action}
                     disabled={disabled || ('disabled' in button && button.disabled)}
                     title={button.title}
-                    className="h-8 w-8 p-0 hover:bg-gray-100"
+                    className="h-8 w-8 p-0 hover:bg-white/10 text-zinc-400 hover:text-white"
                   >
                     <button.icon className="h-4 w-4" />
                   </Button>
@@ -291,7 +291,7 @@ export function EditorToolbar({
           ))}
 
           {/* 图片上传 */}
-          <div className="h-6 w-px bg-gray-300 mx-2"></div>
+          <div className="h-6 w-px bg-white/10 mx-2"></div>
           <ImageUpload
             onUpload={onImageUpload}
             onError={onImageUploadError}
@@ -306,7 +306,7 @@ export function EditorToolbar({
               onClick={onConvertMarkdownImages}
               disabled={disabled || isConvertingMarkdownImages}
               title="一键将Markdown图片上传到图床"
-              className="h-8 px-2 hover:bg-gray-100 text-xs flex items-center space-x-1"
+              className="h-8 px-2 hover:bg-white/10 text-xs flex items-center space-x-1 text-zinc-400 hover:text-white"
             >
               {isConvertingMarkdownImages ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -318,14 +318,14 @@ export function EditorToolbar({
           )}
 
           {/* 代码块 */}
-          <div className="h-6 w-px bg-gray-300 mx-2"></div>
+          <div className="h-6 w-px bg-white/10 mx-2"></div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => insertMarkdownWithSelection('```\n', '\n```', '代码内容')}
             disabled={disabled}
             title="代码块"
-            className="h-8 px-2 hover:bg-gray-100 text-xs"
+            className="h-8 px-2 hover:bg-white/10 text-xs text-zinc-400 hover:text-white"
           >
             代码块
           </Button>
@@ -337,7 +337,7 @@ export function EditorToolbar({
             onClick={() => insertMarkdown('\n---\n')}
             disabled={disabled}
             title="分割线"
-            className="h-8 px-2 hover:bg-gray-100 text-xs"
+            className="h-8 px-2 hover:bg-white/10 text-xs text-zinc-400 hover:text-white"
           >
             分割线
           </Button>
@@ -347,7 +347,7 @@ export function EditorToolbar({
       </div>
 
       {/* 快捷键提示 */}
-      <div className="mt-2 text-xs text-gray-500 border-t pt-2">
+      <div className="mt-2 text-xs text-zinc-500 border-t border-white/5 pt-2">
         <span>💡 快捷键：</span>
         <span className="ml-2">Ctrl+Z 撤销</span>
         <span className="ml-2">Ctrl+Y 重做</span>

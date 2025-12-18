@@ -149,22 +149,13 @@ class ZiliuFeatures {
    */
   showLoginForm() {
     const content = `
-      <div style="text-align: center; padding: 20px;">
-        <div style="font-size: 48px; margin-bottom: 16px;">🔐</div>
-        <h3 style="margin: 0 0 12px 0; color: #2d3436;">未登录</h3>
-        <p style="color: #636e72; margin: 0 0 20px 0; font-size: 13px;">
+      <div class="ziliu-view">
+        <div class="ziliu-emoji" aria-hidden="true">🔐</div>
+        <h3 class="ziliu-h3">未登录</h3>
+        <p class="ziliu-p">
           请先登录字流平台获取文章列表
         </p>
-        <button id="ziliu-login-btn" style="
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          color: white;
-          padding: 10px 24px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-        ">前往登录</button>
+        <button id="ziliu-login-btn" class="ziliu-btn ziliu-btn-primary">前往登录</button>
       </div>
     `;
     
@@ -192,10 +183,10 @@ class ZiliuFeatures {
   showArticleList() {
     if (this.articles.length === 0) {
       const content = `
-        <div style="text-align: center; padding: 40px 20px;">
-          <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-          <h3 style="margin: 0 0 12px 0; color: #2d3436;">暂无文章</h3>
-          <p style="color: #636e72; margin: 0; font-size: 13px;">
+        <div class="ziliu-view">
+          <div class="ziliu-emoji" aria-hidden="true">📝</div>
+          <h3 class="ziliu-h3">暂无文章</h3>
+          <p class="ziliu-p">
             去字流平台创建您的第一篇文章吧
           </p>
         </div>
@@ -208,16 +199,16 @@ class ZiliuFeatures {
     const articlesHtml = this.articles.map(article => this.createArticleItem(article)).join('');
     
     const content = `
-      <div style="margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-          <h4 style="margin: 0; font-size: 14px; color: #2d3436;">文章列表</h4>
-          <span style="font-size: 12px; color: #636e72;">${platformName}</span>
+      <div class="ziliu-section">
+        <div class="ziliu-list-header">
+          <h4 class="ziliu-h4">文章列表</h4>
+          <span class="ziliu-pill">${platformName}</span>
         </div>
-        <div style="font-size: 12px; color: #636e72; margin-bottom: 16px;">
+        <div class="ziliu-subtle">
           共 ${this.totalArticles || this.articles.length} 篇文章
         </div>
       </div>
-      <div id="ziliu-articles-list">
+      <div id="ziliu-articles-list" class="ziliu-articles-list">
         ${articlesHtml}
       </div>
       ${this.createPagination()}
@@ -249,60 +240,29 @@ class ZiliuFeatures {
     // 生成填充按钮HTML
     const fillBtn = buttonConfig.fillButton || {};
     const fillButtonHtml = `
-      <button class="ziliu-fill-btn" ${fillDisabled ? 'disabled' : ''} style="
-        background: ${fillDisabled ? '#d9d9d9' : (fillBtn.style?.background || '#667eea')};
-        border: none;
-        color: ${fillBtn.style?.color || 'white'};
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: ${fillDisabled ? 'not-allowed' : 'pointer'};
-        font-size: 11px;
-        flex: 1;
-      " title="${fillBtn.tooltip || '填充文章内容'}">${fillBtn.text || '填充'}</button>
+      <button class="ziliu-fill-btn ziliu-btn ziliu-btn-primary" ${fillDisabled ? 'disabled' : ''} title="${fillBtn.tooltip || '填充文章内容'}">
+        ${fillBtn.text || '填充'}
+      </button>
     `;
     
     // 生成复制按钮HTML  
     const copyBtn = buttonConfig.copyButton || {};
     const copyButtonHtml = noCopyButton ? '' : `
-      <button class="ziliu-copy-btn" style="
-        background: ${copyBtn.style?.background || '#52c41a'};
-        border: none;
-        color: ${copyBtn.style?.color || 'white'};
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 11px;
-        flex: 1;
-      " title="${copyBtn.tooltip || '复制文章内容'}">${copyBtn.text || '复制'}</button>
+      <button class="ziliu-copy-btn ziliu-btn ziliu-btn-outline" title="${copyBtn.tooltip || '复制文章内容'}">
+        ${copyBtn.text || '复制'}
+      </button>
     `;
     
     return `
-      <div class="ziliu-article-item" style="
-        border: 1px solid #e1e8ed;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 8px;
-        background: #fafbfc;
-        cursor: pointer;
-        transition: all 0.2s;
-      " data-article-id="${article.id}">
-        <div style="font-weight: 500; font-size: 13px; color: #2d3436; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-          <span>${truncatedTitle}</span>
-          <button class="ziliu-edit-btn" style="
-            background: none;
-            border: 1px solid #d9d9d9;
-            color: #666;
-            padding: 2px 6px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 10px;
-            line-height: 1;
-          " title="跳转到平台编辑">📝</button>
+      <div class="ziliu-article-item" data-article-id="${article.id}">
+        <div class="ziliu-article-top">
+          <span class="ziliu-article-title">${truncatedTitle}</span>
+          <button class="ziliu-edit-btn ziliu-icon-btn" title="跳转到平台编辑" aria-label="跳转到平台编辑">📝</button>
         </div>
-        <div style="font-size: 11px; color: #636e72; margin-bottom: 10px;">
+        <div class="ziliu-meta">
           ${this.formatDate(article.createdAt)}
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div class="ziliu-actions">
           ${fillButtonHtml}
           ${copyButtonHtml}
         </div>
@@ -320,35 +280,12 @@ class ZiliuFeatures {
     const nextDisabled = this.currentPage >= this.totalPages;
     
     return `
-      <div style="
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid #e1e8ed;
-      ">
-        <button id="ziliu-prev-page" ${prevDisabled ? 'disabled' : ''} style="
-          background: ${prevDisabled ? '#f0f0f0' : '#667eea'};
-          border: none;
-          color: ${prevDisabled ? '#999' : 'white'};
-          padding: 6px 12px;
-          border-radius: 4px;
-          cursor: ${prevDisabled ? 'not-allowed' : 'pointer'};
-          font-size: 12px;
-        ">上一页</button>
-        <span style="font-size: 12px; color: #636e72;">
+      <div class="ziliu-pagination">
+        <button id="ziliu-prev-page" class="ziliu-btn ziliu-btn-outline ziliu-btn-sm" ${prevDisabled ? 'disabled' : ''}>上一页</button>
+        <span class="ziliu-pagination-text">
           ${this.currentPage} / ${this.totalPages}
         </span>
-        <button id="ziliu-next-page" ${nextDisabled ? 'disabled' : ''} style="
-          background: ${nextDisabled ? '#f0f0f0' : '#667eea'};
-          border: none;
-          color: ${nextDisabled ? '#999' : 'white'};
-          padding: 6px 12px;
-          border-radius: 4px;
-          cursor: ${nextDisabled ? 'not-allowed' : 'pointer'};
-          font-size: 12px;
-        ">下一页</button>
+        <button id="ziliu-next-page" class="ziliu-btn ziliu-btn-outline ziliu-btn-sm" ${nextDisabled ? 'disabled' : ''}>下一页</button>
       </div>
     `;
   }
@@ -408,6 +345,7 @@ class ZiliuFeatures {
    */
   async fillArticle(articleId, buttonElement) {
     const originalText = buttonElement.textContent;
+    const originalClassName = buttonElement.className;
     
     try {
       buttonElement.textContent = '填充中...';
@@ -421,7 +359,7 @@ class ZiliuFeatures {
       
       if (result.success) {
         buttonElement.textContent = '已填充';
-        buttonElement.style.background = '#52c41a';
+        buttonElement.className = `${originalClassName} ziliu-btn-success`;
         this.showToast('文章填充成功！', 'success');
       } else {
         throw new Error(result.error || '填充失败');
@@ -430,14 +368,14 @@ class ZiliuFeatures {
     } catch (error) {
       console.error('填充文章失败:', error);
       buttonElement.textContent = '填充失败';
-      buttonElement.style.background = '#ff4d4f';
+      buttonElement.className = `${originalClassName} ziliu-btn-danger`;
       this.showToast('填充失败: ' + error.message, 'error');
     }
     
     // 2秒后恢复按钮状态
     setTimeout(() => {
       buttonElement.textContent = originalText;
-      buttonElement.style.background = '#667eea';
+      buttonElement.className = originalClassName;
       buttonElement.disabled = false;
     }, 2000);
   }
@@ -556,6 +494,7 @@ class ZiliuFeatures {
    */
   async copyArticle(articleId, buttonElement) {
     const originalText = buttonElement.textContent;
+    const originalClassName = buttonElement.className;
     
     try {
       buttonElement.textContent = '复制中...';
@@ -588,7 +527,7 @@ class ZiliuFeatures {
       
       if (result.success) {
         buttonElement.textContent = '已复制';
-        buttonElement.style.background = '#52c41a';
+        buttonElement.className = `${originalClassName} ziliu-btn-success`;
         this.showToast(result.message || '内容已复制到剪贴板！', 'success');
       } else {
         throw new Error(result.error || result.message || '复制失败');
@@ -597,14 +536,14 @@ class ZiliuFeatures {
     } catch (error) {
       console.error('复制文章失败:', error);
       buttonElement.textContent = '复制失败';
-      buttonElement.style.background = '#ff4d4f';
+      buttonElement.className = `${originalClassName} ziliu-btn-danger`;
       this.showToast('复制失败: ' + error.message, 'error');
     }
     
     // 2秒后恢复按钮状态
     setTimeout(() => {
       buttonElement.textContent = originalText;
-      buttonElement.style.background = '#52c41a';
+      buttonElement.className = originalClassName;
       buttonElement.disabled = false;
     }, 2000);
   }
@@ -614,33 +553,12 @@ class ZiliuFeatures {
    */
   showLoading(message = '加载中...') {
     const content = `
-      <div style="text-align: center; padding: 40px 20px;">
-        <div style="
-          width: 32px;
-          height: 32px;
-          border: 3px solid #f0f0f0;
-          border-top: 3px solid #667eea;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto 16px;
-        "></div>
-        <div style="color: #636e72; font-size: 14px;">${message}</div>
+      <div class="ziliu-view">
+        <div class="ziliu-spinner" aria-hidden="true"></div>
+        <div class="ziliu-text-muted">${message}</div>
       </div>
     `;
     this.updatePanelContent(content);
-    
-    // 添加旋转动画
-    if (!document.getElementById('ziliu-spinner-styles')) {
-      const style = document.createElement('style');
-      style.id = 'ziliu-spinner-styles';
-      style.textContent = `
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `;
-      document.head.appendChild(style);
-    }
   }
 
   /**
@@ -648,19 +566,10 @@ class ZiliuFeatures {
    */
   showError(message) {
     const content = `
-      <div style="text-align: center; padding: 40px 20px;">
-        <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
-        <div style="color: #ff4d4f; font-size: 14px; line-height: 1.4;">${message}</div>
-        <button onclick="window.ZiliuFeatures.checkLoginStatus()" style="
-          background: #667eea;
-          border: none;
-          color: white;
-          padding: 8px 16px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 12px;
-          margin-top: 16px;
-        ">重试</button>
+      <div class="ziliu-view">
+        <div class="ziliu-emoji" aria-hidden="true">❌</div>
+        <div class="ziliu-error-text">${message}</div>
+        <button onclick="window.ZiliuFeatures.checkLoginStatus()" class="ziliu-btn ziliu-btn-outline" style="margin-top: 16px;">重试</button>
       </div>
     `;
     this.updatePanelContent(content);
@@ -670,26 +579,9 @@ class ZiliuFeatures {
    * 显示提示消息
    */
   showToast(message, type = 'info') {
-    const colors = {
-      success: '#52c41a',
-      error: '#ff4d4f',
-      info: '#1890ff'
-    };
-    
     const toast = document.createElement('div');
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 50%;
-      transform: translateX(50%);
-      background: ${colors[type] || colors.info};
-      color: white;
-      padding: 12px 20px;
-      border-radius: 6px;
-      font-size: 14px;
-      z-index: 10001;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    `;
+    const toastType = ['success', 'error', 'info'].includes(type) ? type : 'info';
+    toast.className = `ziliu-toast ziliu-toast--${toastType}`;
     toast.textContent = message;
     
     document.body.appendChild(toast);

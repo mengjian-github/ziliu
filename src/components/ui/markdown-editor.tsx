@@ -34,7 +34,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
     // 如果有选中文本，在前后添加标记；如果没有选中文本，插入占位符
     let insertContent: string;
     let cursorPosition: number;
-    
+
     if (selectedText) {
       // 有选中文本，直接在前后添加标记
       insertContent = before + selectedText + after;
@@ -42,11 +42,11 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
       console.log('有选中文本，insertContent:', `"${insertContent}"`);
     } else {
       // 没有选中文本，插入带占位符的标记
-      const placeholder = before === '**' ? '粗体文字' : 
-                         before === '*' ? '斜体文字' : 
-                         before === '> ' ? '引用内容' :
-                         before === '- ' ? '列表项' :
-                         before === '1. ' ? '列表项' : '文字';
+      const placeholder = before === '**' ? '粗体文字' :
+        before === '*' ? '斜体文字' :
+          before === '> ' ? '引用内容' :
+            before === '- ' ? '列表项' :
+              before === '1. ' ? '列表项' : '文字';
       insertContent = before + placeholder + after;
       cursorPosition = start + before.length + placeholder.length;
       console.log('无选中文本，placeholder:', placeholder);
@@ -166,27 +166,27 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
     return markdown
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400">$1</a>')
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
       .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
       .replace(/^- (.+)$/gm, '<li>$1</li>')
       .replace(/^1\. (.+)$/gm, '<li>$1</li>')
-      .replace(/^---$/gm, '<hr>')
+      .replace(/^---$/gm, '<hr class="border-white/10">')
       .replace(/\n/g, '<br>')
-      .replace(/{{featured-articles:(\d+)}}/g, '<div class="featured-articles" data-count="$1" style="border: 1px dashed #d1d5db; padding: 12px; border-radius: 8px; color: #6b7280; font-size: 14px;">（将展示 $1 篇精选文章）</div>');
+      .replace(/{{featured-articles:(\d+)}}/g, '<div class="featured-articles" data-count="$1" style="border: 1px dashed rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; color: #a1a1aa; font-size: 14px;">（将展示 $1 篇精选文章）</div>');
   };
 
   return (
-    <div className={`border border-gray-300 rounded-lg ${className}`}>
+    <div className={`border border-white/10 rounded-xl bg-black/20 backdrop-blur-sm ${className}`}>
       {/* 标题和切换按钮 */}
       {label && (
-        <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
-          <label className="text-sm font-medium text-gray-700">{label}</label>
+        <div className="flex items-center justify-between p-3 border-b border-white/10 bg-white/5">
+          <label className="text-sm font-medium text-zinc-300">{label}</label>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowPreview(false)}
-              className={`flex items-center gap-1 px-3 py-1 text-xs rounded ${!showPreview ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`flex items-center gap-1 px-3 py-1 text-xs rounded-lg transition-colors ${!showPreview ? 'bg-primary/20 text-blue-300 border border-primary/30' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
             >
               <Edit3 className="w-3 h-3" />
               编辑
@@ -194,7 +194,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
             <button
               type="button"
               onClick={() => setShowPreview(true)}
-              className={`flex items-center gap-1 px-3 py-1 text-xs rounded ${showPreview ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`flex items-center gap-1 px-3 py-1 text-xs rounded-lg transition-colors ${showPreview ? 'bg-primary/20 text-blue-300 border border-primary/30' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
             >
               <Eye className="w-3 h-3" />
               预览
@@ -206,13 +206,13 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
       {!showPreview ? (
         <>
           {/* 工具栏 */}
-          <div className="border-b border-gray-200 p-2 flex flex-wrap gap-1">
+          <div className="border-b border-white/10 p-2 flex flex-wrap gap-1 bg-white/[0.02]">
             {toolbarButtons.map((button, index) => (
               <button
                 key={index}
                 type="button"
                 onClick={button.action}
-                className="p-2 hover:bg-gray-100 rounded transition-colors"
+                className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
                 title={button.title}
               >
                 <button.icon className="w-4 h-4" />
@@ -231,7 +231,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
                     e.target.value = '';
                   }
                 }}
-                className="text-xs px-2 py-1 border border-gray-300 rounded"
+                className="text-xs px-2 py-1 bg-black/40 border border-white/10 rounded-lg text-zinc-300 focus:outline-none focus:border-primary/50"
               >
                 <option value="">插入模板</option>
                 {commonTemplates.map((template) => (
@@ -249,23 +249,23 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full h-48 p-3 border-0 resize-none focus:outline-none font-mono text-sm"
+            className="w-full h-48 p-3 border-0 resize-none focus:outline-none font-mono text-sm bg-transparent text-zinc-200 placeholder:text-zinc-600"
           />
         </>
       ) : (
         /* 预览区域 */
         <div className="p-3 min-h-48">
           <div
-            className="prose prose-sm max-w-none"
+            className="prose prose-invert prose-sm max-w-none"
             dangerouslySetInnerHTML={{
-              __html: value ? markdownToHtml(value) : '<p class="text-gray-400">暂无内容</p>'
+              __html: value ? markdownToHtml(value) : '<p class="text-zinc-500">暂无内容</p>'
             }}
           />
         </div>
       )}
 
       {/* 帮助提示 */}
-      <div className="border-t border-gray-200 p-2 text-xs text-gray-500">
+      <div className="border-t border-white/10 p-2 text-xs text-zinc-500 bg-white/[0.02] rounded-b-xl">
         <span>💡 支持Markdown语法：</span>
         <span>**粗体**、*斜体*、[链接](url)、![图片](url)、{`>`} 引用、- 列表等</span>
         {!showPreview && <span> | 精选文章占位符：{`{{featured-articles:数量}}`}</span>}

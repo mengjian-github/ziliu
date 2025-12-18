@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Gift, Loader2, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface RedeemCodeDialogProps {
   isOpen: boolean;
@@ -57,30 +58,30 @@ export function RedeemCodeDialog({ isOpen, onClose, onSuccess }: RedeemCodeDialo
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <Card className="w-full max-w-md mx-4 bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.5)] rounded-3xl">
+        <CardHeader className="border-b border-white/5 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Gift className="h-5 w-5 text-blue-600" />
-              <CardTitle>兑换码</CardTitle>
+              <Gift className="h-5 w-5 text-primary" />
+              <CardTitle className="text-white">兑换码</CardTitle>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-6 w-6 p-0"
+              className="h-8 w-8 p-0 text-zinc-400 hover:text-white hover:bg-white/10"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <CardDescription>
+          <CardDescription className="text-zinc-400">
             输入兑换码来获得专业版权限
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-6">
           <div className="space-y-2">
-            <label htmlFor="redeem-code" className="text-sm font-medium text-gray-700">
+            <label htmlFor="redeem-code" className="text-sm font-medium text-zinc-300">
               兑换码
             </label>
             <Input
@@ -92,18 +93,21 @@ export function RedeemCodeDialog({ isOpen, onClose, onSuccess }: RedeemCodeDialo
                 setCode(e.target.value.toUpperCase());
                 if (error) setError('');
               }}
-              className={error ? 'border-red-300' : ''}
+              className={cn(
+                "bg-black/20 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary/50",
+                error ? 'border-red-500/50 focus-visible:ring-red-500/50' : ''
+              )}
               maxLength={15}
             />
             {error && (
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm text-red-400">{error}</p>
             )}
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="text-sm text-blue-800">
-              <div className="font-medium mb-1">兑换说明：</div>
-              <ul className="text-xs space-y-1 text-blue-700">
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+            <div className="text-sm text-primary/80">
+              <div className="font-bold mb-2 text-primary">兑换说明：</div>
+              <ul className="text-xs space-y-1.5 opacity-80">
                 <li>• 月卡：获得1个月专业版权限</li>
                 <li>• 年卡：获得12个月专业版权限</li>
                 <li>• 可与现有订阅时间叠加</li>
@@ -112,18 +116,18 @@ export function RedeemCodeDialog({ isOpen, onClose, onSuccess }: RedeemCodeDialo
             </div>
           </div>
 
-          <div className="flex space-x-3">
+          <div className="flex space-x-3 pt-2">
             <Button
               variant="outline"
               onClick={onClose}
-              className="flex-1"
+              className="flex-1 border-white/10 bg-white/5 hover:bg-white/10 text-white"
               disabled={isLoading}
             >
               取消
             </Button>
             <Button
               onClick={handleRedeem}
-              className="flex-1"
+              className="flex-1 bg-primary hover:bg-primary/90 text-white"
               disabled={isLoading || !code.trim()}
             >
               {isLoading ? (

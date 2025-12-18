@@ -7,42 +7,8 @@
 
   console.log('🚀 字流助手启动 - 新架构版本');
 
-  // 尝试从当前站点发现运行时配置（优先本地/当前域），用于覆盖 API Base URL
-  (async function bootstrapRuntimeConfig() {
-    try {
-      // 插件在第三方站点运行，无法从当前 origin 获取配置
-      // 采用候选地址探测：优先本地，再回退线上
-      const candidates = [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'https://www.ziliu.online'
-      ];
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 1200);
-
-      for (const base of candidates) {
-        try {
-          const res = await fetch(base + '/api/config', { signal: controller.signal, credentials: 'include' });
-          if (res.ok) {
-            const data = await res.json();
-            const baseUrl = data?.data?.apiBaseUrl || data?.data?.appUrl || base;
-            if (baseUrl && chrome.runtime?.id) {
-              chrome.runtime.sendMessage({ action: 'setBaseURL', data: { baseUrl } }, () => {});
-              console.log('🔧 已设置 API Base URL:', baseUrl);
-              clearTimeout(timeout);
-              break;
-            }
-          }
-        } catch (_) {
-          // 尝试下一个候选
-          continue;
-        }
-      }
-    } catch (e) {
-      console.warn('⚠️ 运行时配置发现失败，使用默认配置', e);
-    }
-  })();
+  // 说明：插件运行在第三方站点（公众号、小红书等）。
+  // 本地/线上环境切换通过“构建产物”决定，不在运行时探测 localhost，避免线上环境误触发本地探测带来的问题。
 
   // 监听来自网页的消息
   window.addEventListener('message', (event) => {
@@ -53,13 +19,8 @@
     
     // 只处理来自同源或字流网站的消息
     // 使用统一配置检查允许的域名
-    const isAllowedOrigin = event.origin === window.location.origin || 
-                          window.ZiliuConstants?.isAllowedOrigin?.(event.origin) ||
-                          event.origin.includes('ziliu.online') ||
-                          event.origin.includes('www.ziliu.online') ||
-                          event.origin.includes('www.ziliu.online') ||
-                          event.origin.includes('127.0.0.1:3000') ||
-                          event.origin.includes('localhost');
+    const isAllowedOrigin = event.origin === window.location.origin ||
+                          window.ZiliuConstants?.isAllowedOrigin?.(event.origin);
     
     if (!isAllowedOrigin) {
       console.log('🚫 拒绝来自未授权域名的消息:', event.origin);

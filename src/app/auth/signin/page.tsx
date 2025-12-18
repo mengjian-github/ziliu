@@ -40,23 +40,25 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="relative min-h-screen px-4 py-12 sm:px-6 lg:px-8 flex items-center justify-center">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(0,102,255,0.14),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(0,212,255,0.12),transparent_35%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.24),transparent_38%),linear-gradient(240deg,rgba(255,255,255,0.24),transparent_32%)]" />
+    <div className="relative min-h-screen px-4 py-12 sm:px-6 lg:px-8 flex items-center justify-center overflow-hidden">
+      {/* Dark Theme Background */}
+      <div className="absolute inset-0 bg-[#020617]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-[radial-gradient(circle_at_center,rgba(0,136,255,0.1),transparent_60%)] pointer-events-none blur-3xl opacity-50" />
+      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[radial-gradient(circle_at_center,rgba(0,217,255,0.05),transparent_60%)] pointer-events-none blur-3xl opacity-30" />
 
-      <div className="relative z-10 w-full max-w-xl space-y-8">
+      <div className="relative z-10 w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-[#2a80ff] to-secondary text-white shadow-[0_18px_40px_-18px_rgba(0,102,255,0.75)]">
-            <span className="text-lg font-semibold">Z</span>
-          </div>
-          <h1 className="text-3xl font-semibold text-foreground">登录字流</h1>
-          <p className="text-sm text-muted-foreground">让文字如流水般顺畅发布</p>
+          <Link href="/" className="inline-flex mx-auto h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-[#2a80ff] to-secondary text-white shadow-[0_0_30px_-10px_rgba(0,136,255,0.6)] hover:scale-105 transition-transform">
+            <span className="text-lg font-bold">Z</span>
+          </Link>
+          <h1 className="text-3xl font-bold text-white tracking-tight">登录字流</h1>
+          <p className="text-sm text-zinc-400">让文字如流水般顺畅发布</p>
         </div>
 
-        <Card className="border border-primary/10 bg-white/80 backdrop-blur-xl shadow-[0_24px_80px_-40px_rgba(0,26,77,0.6)]">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl font-semibold text-foreground">欢迎回来</CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
+        <Card className="border border-white/10 bg-white/[0.02] backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]">
+          <CardHeader className="text-center pb-6 border-b border-white/5">
+            <CardTitle className="text-xl font-bold text-white">欢迎回来</CardTitle>
+            <CardDescription className="text-sm text-zinc-400">
               输入邮箱和密码即可开始创作
             </CardDescription>
           </CardHeader>
@@ -67,9 +69,9 @@ export default function SignInPage() {
                   {error}
                 </div>
               )}
-              
+
               <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm font-semibold text-foreground/80">
+                <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
                   邮箱
                 </label>
                 <Input
@@ -79,11 +81,12 @@ export default function SignInPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   required
+                  className="bg-black/20 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary/50"
                 />
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm font-semibold text-foreground/80">
+                <label htmlFor="password" className="block text-sm font-medium text-zinc-300">
                   密码
                 </label>
                 <Input
@@ -93,21 +96,22 @@ export default function SignInPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="请输入密码"
                   required
+                  className="bg-black/20 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary/50"
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full rounded-xl"
+                className="w-full rounded-xl h-11 text-base shadow-[0_0_20px_-5px_rgba(0,136,255,0.5)] hover:shadow-[0_0_30px_-5px_rgba(0,136,255,0.6)] transition-all"
                 disabled={isLoading}
               >
                 {isLoading ? '登录中...' : '登录'}
               </Button>
             </form>
 
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-center text-sm text-zinc-500">
               还没有账户？{' '}
-              <Link href="/auth/signup" className="font-semibold text-primary">
+              <Link href="/auth/signup" className="font-medium text-primary hover:text-primary/80 transition-colors">
                 立即注册
               </Link>
             </div>

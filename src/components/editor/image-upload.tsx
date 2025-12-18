@@ -24,7 +24,7 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
   const [isDragging, setIsDragging] = useState(false);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // 使用统一的图片上传服务
   const imageUploadService = useImageUploadService();
 
@@ -56,7 +56,7 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
       onSuccess: (result) => {
         if (result.data) {
           // 找到对应文件并更新状态
-          setUploads(prev => prev.map(upload => 
+          setUploads(prev => prev.map(upload =>
             upload.fileName === result.data!.fileName
               ? { ...upload, status: 'success', progress: 100, url: result.data!.url }
               : upload
@@ -80,8 +80,8 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
     results.forEach((result, index) => {
       if (!result.success) {
         const fileName = imageFiles[index].name;
-        
-        setUploads(prev => prev.map(upload => 
+
+        setUploads(prev => prev.map(upload =>
           upload.fileName === fileName
             ? { ...upload, status: 'error', error: result.error }
             : upload
@@ -115,7 +115,7 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (disabled) return;
 
     const files = e.dataTransfer.files;
@@ -162,7 +162,7 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
         onClick={handleButtonClick}
         disabled={disabled}
         title="上传图片"
-        className="h-8 w-8 p-0 hover:bg-gray-100"
+        className="h-8 w-8 p-0 hover:bg-white/10 text-zinc-400 hover:text-white"
       >
         <ImageIcon className="h-4 w-4" />
       </Button>
@@ -170,16 +170,16 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
       {/* 拖拽区域（当有文件拖拽时显示） */}
       {isDragging && (
         <div
-          className="fixed inset-0 z-50 bg-blue-500/10 border-2 border-dashed border-blue-500 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-primary/20 border-2 border-dashed border-primary flex items-center justify-center backdrop-blur-sm"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="bg-white rounded-lg p-8 shadow-lg border border-blue-200">
+          <div className="bg-black/80 rounded-xl p-8 shadow-2xl border border-white/10 backdrop-blur-xl">
             <div className="text-center">
-              <Upload className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <p className="text-lg font-medium text-blue-700">释放以上传图片</p>
-              <p className="text-sm text-blue-500 mt-1">支持 JPEG、PNG、GIF、WebP 格式</p>
+              <Upload className="h-12 w-12 text-primary mx-auto mb-4" />
+              <p className="text-lg font-medium text-white">释放以上传图片</p>
+              <p className="text-sm text-zinc-400 mt-1">支持 JPEG、PNG、GIF、WebP 格式</p>
             </div>
           </div>
         </div>
@@ -187,46 +187,46 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
 
       {/* 上传进度列表 */}
       {uploads.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border rounded-lg shadow-lg z-40 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-black/80 border border-white/10 rounded-xl shadow-xl z-40 max-h-60 overflow-y-auto backdrop-blur-xl">
           {uploads.map((upload) => (
-            <div key={upload.fileName} className="p-3 border-b last:border-b-0 flex items-center justify-between">
+            <div key={upload.fileName} className="p-3 border-b border-white/5 last:border-b-0 flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
                   {upload.status === 'uploading' && (
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   )}
                   {upload.status === 'success' && (
-                    <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
-                      <div className="h-2 w-2 bg-white rounded-full"></div>
+                    <div className="h-4 w-4 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
+                      <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                     </div>
                   )}
                   {upload.status === 'error' && (
-                    <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
-                      <X className="h-2 w-2 text-white" />
+                    <div className="h-4 w-4 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center">
+                      <X className="h-2 w-2 text-red-500" />
                     </div>
                   )}
-                  <span className="text-sm font-medium truncate">{upload.fileName}</span>
+                  <span className="text-sm font-medium truncate text-zinc-200">{upload.fileName}</span>
                 </div>
                 {upload.status === 'uploading' && (
-                  <div className="mt-1 w-full bg-gray-200 rounded-full h-1">
-                    <div 
-                      className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                  <div className="mt-1 w-full bg-white/10 rounded-full h-1">
+                    <div
+                      className="bg-primary h-1 rounded-full transition-all duration-300"
                       style={{ width: `${upload.progress}%` }}
                     ></div>
                   </div>
                 )}
                 {upload.status === 'error' && upload.error && (
-                  <p className="text-xs text-red-500 mt-1">{upload.error}</p>
+                  <p className="text-xs text-red-400 mt-1">{upload.error}</p>
                 )}
                 {upload.status === 'success' && (
-                  <p className="text-xs text-green-500 mt-1">上传成功</p>
+                  <p className="text-xs text-green-400 mt-1">上传成功</p>
                 )}
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => removeUpload(upload.fileName)}
-                className="ml-2 h-6 w-6 p-0"
+                className="ml-2 h-6 w-6 p-0 hover:bg-white/10 text-zinc-500 hover:text-zinc-300"
               >
                 <X className="h-3 w-3" />
               </Button>

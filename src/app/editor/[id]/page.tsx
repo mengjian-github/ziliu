@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { EditorLayout } from '@/components/editor/editor-layout';
+import { useStableSession } from '@/hooks/use-stable-session';
 
 interface Article {
   id: string;
@@ -17,32 +17,22 @@ interface Article {
 }
 
 export default function EditArticlePage() {
-  const { data: session, status } = useSession();
+  const { isAuthenticated, isUnauthenticated, isInitialLoading: isSessionInitialLoading } = useStableSession();
   const router = useRouter();
   const params = useParams();
   const [article, setArticle] = useState<Article | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isArticleLoading, setIsArticleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fetchedArticleIdRef = useRef<string | null>(null);
 
   const articleId = params.id as string;
 
-  useEffect(() => {
-    if (status === 'loading') return;
-    if (!session) {
-      router.push('/auth/signin');
-      return;
-    }
-
-    // 获取文章详情
-    fetchArticle();
-  }, [session, status, router, articleId]);
-
-  const fetchArticle = async () => {
+  const fetchArticle = useCallback(async (id: string) => {
     try {
-      setLoading(true);
+      setIsArticleLoading(true);
       setError(null);
-      
-      const response = await fetch(`/api/articles/${articleId}`);
+
+      const response = await fetch(`/api/articles/${id}`);
       const data = await response.json();
 
       if (data.success) {
@@ -57,9 +47,26 @@ export default function EditArticlePage() {
       console.error('获取文章失败:', error);
       setError('获取文章失败');
     } finally {
-      setLoading(false);
+      setIsArticleLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    if (isUnauthenticated) {
+      router.push('/auth/signin');
+    }
+  }, [isUnauthenticated, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!articleId) return;
+
+    if (fetchedArticleIdRef.current === articleId) return;
+    fetchedArticleIdRef.current = articleId;
+
+    setArticle(null);
+    void fetchArticle(articleId);
+  }, [isAuthenticated, articleId, fetchArticle]);
 
   const handleSave = async (title: string, content: string) => {
     try {
@@ -89,23 +96,23 @@ export default function EditArticlePage() {
     }
   };
 
-  if (status === 'loading' || loading) {
+  if (isSessionInitialLoading || (isArticleLoading && !article)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#020617]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#020617]">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">出错了</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h2 className="text-xl font-bold text-white mb-2">出错了</h2>
+          <p className="text-zinc-400 mb-4">{error}</p>
           <button
             onClick={() => router.push('/dashboard')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
           >
             返回首页
           </button>
@@ -116,13 +123,13 @@ export default function EditArticlePage() {
 
   if (!article) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#020617]">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">文章不存在</h2>
-          <p className="text-gray-600 mb-4">您要编辑的文章不存在或已被删除</p>
+          <h2 className="text-xl font-bold text-white mb-2">文章不存在</h2>
+          <p className="text-zinc-400 mb-4">您要编辑的文章不存在或已被删除</p>
           <button
             onClick={() => router.push('/dashboard')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
           >
             返回首页
           </button>

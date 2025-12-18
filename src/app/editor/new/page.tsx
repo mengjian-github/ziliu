@@ -1,24 +1,22 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { EditorLayout } from '@/components/editor/editor-layout';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { ArticleCreationGuard } from '@/lib/subscription/components/FeatureGuard';
+import { useStableSession } from '@/hooks/use-stable-session';
 
 export default function NewEditorPage() {
-  const { data: session, status } = useSession();
+  const { session, isUnauthenticated, isInitialLoading } = useStableSession();
   const router = useRouter();
   const { refreshUsage } = useUserPlan();
 
   useEffect(() => {
-    if (status === 'loading') return;
-    if (!session) {
+    if (isUnauthenticated) {
       router.push('/auth/signin');
-      return;
     }
-  }, [session, status, router]);
+  }, [isUnauthenticated, router]);
 
   const handleSave = async (title: string, content: string) => {
     try {
@@ -49,12 +47,12 @@ export default function NewEditorPage() {
     }
   };
 
-  if (status === 'loading') {
+  if (isInitialLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#020617]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">加载中...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-zinc-400">加载中...</p>
         </div>
       </div>
     );

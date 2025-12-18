@@ -1,16 +1,18 @@
 // 字流助手 - 后台脚本
+// MV3 service worker 没有 window，全局对象为 self/globalThis。
+// 这里提前加载常量，确保可用的默认配置在后台也能读取。
+try {
+  importScripts('core/constants.js');
+} catch (e) {
+  console.warn('⚠️ 无法加载 core/constants.js，后台将使用内置默认配置', e);
+}
+
 console.log('🚀 字流助手 Background Script 启动');
 
-// 站点配置解析：优先使用 ApiService 的 baseURL，其次使用 fallback
+// 站点配置解析：优先使用存储的 baseURL，其次使用常量 fallback
 function resolveBaseUrl() {
-  try {
-    const api = window.ZiliuApiService;
-    const url = api?.config?.baseURL;
-    if (url && typeof url === 'string' && url.length > 0) return url;
-  } catch (e) {
-    // ignore
-  }
-  return 'https://www.ziliu.online';
+  const url = globalThis.ZiliuConstants?.DEFAULT_API_BASE_URL;
+  return (typeof url === 'string' && url.length > 0) ? url : 'https://ziliu.online';
 }
 
 // 统一的动态配置对象（通过 getter 实时取值）
@@ -95,8 +97,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const activeTab = tabs[0];
 
       // 使用平台管理器检查是否支持当前页面
-      const isSupported = window.ZiliuPlatformManager 
-        ? window.ZiliuPlatformManager.findPlatformByUrl(activeTab.url) !== null
+      const isSupported = globalThis.ZiliuPlatformManager
+        ? globalThis.ZiliuPlatformManager.findPlatformByUrl(activeTab.url) !== null
         : false;
 
       if (!isSupported) {
@@ -245,16 +247,16 @@ async function handleApiRequest(requestData) {
 
 // 通知所有相关平台页面有新内容
 function notifyPlatformTabs() {
-  if (!window.ZiliuPlatformManager) {
+  if (!globalThis.ZiliuPlatformManager) {
     console.warn('⚠️ 平台管理器未加载，无法通知平台页面');
     return;
   }
 
   // 获取所有支持的平台URL模式
-  const supportedPlatforms = window.ZiliuPlatformManager.getSupportedPlatforms();
+  const supportedPlatforms = globalThis.ZiliuPlatformManager.getSupportedPlatforms();
   
   supportedPlatforms.forEach(platformId => {
-    const platform = window.ZiliuPlatformManager.getPlatformInfo(platformId);
+    const platform = globalThis.ZiliuPlatformManager.getPlatformInfo(platformId);
     if (platform && platform.urlPatterns) {
       // 为每个URL模式查询对应的标签页
       platform.urlPatterns.forEach(pattern => {
@@ -304,11 +306,11 @@ async function handleOneClickPublish(data) {
 // 获取平台配置（使用平台管理服务）
 function getPlatformConfig(platform) {
   // 等待平台管理器加载（在实际应用中，这应该在extension启动时初始化）
-  if (!window.ZiliuPlatformManager) {
+  if (!globalThis.ZiliuPlatformManager) {
     console.warn('⚠️ 平台管理器未加载，使用默认微信配置');
     // 从插件配置获取默认微信配置
-    if (window.ZiliuPluginConfig && window.ZiliuPluginConfig.platforms) {
-      const wechatPlatform = window.ZiliuPluginConfig.platforms.find(p => p.id === 'wechat');
+    if (globalThis.ZiliuPluginConfig && globalThis.ZiliuPluginConfig.platforms) {
+      const wechatPlatform = globalThis.ZiliuPluginConfig.platforms.find(p => p.id === 'wechat');
       if (wechatPlatform) {
         return {
           urlPattern: wechatPlatform.urlPatterns[0].replace('https://', '*://'),
@@ -329,14 +331,14 @@ function getPlatformConfig(platform) {
   }
 
   // 规范化平台ID
-  const normalizedId = window.ZiliuPlatformManager.normalizePlatformId(platform) || 'wechat';
+  const normalizedId = globalThis.ZiliuPlatformManager.normalizePlatformId(platform) || 'wechat';
   
   // 获取平台发布配置
-  const config = window.ZiliuPlatformManager.getPlatformPublishConfig(normalizedId);
+  const config = globalThis.ZiliuPlatformManager.getPlatformPublishConfig(normalizedId);
   
   if (!config) {
     console.warn(`⚠️ 未找到平台配置: ${platform}, 使用默认配置`);
-    return window.ZiliuPlatformManager.getPlatformPublishConfig('wechat');
+    return globalThis.ZiliuPlatformManager.getPlatformPublishConfig('wechat');
   }
 
   return config;
@@ -446,12 +448,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // 查找匹配的平台配置（使用平台管理服务）
 function findMatchingPlatform(url) {
-  if (!window.ZiliuPlatformManager) {
+  if (!globalThis.ZiliuPlatformManager) {
     console.warn('⚠️ 平台管理器未加载，无法匹配平台');
     return null;
   }
 
-  const platform = window.ZiliuPlatformManager.findPlatformByUrl(url);
+  const platform = globalThis.ZiliuPlatformManager.findPlatformByUrl(url);
   return platform?.publishConfig || null;
 }
 

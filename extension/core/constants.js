@@ -2,13 +2,21 @@
  * 字流插件统一配置常量
  */
 class ZiliuConstants {
-  // 环境配置 - 生产环境
+  // 构建环境（由构建脚本替换；未替换时走默认生产配置）
+  static get BUILD_ENV() {
+    const value = '__ZILIU_BUILD_ENV__';
+    return value.startsWith('__ZILIU_') ? 'production' : value;
+  }
+
+  // 环境配置 - 生产环境（由构建脚本替换）
   static get DEFAULT_API_BASE_URL() {
-    return 'https://ziliu.online';
+    const value = '__ZILIU_API_BASE_URL__';
+    return value.startsWith('__ZILIU_') ? 'https://ziliu.online' : value;
   }
   
   static get DEFAULT_SITE_URL() {
-    return 'https://ziliu.online';
+    const value = '__ZILIU_SITE_URL__';
+    return value.startsWith('__ZILIU_') ? 'https://ziliu.online' : value;
   }
   
   // API端点
@@ -45,17 +53,21 @@ class ZiliuConstants {
   
   // 获取当前插件版本（统一版本管理）
   static get VERSION() {
-    return this.PLUGIN.VERSION;
+    try {
+      const v = chrome?.runtime?.getManifest?.().version;
+      return v || this.PLUGIN.VERSION;
+    } catch (_) {
+      return this.PLUGIN.VERSION;
+    }
   }
   
   // 允许的域名列表
   static get ALLOWED_ORIGINS() {
-    return [
-      'www.ziliu.online',
-      'ziliu.online',      // 生产环境
-      'localhost',         // 本地开发
-      '127.0.0.1'         // 本地开发
-    ];
+    const origins = ['www.ziliu.online', 'ziliu.online'];
+    if (this.BUILD_ENV !== 'production') {
+      origins.push('localhost', '127.0.0.1');
+    }
+    return origins;
   }
   
   // 检查域名是否允许
@@ -75,3 +87,4 @@ if (typeof window !== 'undefined') {
 
 console.log('✅ 字流配置常量已加载');
 console.log('🔧 当前DEFAULT_API_BASE_URL:', ZiliuConstants.DEFAULT_API_BASE_URL);
+console.log('🏷️ 当前BUILD_ENV:', ZiliuConstants.BUILD_ENV);

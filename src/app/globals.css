@@ -1,48 +1,69 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #0066ff;
+  --color-primary: #0088ff;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #00d4ff;
+  --color-secondary: #00d9ff;
   --color-secondary-foreground: #ffffff;
-  --color-accent: #e8f3ff;
-  --color-accent-foreground: #0f2a55;
-  --color-background: #f5f7fb;
-  --color-foreground: #102347;
-  --color-muted: #eef3fb;
-  --color-muted-foreground: #5a6b86;
-  --color-card: #ffffff;
-  --color-card-foreground: #102347;
-  --color-border: #d6e2f5;
-  --color-input: #d6e2f5;
+  --color-accent: #1e293b;
+  --color-accent-foreground: #ffffff;
+  --color-background: #020617;
+  --color-foreground: #ffffff;
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+  --color-card: rgba(255, 255, 255, 0.03);
+  --color-card-foreground: #ffffff;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-input: rgba(255, 255, 255, 0.1);
+  --color-ring: #0088ff;
 
   --radius-lg: 1rem;
   --radius-md: 0.75rem;
   --radius-sm: 0.5rem;
 
   --font-sans: "Inter", "Segoe UI", "HarmonyOS Sans SC", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-glow: glow 4s ease-in-out infinite alternate;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+  @keyframes glow {
+    from { opacity: 0.5; box-shadow: 0 0 20px -10px rgba(0,136,255,0.5); }
+    to { opacity: 1; box-shadow: 0 0 30px 0px rgba(0,212,255,0.6); }
+  }
 }
 
 :root {
-  --background: 220 43% 97%;
-  --foreground: 219 63% 17%;
-  --card: 0 0% 100%;
-  --card-foreground: 219 63% 17%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 219 63% 17%;
-  --primary: 216 100% 50%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 190 100% 50%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 216 100% 95.5%;
-  --muted-foreground: 218 19% 44%;
-  --accent: 190 100% 94%;
-  --accent-foreground: 219 63% 17%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 218 35% 88%;
-  --input: 218 35% 88%;
-  --ring: 216 100% 50%;
+  --background: 222 47% 5%;    /* #020617 (Slate 950ish / Dark Navy) */
+  --foreground: 0 0% 100%;
+
+  --card: 222 47% 7%;
+  --card-foreground: 0 0% 100%;
+
+  --popover: 222 47% 5%;
+  --popover-foreground: 0 0% 100%;
+
+  --primary: 210 100% 50%;     /* #0088ff */
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 190 100% 50%;   /* Cyan */
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 215 25% 20%;
+  --muted-foreground: 215 20% 65%;
+
+  --accent: 215 25% 15%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 80% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 215 20% 15%;
+  --input: 215 20% 15%;
+  --ring: 210 100% 50%;
   --radius: 1rem;
 }
 
@@ -51,7 +72,10 @@
 }
 
 body {
-  background: radial-gradient(120% 80% at 18% 18%, rgba(0, 102, 255, 0.12) 0, rgba(0, 212, 255, 0.08) 32%, transparent 55%), radial-gradient(110% 90% at 78% 5%, rgba(0, 229, 129, 0.07) 0, transparent 48%), hsl(var(--background));
+  background: 
+    radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.15), transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(0, 136, 255, 0.15), transparent 50%),
+    hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -59,71 +83,106 @@ body {
 }
 
 ::selection {
-  background: rgba(0, 102, 255, 0.15);
-  color: hsl(var(--foreground));
+  background: rgba(0, 212, 255, 0.3);
+  color: #fff;
 }
 
 /* 平台预览样式 */
 .wechat-content {
-  line-height: 1.8;
-  color: #333;
-  font-size: 14px;
+  --wechat-link: #576b95;
+  --wechat-muted: rgba(0, 0, 0, 0.66);
+  --wechat-surface: rgba(127, 127, 127, 0.08);
+  --wechat-surface-strong: rgba(127, 127, 127, 0.12);
+  --wechat-border: rgba(127, 127, 127, 0.24);
+  --wechat-border-strong: rgba(127, 127, 127, 0.36);
+
+  line-height: 1.85;
+  color: inherit;
+  font-size: 16px;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.wechat-preview[data-wechat-theme="night"] .wechat-content {
+  --wechat-link: #7d93c7;
+  --wechat-muted: rgba(255, 255, 255, 0.68);
+  --wechat-border: rgba(255, 255, 255, 0.20);
+  --wechat-border-strong: rgba(255, 255, 255, 0.32);
 }
 
 .wechat-content h1,
 .wechat-content h2,
 .wechat-content h3 {
-  color: #2c3e50;
+  color: inherit;
   margin: 1.5em 0 0.8em 0;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .wechat-content h1 {
-  font-size: 18px;
-  border-bottom: 2px solid #3498db;
+  font-size: 24px;
+  border-bottom: 2px solid #3B6AE0;
   padding-bottom: 0.3em;
 }
 
 .wechat-content h2 {
-  font-size: 16px;
+  font-size: 20px;
+  border-left: 4px solid #3B6AE0;
+  padding-left: 0.8em;
 }
 
 .wechat-content h3 {
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .wechat-content p {
   margin: 1em 0;
   text-align: justify;
+  text-justify: inter-ideograph;
+}
+
+.wechat-content a {
+  color: var(--wechat-link);
+  text-decoration: none;
+}
+
+.wechat-content a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .wechat-content blockquote {
-  border-left: 4px solid #3498db;
-  background: #f8f9fa;
-  padding: 1em;
+  border-left: 4px solid var(--wechat-border-strong);
+  background: var(--wechat-surface);
+  padding: 0.9em 1em;
   margin: 1.5em 0;
-  border-radius: 4px;
+  border-radius: 6px;
+  color: var(--wechat-muted);
 }
 
 .wechat-content code {
-  background: #f1f2f6;
+  background: var(--wechat-surface-strong);
+  border: 1px solid var(--wechat-border);
   padding: 0.2em 0.4em;
-  border-radius: 3px;
+  border-radius: 4px;
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 13px;
+  color: inherit;
 }
 
 .wechat-content pre {
-  background: #2d3748;
-  color: #e2e8f0;
+  background: var(--wechat-surface);
+  border: 1px solid var(--wechat-border);
   padding: 1em;
   border-radius: 6px;
   overflow-x: auto;
   margin: 1.5em 0;
+  border-left: 4px solid #3B6AE0;
+  color: inherit;
 }
 
 .wechat-content pre code {
   background: none;
+  border: 0;
   padding: 0;
   color: inherit;
 }
@@ -143,6 +202,7 @@ body {
 
 .wechat-content li {
   margin: 0.5em 0;
+  line-height: 1.85;
 }
 
 /* 知乎样式 */

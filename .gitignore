@@ -85,6 +85,7 @@ Thumbs.db
 # Chrome extension builds
 extension/build/
 extension/dist/
+extension/dist-dev/
 extension/*.zip
 *.crx
 *.pem

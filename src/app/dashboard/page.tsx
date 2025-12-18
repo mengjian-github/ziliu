@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, FileText, LogOut, User, ChevronLeft, ChevronRight, Crown, Gift, Settings, ChevronDown } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { PlusCircle, FileText, LogOut, Crown, Gift, Settings, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { RedeemCodeDialog } from '@/components/ui/redeem-code-dialog';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
 import { ArticleCreationGuard } from '@/lib/subscription/components/FeatureGuard';
 import { CustomerSupportButton } from '@/components/ui/customer-support-button';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -42,7 +42,7 @@ export default function DashboardPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [showRedeemDialog, setShowRedeemDialog] = useState(false);
   const articlesPerPage = 5;
-  
+
   // 使用新的订阅Hook，已包含文章数量管理
   const { plan, planExpiredAt, isPro, totalArticles, getFeatureLimit, refreshPlan, refreshUsage } = useUserPlan();
 
@@ -90,7 +90,7 @@ export default function DashboardPage() {
   const handleRedeemSuccess = (data: any) => {
     // 刷新订阅信息
     refreshPlan();
-    
+
     // 显示成功提示
     alert(data.message);
   };
@@ -104,16 +104,16 @@ export default function DashboardPage() {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('zh-CN');
   };
-  
+
   // 检查文章限制
   const articleLimit = getFeatureLimit('unlimited-articles');
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#020617]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">加载中...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-zinc-400">加载中...</p>
         </div>
       </div>
     );
@@ -124,19 +124,20 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(0,102,255,0.12),transparent_38%),radial-gradient(circle_at_82%_10%,rgba(0,212,255,0.12),transparent_36%),radial-gradient(120%_90%_at_60%_90%,rgba(0,26,77,0.08),transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.22),transparent_38%),linear-gradient(240deg,rgba(255,255,255,0.18),transparent_32%)]" />
+    <div className="relative min-h-screen overflow-hidden bg-[#020617]">
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary/20 blur-[100px] pointer-events-none rounded-full mix-blend-screen opacity-20" />
+      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-secondary/10 blur-[120px] pointer-events-none rounded-full mix-blend-screen opacity-20" />
+
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-white/40 sticky top-0 z-50">
+      <header className="bg-black/20 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Link href="/" className="flex items-center space-x-3 hover:opacity-90 transition-opacity">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary via-[#2a80ff] to-secondary rounded-2xl flex items-center justify-center text-white shadow-[0_18px_40px_-18px_rgba(0,102,255,0.75)]">
-                  <span className="text-sm font-semibold">Z</span>
+                <div className="w-10 h-10 bg-gradient-to-br from-primary via-[#2a80ff] to-secondary rounded-xl flex items-center justify-center text-white shadow-[0_0_20px_-5px_rgba(0,136,255,0.6)]">
+                  <span className="text-sm font-bold">Z</span>
                 </div>
-                <h1 className="text-xl font-semibold text-foreground">
+                <h1 className="text-xl font-bold text-white">
                   字流
                 </h1>
               </Link>
@@ -149,7 +150,7 @@ export default function DashboardPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 text-yellow-700 hover:from-yellow-100 hover:to-orange-100 hover:border-yellow-300"
+                    className="bg-yellow-500/10 border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/20 hover:text-yellow-400 hover:border-yellow-500/40"
                   >
                     <Crown className="h-4 w-4 mr-2" />
                     升级专业版
@@ -160,15 +161,14 @@ export default function DashboardPage() {
               {/* 用户头像下拉菜单 */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 px-3 bg-white/60 border border-white/40 hover:bg-white/80 backdrop-blur-sm rounded-full">
+                  <Button variant="ghost" className="relative h-10 px-3 bg-white/5 border border-white/10 hover:bg-white/10 backdrop-blur-sm rounded-full">
                     <div className="flex items-center space-x-3">
-                      <Avatar className="h-7 w-7">
+                      <Avatar className="h-7 w-7 ring-2 ring-white/10">
                         <AvatarImage src={session.user?.image || undefined} alt={session.user?.name || "用户头像"} />
-                        <AvatarFallback className={`text-xs font-medium text-white ${
-                          isPro 
-                            ? 'bg-gradient-to-br from-yellow-500 to-orange-500' 
-                            : 'bg-gradient-to-br from-blue-500 to-indigo-500'
-                        }`}>
+                        <AvatarFallback className={`text-xs font-medium text-white ${isPro
+                          ? 'bg-gradient-to-br from-yellow-500 to-orange-500'
+                          : 'bg-gradient-to-br from-primary to-blue-600'
+                          }`}>
                           {isPro ? (
                             <Crown className="h-3 w-3" />
                           ) : (
@@ -176,63 +176,63 @@ export default function DashboardPage() {
                           )}
                         </AvatarFallback>
                       </Avatar>
-                      
+
                       <div className="flex flex-col items-start min-w-0">
-                        <span className="text-sm font-medium text-gray-700 truncate max-w-[120px]">
+                        <span className="text-sm font-medium text-zinc-200 truncate max-w-[120px]">
                           {session.user?.name}
                         </span>
                         {isPro ? (
-                          <span className="text-xs text-yellow-600 flex items-center">
+                          <span className="text-xs text-yellow-500 flex items-center">
                             <Crown className="h-3 w-3 mr-1" />
                             专业版
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-zinc-500">
                             免费版 · {articleLimit > 0 && `${totalArticles}/${articleLimit}`}
                           </span>
                         )}
                       </div>
-                      
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
+
+                      <ChevronDown className="h-4 w-4 text-zinc-500" />
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
-                
-                <DropdownMenuContent className="w-64 mr-4" align="end" forceMount>
+
+                <DropdownMenuContent className="w-64 mr-4 bg-black/80 backdrop-blur-xl border-white/10" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1.5">
-                      <p className="text-sm font-medium leading-none text-gray-900">{session.user?.name}</p>
-                      <p className="text-xs leading-none text-gray-500">
+                      <p className="text-sm font-medium leading-none text-white">{session.user?.name}</p>
+                      <p className="text-xs leading-none text-zinc-400">
                         {session.user?.email}
                       </p>
                       {isPro && planExpiredAt && (
-                        <div className="flex items-center text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded-md">
+                        <div className="flex items-center text-xs text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-md border border-yellow-500/20 mt-1">
                           <Crown className="h-3 w-3 mr-1" />
                           专业版至 {formatExpiredDate(planExpiredAt)}
                         </div>
                       )}
                     </div>
                   </DropdownMenuLabel>
-                  
-                  <DropdownMenuSeparator />
-                  
+
+                  <DropdownMenuSeparator className="bg-white/10" />
+
                   <Link href="/dashboard/settings">
-                    <DropdownMenuItem className="group">
-                      <Settings className="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-600" />
-                      <span>设置</span>
+                    <DropdownMenuItem className="group focus:bg-white/10 cursor-pointer">
+                      <Settings className="mr-3 h-4 w-4 text-zinc-400 group-hover:text-white" />
+                      <span className="text-zinc-200 group-hover:text-white transition-colors">设置</span>
                     </DropdownMenuItem>
                   </Link>
-                  
-                  <DropdownMenuItem onClick={() => setShowRedeemDialog(true)} className="group">
-                    <Gift className="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-600" />
-                    <span>兑换码</span>
+
+                  <DropdownMenuItem onClick={() => setShowRedeemDialog(true)} className="group focus:bg-white/10 cursor-pointer">
+                    <Gift className="mr-3 h-4 w-4 text-zinc-400 group-hover:text-white" />
+                    <span className="text-zinc-200 group-hover:text-white transition-colors">兑换码</span>
                   </DropdownMenuItem>
-                  
-                  <DropdownMenuSeparator />
-                  
-                  <DropdownMenuItem 
-                    onClick={handleSignOut} 
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 focus:text-red-700 focus:bg-red-50 group"
+
+                  <DropdownMenuSeparator className="bg-white/10" />
+
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:text-red-300 focus:bg-red-500/10 group cursor-pointer"
                   >
                     <LogOut className="mr-3 h-4 w-4" />
                     <span>退出登录</span>
@@ -245,36 +245,36 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-6 py-8 relative z-10">
         {/* Welcome Section */}
         <div className="mb-10">
-          <div className="inline-flex items-center px-3 py-1.5 bg-blue-100/60 text-blue-700 rounded-full text-sm font-medium mb-4">
+          <div className="inline-flex items-center px-3 py-1.5 bg-primary/10 border border-primary/20 text-primary rounded-full text-sm font-medium mb-4">
             ✨ 欢迎回来，{session.user?.name}
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+          <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">
             开始创作
           </h2>
-          <p className="text-gray-600 text-lg">
+          <p className="text-zinc-400 text-lg">
             让文字如流水般顺畅，一键发布到多个平台
           </p>
         </div>
 
         {/* Quick Actions */}
         <div className="grid md:grid-cols-2 gap-6 mb-10">
-          <Card className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-0 bg-white/70 backdrop-blur-sm hover:bg-white/90">
+          <Card className="group hover:bg-white/10 transition-all duration-200 cursor-pointer border border-white/5 bg-white/5 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-                  <PlusCircle className="h-5 w-5 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-primary via-[#2a80ff] to-secondary rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-[0_0_20px_-5px_rgba(0,136,255,0.4)]">
+                  <PlusCircle className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">新建文章</h3>
-                  <p className="text-sm text-gray-600">开始创作新的内容</p>
+                  <h3 className="text-lg font-bold text-white">新建文章</h3>
+                  <p className="text-sm text-zinc-400">开始创作新的内容</p>
                 </div>
               </div>
               <ArticleCreationGuard>
                 <Link href="/editor/new">
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-2.5 rounded-lg transition-all duration-200">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-6 rounded-xl transition-all duration-200 shadow-lg shadow-primary/20">
                     开始创作
                   </Button>
                 </Link>
@@ -282,20 +282,20 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-0 bg-white/70 backdrop-blur-sm hover:bg-white/90">
+          <Card className="group hover:bg-white/10 transition-all duration-200 cursor-pointer border border-white/5 bg-white/5 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-                  <FileText className="h-5 w-5 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-[0_0_20px_-5px_rgba(6,182,212,0.4)]">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">文章管理</h3>
-                  <p className="text-sm text-gray-600">管理您的所有文章</p>
+                  <h3 className="text-lg font-bold text-white">文章管理</h3>
+                  <p className="text-sm text-zinc-400">管理您的所有文章</p>
                 </div>
               </div>
               <Button
                 variant="outline"
-                className="w-full border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 font-medium py-2.5 rounded-lg transition-all duration-200"
+                className="w-full border-white/10 bg-black/20 text-zinc-300 hover:bg-white/10 hover:text-white hover:border-white/20 font-medium py-6 rounded-xl transition-all duration-200"
                 onClick={() => {
                   document.getElementById('recent-articles')?.scrollIntoView({ behavior: 'smooth' });
                 }}
@@ -309,30 +309,30 @@ export default function DashboardPage() {
         {/* Recent Articles */}
         <div className="mb-8" id="recent-articles">
           <div className="mb-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">我的文章</h3>
-            <p className="text-gray-600">管理和编辑您的创作内容</p>
+            <h3 className="text-2xl font-bold text-white mb-2">我的文章</h3>
+            <p className="text-zinc-400">管理和编辑您的创作内容</p>
           </div>
 
           {loading ? (
-            <Card className="border-0 bg-white/70 backdrop-blur-sm">
-              <CardContent className="py-12 text-center">
-                <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-600">加载中...</p>
+            <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
+              <CardContent className="py-20 text-center">
+                <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-zinc-500">加载中...</p>
               </CardContent>
             </Card>
           ) : articles.length === 0 ? (
-            <Card className="border-0 bg-white/70 backdrop-blur-sm">
-              <CardContent className="py-12 text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <FileText className="h-8 w-8 text-gray-400" />
+            <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
+              <CardContent className="py-20 text-center">
+                <div className="w-20 h-20 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/10">
+                  <FileText className="h-10 w-10 text-zinc-500" />
                 </div>
-                <h4 className="text-xl font-semibold text-gray-900 mb-2">还没有文章</h4>
-                <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+                <h4 className="text-xl font-bold text-white mb-2">还没有文章</h4>
+                <p className="text-zinc-400 mb-8 max-w-sm mx-auto leading-relaxed">
                   创建您的第一篇文章，开始您的内容创作之旅
                 </p>
                 <Link href="/editor/new">
-                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-6 py-2.5 rounded-lg transition-all duration-200">
-                    <PlusCircle className="h-4 w-4 mr-2" />
+                  <Button className="bg-primary hover:bg-primary/90 text-white font-semibold px-8 py-6 rounded-xl transition-all duration-200">
+                    <PlusCircle className="h-5 w-5 mr-2" />
                     创建第一篇文章
                   </Button>
                 </Link>
@@ -340,29 +340,35 @@ export default function DashboardPage() {
             </Card>
           ) : (
             <>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {articles.map((article) => (
-                  <Card key={article.id} className="hover:shadow-md transition-all duration-200 border-0 bg-white/70 backdrop-blur-sm hover:bg-white/90">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
+                  <Card key={article.id} className="group hover:border-primary/30 transition-all duration-300 border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] backdrop-blur-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-6">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-lg font-bold text-zinc-100 mb-2 truncate group-hover:text-primary transition-colors">
                             {article.title}
                           </h4>
-                          <div className="flex items-center space-x-3 text-sm text-gray-500 mb-3">
+                          <div className="flex items-center space-x-3 text-sm text-zinc-500 mb-3">
                             <span>{new Date(article.updatedAt).toLocaleDateString('zh-CN')}</span>
-                            <span>·</span>
+                            <span className="w-1 h-1 rounded-full bg-zinc-600" />
                             <span>{article.wordCount} 字</span>
-                            <span>·</span>
+                            <span className="w-1 h-1 rounded-full bg-zinc-600" />
                             <span>{article.readingTime} 分钟</span>
                           </div>
-                          <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed">
+                          <p className="text-zinc-400 text-sm line-clamp-2 leading-relaxed opacity-80">
                             {article.content.replace(/[#*`]/g, '').substring(0, 120)}...
                           </p>
                         </div>
-                        <div className="flex ml-6">
+                        <div className="flex flex-col items-end gap-3 shrink-0">
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${article.status === 'published'
+                            ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                            : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+                            }`}>
+                            {article.status === 'published' ? '已发布' : '草稿'}
+                          </span>
                           <Link href={`/editor/${article.id}`}>
-                            <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                            <Button variant="outline" size="sm" className="mt-2 border-white/10 bg-black/20 text-zinc-300 hover:bg-white/10 hover:text-white hover:border-white/20">
                               继续编辑
                             </Button>
                           </Link>
@@ -375,13 +381,13 @@ export default function DashboardPage() {
 
               {/* 分页控件 */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-center space-x-2 mt-8">
+                <div className="flex items-center justify-center space-x-2 mt-10">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="border-gray-200 hover:bg-gray-50"
+                    className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     上一页
@@ -394,11 +400,10 @@ export default function DashboardPage() {
                         variant={currentPage === page ? "default" : "outline"}
                         size="sm"
                         onClick={() => handlePageChange(page)}
-                        className={`w-9 h-9 p-0 ${
-                          currentPage === page
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                            : 'border-gray-200 hover:bg-gray-50'
-                        }`}
+                        className={`w-9 h-9 p-0 rounded-lg ${currentPage === page
+                          ? 'bg-primary hover:bg-primary/90 text-white'
+                          : 'border-white/10 bg-white/5 hover:bg-white/10 text-zinc-400'
+                          }`}
                       >
                         {page}
                       </Button>
@@ -410,7 +415,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="border-gray-200 hover:bg-gray-50"
+                    className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
                   >
                     下一页
                     <ChevronRight className="h-4 w-4 ml-1" />
@@ -423,7 +428,7 @@ export default function DashboardPage() {
 
         {/* 升级提示 - 只在达到限制时显示 */}
         {!isPro && totalArticles > 0 && (
-          <div className="mt-8">
+          <div className="mt-12">
             <UpgradePrompt scenario="dashboard-upgrade" />
           </div>
         )}
@@ -436,7 +441,7 @@ export default function DashboardPage() {
         onClose={() => setShowRedeemDialog(false)}
         onSuccess={handleRedeemSuccess}
       />
-      
+
       {/* 全局浮动客服按钮 */}
       <CustomerSupportButton />
     </div>

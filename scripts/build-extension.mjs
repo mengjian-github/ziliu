@@ -7,6 +7,7 @@ import { execSync } from 'child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const extDir = join(root, 'extension');
+const extBuildDir = join(extDir, 'dist');
 const publicDir = join(root, 'public');
 
 function getVersion() {
@@ -48,13 +49,24 @@ function cleanOldZips() {
 
 function zipExtension(version) {
   const out = join(publicDir, `ziliu-extension-v${version}.zip`);
-  const cwd = extDir;
-  const zipCmd = `zip -r -q ${JSON.stringify(out)} . -x "*.DS_Store" -x "node_modules/*" -x "*.map" -x "*.log"`;
+  const cwd = extBuildDir;
+
   try {
+    // 尝试使用 zip 命令 (Linux/Mac)
+    const zipCmd = `zip -r -q ${JSON.stringify(out)} . -x "*.DS_Store" -x "node_modules/*" -x "*.map" -x "*.log"`;
     execSync(zipCmd, { stdio: 'inherit', cwd });
   } catch (e) {
-    console.error('打包失败：需要系统提供 zip 命令');
-    throw e;
+    console.log('zip 命令不可用，尝试使用 PowerShell...');
+    try {
+      // Windows PowerShell Fallback
+      // Compress-Archive requires full paths usually or careful relative paths
+      const sourcePath = join(cwd, '*');
+      const psCmd = `powershell -Command "Compress-Archive -Path '${sourcePath}' -DestinationPath '${out}' -Force"`;
+      execSync(psCmd, { stdio: 'inherit' });
+    } catch (pe) {
+      console.error('打包失败：系统未提供 zip 命令，且 PowerShell 打包也失败');
+      throw pe;
+    }
   }
   return out;
 }
@@ -83,6 +95,15 @@ function main() {
     }
   }
   console.log(`🧩 打包插件版本 v${version}`);
+
+  // 先构建 production 产物（extension/dist），再打包，确保生产包不包含 localhost 权限与调试配置
+  try {
+    execSync('node ./scripts/build-extension.js production', { stdio: 'inherit', cwd: root });
+  } catch (e) {
+    console.error('❌ 生产构建失败，无法继续打包');
+    throw e;
+  }
+
   cleanOldZips();
   const out = zipExtension(version);
   writeLatest(version);

@@ -160,12 +160,20 @@ npm run type-check       # TypeScript 类型检查
 ```
 
 ### Chrome 插件开发
-1. 插件源码位于 `/extension` 目录
-2. 在 Chrome 中加载未打包的插件：
+1. 插件源码位于 `/extension` 目录（纯 JS，多文件注入）
+2. 准备插件环境变量：
+   - 开发环境：复制 `extension/.env.example` 为 `extension/.env` 并填写 `ZILIU_API_BASE_URL`、`ZILIU_SITE_URL`
+   - 生产环境：复制 `extension/.env.production.example` 为 `extension/.env.production`
+3. 生成可直接加载的构建产物：
+   - `npm run ext:dev`（输出到 `extension/dist-dev`，用于本地调试）
+   - `npm run ext:build`（输出到 `extension/dist`，用于生产打包/发布）
+   - `npm run ext:watch`（监听 `extension/` 代码变更并自动重建到 `extension/dist-dev`）
+4. 在 Chrome 中加载本地构建产物：
    - 打开 `chrome://extensions/`
    - 开启开发者模式
-   - 点击"加载已解压的扩展程序"
-   - 选择 `extension` 目录
+   - 点击“加载已解压的扩展程序”
+   - 选择 `extension/dist-dev`（或 `extension/dist`）
+5. 调试第三方平台（公众号/小红书等）：保持插件启用，直接访问对应平台页面即可注入最新本地代码；改代码后（或使用 `ext:watch`）在扩展页面点“重新加载”。
 
 ## 🌟 主要功能
 

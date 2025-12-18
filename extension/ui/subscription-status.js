@@ -11,7 +11,7 @@ class SubscriptionStatus {
    */
   init() {
     this.injectStyles();
-    
+
     // 监听面板显示事件，检查是否需要显示订阅状态
     if (window.ZiliuEventBus) {
       window.ZiliuEventBus.on('panel:show', () => {
@@ -30,23 +30,26 @@ class SubscriptionStatus {
     style.id = 'ziliu-subscription-styles';
     style.textContent = `
       .ziliu-subscription-banner {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--ziliu-primary) 0%, var(--ziliu-secondary) 100%);
         color: white;
         padding: 12px;
-        border-radius: 8px;
+        border-radius: var(--ziliu-radius-md);
         margin-bottom: 16px;
         text-align: center;
         font-size: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
       }
 
       .ziliu-subscription-banner.free {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        color: #8b4513;
+        background: var(--ziliu-accent);
+        color: var(--ziliu-muted-foreground);
+        border: 1px solid var(--ziliu-border);
       }
 
       .ziliu-subscription-banner.expired {
         background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
         color: white;
+        border-color: rgba(255, 255, 255, 0.18);
       }
 
       .ziliu-subscription-title {
@@ -62,39 +65,45 @@ class SubscriptionStatus {
       }
 
       .ziliu-upgrade-btn {
-        background: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         color: inherit;
-        padding: 6px 12px;
-        border-radius: 4px;
+        padding: 0 12px;
+        height: 30px;
+        border-radius: var(--ziliu-radius-sm);
         font-size: 11px;
+        font-weight: 600;
         cursor: pointer;
         text-decoration: none;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.2s ease;
       }
 
       .ziliu-upgrade-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
         transform: translateY(-1px);
       }
 
       .ziliu-subscription-banner.free .ziliu-upgrade-btn {
-        background: #ff6b35;
-        border-color: #e55a2b;
-        color: white;
+        background: linear-gradient(135deg, var(--ziliu-primary) 0%, var(--ziliu-secondary) 100%);
+        border-color: rgba(0, 0, 0, 0.0);
+        color: var(--ziliu-primary-foreground);
+        box-shadow: 0 18px 45px -36px rgba(0, 102, 255, 0.75);
       }
 
       .ziliu-subscription-banner.free .ziliu-upgrade-btn:hover {
-        background: #e55a2b;
+        transform: translateY(-1px);
       }
 
       .ziliu-platform-lock {
-        background: #fff7e6;
-        border: 1px solid #ffd591;
-        color: #d46b08;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--ziliu-border);
+        color: var(--ziliu-foreground);
         padding: 10px;
-        border-radius: 6px;
+        border-radius: var(--ziliu-radius-md);
         margin: 12px 0;
         font-size: 11px;
         text-align: center;
@@ -113,7 +122,7 @@ class SubscriptionStatus {
       .ziliu-pro-badge {
         display: inline-flex;
         align-items: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--ziliu-primary) 0%, var(--ziliu-secondary) 100%);
         color: white;
         padding: 4px 8px;
         border-radius: 12px;
@@ -130,7 +139,7 @@ class SubscriptionStatus {
       .ziliu-upgrade-page {
         text-align: center;
         padding: 20px 16px;
-        color: #333;
+        color: var(--ziliu-foreground);
       }
 
       .ziliu-upgrade-icon {
@@ -143,12 +152,12 @@ class SubscriptionStatus {
         font-size: 18px;
         font-weight: bold;
         margin-bottom: 12px;
-        color: #2d3436;
+        color: var(--ziliu-foreground);
       }
 
       .ziliu-upgrade-description {
         font-size: 13px;
-        color: #636e72;
+        color: var(--ziliu-muted-foreground);
         line-height: 1.4;
         margin-bottom: 20px;
       }
@@ -163,13 +172,13 @@ class SubscriptionStatus {
         align-items: center;
         padding: 8px 0;
         font-size: 12px;
-        color: #2d3436;
+        color: var(--ziliu-foreground);
       }
 
       .ziliu-upgrade-features .ziliu-feature-icon {
         width: 16px;
         height: 16px;
-        background: #52c41a;
+        background: var(--ziliu-success);
         color: white;
         border-radius: 50%;
         display: inline-flex;
@@ -186,26 +195,26 @@ class SubscriptionStatus {
 
       .ziliu-upgrade-primary-btn {
         display: inline-block;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--ziliu-primary) 0%, var(--ziliu-secondary) 100%);
         color: white;
         padding: 12px 24px;
-        border-radius: 8px;
+        border-radius: var(--ziliu-radius-md);
         text-decoration: none;
         font-size: 14px;
         font-weight: 600;
         transition: all 0.2s ease;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 20px 50px -35px rgba(0, 102, 255, 0.75);
       }
 
       .ziliu-upgrade-primary-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 26px 60px -40px rgba(0, 102, 255, 0.8);
       }
 
       .ziliu-upgrade-hint {
         margin-top: 12px;
         font-size: 11px;
-        color: #999;
+        color: var(--ziliu-muted-foreground);
         line-height: 1.3;
       }
 
@@ -215,13 +224,14 @@ class SubscriptionStatus {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(2px);
+        background: rgba(2, 6, 23, 0.85);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
         z-index: 99999;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 12px;
+        border-radius: var(--ziliu-radius-lg);
       }
     `;
     document.head.appendChild(style);
@@ -239,10 +249,10 @@ class SubscriptionStatus {
 
       const userPlan = await window.ZiliuSubscriptionService.syncUserPlan();
       const currentPlatform = window.ZiliuApp?.currentPlatform;
-      
+
       // 在面板顶部插入状态横幅
       this.insertStatusBanner(userPlan, currentPlatform);
-      
+
     } catch (error) {
       console.warn('检查订阅状态失败:', error);
     }
@@ -318,7 +328,7 @@ class SubscriptionStatus {
 
     // 检查当前平台是否需要专业版
     const needsPro = currentPlatform.requiredPlan === 'pro';
-    
+
     if (needsPro) {
       return `
         <div class="ziliu-platform-lock">
@@ -367,7 +377,7 @@ class SubscriptionStatus {
    */
   showPlatformLocked(platformName) {
     console.log('🔒 开始显示平台锁定遮罩:', platformName);
-    
+
     // 延迟执行，确保面板已经创建
     setTimeout(() => {
       const panel = document.querySelector('#ziliu-panel');
@@ -377,7 +387,7 @@ class SubscriptionStatus {
         setTimeout(() => this.showPlatformLocked(platformName), 1000);
         return;
       }
-      
+
       console.log('✅ 找到面板元素:', panel);
       this.createOverlay(panel, platformName);
     }, 500);
@@ -443,7 +453,7 @@ class SubscriptionStatus {
     // 将遮罩层添加到面板中
     panel.appendChild(overlay);
     console.log('🎭 遮罩层已添加到面板:', overlay);
-    
+
     // 强制样式更新
     overlay.style.display = 'flex';
     console.log('✅ 平台锁定遮罩显示完成');

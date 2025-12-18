@@ -63,7 +63,8 @@ class ConfigService {
     try {
       // 从存储中获取API基础URL
       const result = await chrome.storage.sync.get(['apiBaseUrl']);
-      this.config.API_BASE_URL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || result.apiBaseUrl || 'https://www.ziliu.online';
+      // 优先使用用户设置（存储），其次使用构建默认值（常量）
+      this.config.API_BASE_URL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.online';
       
       // 从插件配置加载平台配置
       this.loadPlatformConfigs();

@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Platform, isVideoPlatform, getPlatformType, PLATFORM_CONFIGS } from '@/types/platform-settings';
-import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy } from 'lucide-react';
+import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon } from 'lucide-react';
 import { PublishSettings } from './publish-settings';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { PlatformGuard, StyleGuard } from '@/lib/subscription/components/FeatureGuard';
 import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
 import { useExtensionDetector } from '@/hooks/useExtensionDetector';
-import { Crown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface PlatformPreviewProps {
@@ -20,11 +19,11 @@ interface PlatformPreviewProps {
 export function PlatformPreview({ title, content, articleId }: PlatformPreviewProps) {
   // 状态持久化key
   const storageKey = `editor-preview-state-${articleId || 'new'}`;
-  
+
   // 从localStorage获取保存的状态
   const getSavedState = () => {
     if (typeof window === 'undefined') return null;
-    
+
     try {
       const saved = localStorage.getItem(storageKey);
       return saved ? JSON.parse(saved) : null;
@@ -35,7 +34,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   };
 
   const savedState = getSavedState();
-  
+
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(savedState?.platform || 'wechat');
   const [selectedStyle, setSelectedStyle] = useState<'default' | 'tech' | 'minimal' | 'elegant'>(savedState?.style || 'default');
   const [previewHtml, setPreviewHtml] = useState('');
@@ -49,7 +48,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   // 保存状态到localStorage
   const saveState = useCallback((platform: Platform, style: string, settings: any) => {
     if (typeof window === 'undefined') return;
-    
+
     try {
       const state = {
         platform,
@@ -62,12 +61,12 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       console.warn('Failed to save preview state:', error);
     }
   }, [storageKey]);
-  
+
   // 添加订阅信息和插件检测
   const { hasFeature, checkFeatureAccess } = useUserPlan();
   const { isInstalled, isChecking } = useExtensionDetector();
   const router = useRouter();
-  
+
   // 自动创建草稿功能
   const createDraftArticle = useCallback(async () => {
     try {
@@ -83,14 +82,14 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
           style: selectedStyle
         }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
           return data.data.id;
         }
       }
-      
+
       throw new Error('创建草稿失败');
     } catch (error) {
       console.error('创建草稿失败:', error);
@@ -251,7 +250,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
           ...metadataData.data,
           estimatedDuration: speechData.data.estimatedDuration
         };
-        
+
         setVideoMetadata(videoData);
 
         // 保存到数据库
@@ -307,7 +306,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
           const keys = Object.keys(localStorage);
           const now = Date.now();
           const weekMs = 7 * 24 * 60 * 60 * 1000; // 7天
-          
+
           keys.forEach(key => {
             if (key.startsWith('editor-preview-state-')) {
               try {
@@ -377,7 +376,12 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
       const data = await response.json();
       if (data.success) {
-        setPreviewHtml(data.data.html);
+        // 微信公众号预览：用 inlineHtml 渲染，保证预览与最终粘贴到公众号编辑器的效果一致
+        const htmlForPreview =
+          platform === 'wechat'
+            ? (data.data.inlineHtml || data.data.html)
+            : data.data.html;
+        setPreviewHtml(htmlForPreview);
       } else {
         console.error('转换失败:', data.error);
       }
@@ -400,10 +404,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   // 平台切换时立即预览
   const handlePlatformChange = useCallback(async (platform: Platform) => {
     setSelectedPlatform(platform);
-    
+
     // 保存状态
     saveState(platform, selectedStyle, appliedSettings);
-    
+
     // 如果是视频平台且没有articleId，需要先创建草稿
     if (isVideoPlatform(platform) && !articleId) {
       // 检查是否有足够的内容
@@ -411,7 +415,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         alert('请先输入标题和内容再预览视频效果');
         return;
       }
-      
+
       try {
         // 自动创建草稿
         const newArticleId = await createDraftArticle();
@@ -423,7 +427,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         return;
       }
     }
-    
+
     // 正常预览流程
     handlePreview(platform, selectedStyle);
   }, [selectedStyle, handlePreview, articleId, title, content, createDraftArticle, router, saveState, appliedSettings]);
@@ -431,10 +435,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   // 样式切换时立即预览
   const handleStyleChange = useCallback((style: string) => {
     setSelectedStyle(style as any);
-    
+
     // 保存状态
     saveState(selectedPlatform, style, appliedSettings);
-    
+
     handlePreview(selectedPlatform, style);
     // 同步保存样式到文章
     if (articleId) {
@@ -442,7 +446,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ style })
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [selectedPlatform, handlePreview, saveState, appliedSettings]);
 
@@ -519,7 +523,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               style: selectedStyle,
               platform: selectedPlatform
             }
-          }, () => {});
+          }, () => { });
         }
       } catch (e) {
         console.warn('通知插件所选样式失败，不影响发布', e);
@@ -539,21 +543,22 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       setIsPublishing(false);
     }
   }, [selectedPlatform, title, content, finalContent, appliedSettings, isInstalled, router]);
+
   return (
     <div className="flex flex-col h-full">
       {/* 预览控制栏 */}
-      <div className="p-4 border-b border-gray-200 bg-white">
+      <div className="p-4 border-b border-white/5 bg-transparent">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium text-gray-700 flex items-center">
+          <h3 className="font-medium text-white flex items-center">
             {selectedPlatform === 'wechat' ? (
-              <Smartphone className="h-4 w-4 mr-2" />
+              <Smartphone className="h-4 w-4 mr-2 text-zinc-400" />
             ) : (
-              <Monitor className="h-4 w-4 mr-2" />
+              <Monitor className="h-4 w-4 mr-2 text-zinc-400" />
             )}
             预览
           </h3>
           {isConverting && (
-            <div className="flex items-center text-sm text-gray-500">
+            <div className="flex items-center text-sm text-zinc-400">
               <Loader2 className="h-4 w-4 animate-spin mr-1" />
               转换中...
             </div>
@@ -563,18 +568,18 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         {/* 平台选择器 */}
         <div className="mb-4">
           <div className="flex items-center space-x-2 mb-3">
-            <span className="text-sm font-medium text-gray-700">发布平台:</span>
+            <span className="text-sm font-medium text-zinc-400">发布平台:</span>
           </div>
-          
+
           {/* 图文平台 */}
           <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-2">图文平台</div>
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="text-xs text-zinc-500 mb-2">图文平台</div>
+            <div className="flex bg-white/5 rounded-xl p-1 gap-1">
               {textPlatforms.map((platform) => {
                 const platformFeatureId = `${platform.id}-platform`;
                 const hasAccess = hasFeature(platformFeatureId);
                 const accessResult = checkFeatureAccess(platformFeatureId);
-                
+
                 return (
                   <div key={platform.id} className="relative flex items-center">
                     <button
@@ -585,13 +590,12 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                           // 锁定平台采用tooltip提示，不再弹窗
                         }
                       }}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
-                        selectedPlatform === platform.id
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : hasAccess 
-                            ? 'text-gray-600 hover:text-gray-900'
-                            : 'text-gray-400 cursor-not-allowed opacity-60'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${selectedPlatform === platform.id
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                        : hasAccess
+                          ? 'text-zinc-400 hover:text-white hover:bg-white/10'
+                          : 'text-zinc-600 cursor-not-allowed opacity-40'
+                        }`}
                       disabled={!hasAccess}
                       title={!hasAccess ? accessResult.reason : platform.description}
                     >
@@ -610,18 +614,17 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 );
               })}
             </div>
-            {/* 提示简化：平台按钮已含禁用态与tooltip，不再额外占位 */}
           </div>
 
           {/* 视频平台 */}
           <div>
-            <div className="text-xs text-gray-500 mb-2">视频平台</div>
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="text-xs text-zinc-500 mb-2">视频平台</div>
+            <div className="flex bg-white/5 rounded-xl p-1 gap-1">
               {videoPlatforms.map((platform) => {
                 const platformFeatureId = `${platform.id}-platform`;
                 const hasAccess = hasFeature(platformFeatureId);
                 const accessResult = checkFeatureAccess(platformFeatureId);
-                
+
                 return (
                   <div key={platform.id} className="relative flex items-center">
                     <button
@@ -632,13 +635,12 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                           // 锁定平台采用tooltip提示，不再弹窗
                         }
                       }}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
-                        selectedPlatform === platform.id
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : hasAccess 
-                            ? 'text-gray-600 hover:text-gray-900'
-                            : 'text-gray-400 cursor-not-allowed opacity-60'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${selectedPlatform === platform.id
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                        : hasAccess
+                          ? 'text-zinc-400 hover:text-white hover:bg-white/10'
+                          : 'text-zinc-600 cursor-not-allowed opacity-40'
+                        }`}
                       disabled={!hasAccess}
                       title={!hasAccess ? accessResult.reason : platform.description}
                     >
@@ -657,7 +659,6 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 );
               })}
             </div>
-            {/* 提示简化：仅保留按钮tooltip，避免大块提示 */}
           </div>
         </div>
 
@@ -666,8 +667,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Palette className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">样式:</span>
+                <Palette className="h-4 w-4 text-zinc-500" />
+                <span className="text-sm font-medium text-zinc-400">样式:</span>
               </div>
               <select
                 value={selectedStyle}
@@ -682,7 +683,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                   }
                   handleStyleChange(newStyle);
                 }}
-                className="text-sm border border-gray-200 rounded-md px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="text-sm border border-white/10 rounded-lg px-3 py-1.5 bg-white/5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent [&>option]:bg-[#020617] [&>option]:text-zinc-200"
               >
                 <option value="default">默认样式</option>
                 <option value="tech" disabled={!hasFeature('advanced-styles')}>
@@ -710,10 +711,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                   onApplySettings={(settings) => {
                     console.log('应用发布设置:', settings);
                     setAppliedSettings(settings);
-                    
+
                     // 保存状态
                     saveState(selectedPlatform, selectedStyle, settings);
-                    
+
                     // 立即重新预览
                     setTimeout(() => {
                       handlePreview(selectedPlatform, selectedStyle);
@@ -723,7 +724,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               ) : (
                 <div className="flex items-center space-x-2">
                   <button
-                    className="flex items-center space-x-1 px-3 py-2 border border-gray-200 rounded-md text-sm font-medium bg-gray-50 text-gray-400 cursor-not-allowed transition-colors hover:bg-gray-100"
+                    className="flex items-center space-x-1 px-3 py-2 border border-white/5 rounded-lg text-sm font-medium bg-white/5 text-zinc-600 cursor-not-allowed transition-colors"
                     title="发布设置功能仅限专业版用户使用"
                   >
                     <Settings className="h-4 w-4" />
@@ -738,7 +739,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               {isChecking ? (
                 <button
                   disabled
-                  className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed"
                 >
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>检测中...</span>
@@ -746,7 +747,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               ) : !isInstalled ? (
                 <button
                   onClick={() => router.push('/extension')}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-orange-100 hover:bg-orange-200 text-orange-800 border border-orange-300"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20"
                   title="需要先安装插件才能发布"
                 >
                   <Chrome className="h-4 w-4" />
@@ -757,11 +758,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 <button
                   onClick={handlePublish}
                   disabled={isPublishing || !title.trim() || !content.trim()}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                    isPublishing || !title.trim() || !content.trim()
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
-                  }`}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isPublishing || !title.trim() || !content.trim()
+                    ? 'bg-white/5 text-zinc-500 cursor-not-allowed'
+                    : 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30'
+                    }`}
                   title={`复制内容并打开${[...textPlatforms, ...videoPlatforms].find(p => p.id === selectedPlatform)?.name}`}
                 >
                   {isPublishing ? (
@@ -782,7 +782,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               {isGeneratingVideo ? (
-                <div className="flex items-center text-sm text-gray-500">
+                <div className="flex items-center text-sm text-zinc-400">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   正在生成视频内容...
                 </div>
@@ -790,7 +790,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 <button
                   onClick={generateVideoContent}
                   disabled={!content.trim()}
-                  className="flex items-center space-x-2 px-3 py-2 border border-gray-200 rounded-md text-sm font-medium bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center space-x-2 px-3 py-2 border border-white/10 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -799,13 +799,13 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 </button>
               )}
             </div>
-            
+
             <div className="flex items-center space-x-3">
               {/* 去发布按钮 */}
               {isChecking ? (
                 <button
                   disabled
-                  className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed"
                 >
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>检测中...</span>
@@ -813,7 +813,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               ) : !isInstalled ? (
                 <button
                   onClick={() => router.push('/extension')}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-orange-100 hover:bg-orange-200 text-orange-800 border border-orange-300"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20"
                   title="需要先安装插件才能发布"
                 >
                   <Chrome className="h-4 w-4" />
@@ -827,11 +827,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     window.open(platformUrl, '_blank');
                   }}
                   disabled={!videoMetadata || isGeneratingVideo}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                    !videoMetadata || isGeneratingVideo
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
-                  }`}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${!videoMetadata || isGeneratingVideo
+                    ? 'bg-white/5 text-zinc-500 cursor-not-allowed'
+                    : 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30'
+                    }`}
                   title={`去${videoPlatforms.find(p => p.id === selectedPlatform)?.name}发布`}
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -844,17 +843,17 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
         {/* 显示当前应用的设置 */}
         {appliedSettings && (
-          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-            <div className="text-xs text-green-700 font-medium">
+          <div className="mt-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg backdrop-blur-sm">
+            <div className="text-xs text-green-400 font-medium">
               ✅ 已应用设置: {appliedSettings.name} ({appliedSettings.platform === 'wechat' ? '微信公众号' : appliedSettings.platform})
             </div>
             {appliedSettings.headerContent && (
-              <div className="text-xs text-gray-600 mt-1">
+              <div className="text-xs text-green-400/70 mt-1">
                 📝 包含开头内容
               </div>
             )}
             {appliedSettings.footerContent && (
-              <div className="text-xs text-gray-600 mt-1">
+              <div className="text-xs text-green-400/70 mt-1">
                 📝 包含结尾内容
               </div>
             )}
@@ -871,28 +870,26 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   {isConverting ? (
-                    <div className="flex items-center justify-center space-x-2 text-gray-500">
-                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="flex items-center justify-center space-x-2 text-zinc-400">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-sm">转换中...</span>
                     </div>
                   ) : (
-                    <div className="space-y-2 text-gray-400">
-                      <div className="text-2xl">📝</div>
+                    <div className="space-y-2 text-zinc-500">
+                      <div className="text-3xl">📝</div>
                       <div className="text-sm">开始输入内容以查看预览</div>
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col">
+              <div className="flex-1 flex flex-col p-6">
                 <div className="flex-1">
                   {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
                   {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
                   {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
                   {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
                 </div>
-
-                {/* 底部引导已移除，根据需求不再展示升级提示 */}
               </div>
             )}
           </>
@@ -900,34 +897,34 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
         {/* 视频平台预览 */}
         {isVideoPlatform(selectedPlatform) && (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col p-6">
             {isGeneratingVideo || !content ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   {isGeneratingVideo ? (
-                    <div className="flex items-center justify-center space-x-2 text-gray-500">
-                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="flex items-center justify-center space-x-2 text-zinc-400">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-sm">生成视频内容中...</span>
                     </div>
                   ) : (
-                    <div className="space-y-2 text-gray-400">
-                      <div className="text-2xl">🎬</div>
+                    <div className="space-y-2 text-zinc-500">
+                      <div className="text-3xl">🎬</div>
                       <div className="text-sm">开始输入内容以生成视频素材</div>
                     </div>
                   )}
                 </div>
               </div>
             ) : videoMetadata ? (
-              <VideoPreview 
-                platform={selectedPlatform} 
-                metadata={videoMetadata} 
+              <VideoPreview
+                platform={selectedPlatform}
+                metadata={videoMetadata}
                 title={title}
                 platformInfo={videoPlatforms.find(p => p.id === selectedPlatform)}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
-                <div className="text-center space-y-2 text-gray-400">
-                  <div className="text-2xl">⚠️</div>
+                <div className="text-center space-y-2 text-zinc-500">
+                  <div className="text-3xl">⚠️</div>
                   <div className="text-sm">生成视频内容失败，请重试</div>
                 </div>
               </div>
@@ -940,9 +937,9 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 }
 
 // 视频平台预览
-function VideoPreview({ platform, metadata, title, platformInfo }: { 
-  platform: Platform; 
-  metadata: any; 
+function VideoPreview({ platform, metadata, title, platformInfo }: {
+  platform: Platform;
+  metadata: any;
   title: string;
   platformInfo?: { id: Platform; name: string; icon: string; color: string; description: string };
 }) {
@@ -1091,76 +1088,144 @@ function VideoPreview({ platform, metadata, title, platformInfo }: {
 
 // 微信公众号预览
 function WechatPreview({ title, content }: { title: string; content: string }) {
+  const [wechatTheme, setWechatTheme] = useState<'day' | 'night'>(() => {
+    if (typeof window === 'undefined') return 'day';
+    try {
+      const saved = localStorage.getItem('wechat-preview-theme');
+      if (saved === 'night' || saved === 'day') return saved;
+    } catch { }
+    return 'day';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('wechat-preview-theme', wechatTheme);
+    } catch { }
+  }, [wechatTheme]);
+
+  const isNight = wechatTheme === 'night';
+
   return (
-    <div className="p-6 flex justify-center items-center min-h-full bg-gradient-to-br from-gray-50 to-gray-100">
+    <div
+      className={`p-6 flex flex-col items-center justify-center gap-4 min-h-full ${isNight
+        ? 'bg-gradient-to-br from-[#0b0b0c] to-[#16161a]'
+        : 'bg-gradient-to-br from-gray-50 to-gray-100'
+        }`}
+    >
+      {/* 日/夜模式切换（仅影响预览，不影响导出） */}
+      <div
+        className={`inline-flex items-center rounded-xl border p-1 shadow-sm backdrop-blur ${isNight ? 'bg-black/30 border-white/10' : 'bg-white/80 border-gray-200'
+          }`}
+      >
+        <button
+          type="button"
+          onClick={() => setWechatTheme('day')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${wechatTheme === 'day'
+            ? isNight
+              ? 'bg-white/20 text-white'
+              : 'bg-gray-900 text-white'
+            : isNight
+              ? 'text-white/60 hover:text-white'
+              : 'text-gray-600 hover:text-gray-900'
+            }`}
+          aria-pressed={wechatTheme === 'day'}
+        >
+          <Sun className="h-3.5 w-3.5" />
+          日间
+        </button>
+        <button
+          type="button"
+          onClick={() => setWechatTheme('night')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${wechatTheme === 'night'
+            ? isNight
+              ? 'bg-white/20 text-white'
+              : 'bg-gray-900 text-white'
+            : isNight
+              ? 'text-white/60 hover:text-white'
+              : 'text-gray-600 hover:text-gray-900'
+            }`}
+          aria-pressed={wechatTheme === 'night'}
+        >
+          <Moon className="h-3.5 w-3.5" />
+          夜间
+        </button>
+      </div>
+
       {/* iPhone 样机 */}
       <div className="relative">
         <div className="w-[390px] h-[844px] bg-black rounded-[60px] p-2 shadow-2xl">
-          <div className="w-full h-full bg-white rounded-[48px] overflow-hidden flex flex-col relative">
+          <div
+            className={`w-full h-full rounded-[48px] overflow-hidden flex flex-col relative ${isNight ? 'bg-[#1c1c1e]' : 'bg-white'
+              }`}
+          >
             {/* 动态岛 */}
             <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-32 h-8 bg-black rounded-full z-10"></div>
 
             {/* 状态栏 */}
-            <div className="h-12 bg-white flex items-center justify-between px-6 pt-4">
-              <div className="text-sm font-semibold text-black">9:41</div>
+            <div className={`h-12 flex items-center justify-between px-6 pt-4 ${isNight ? 'bg-[#1c1c1e]' : 'bg-white'}`}>
+              <div className={`text-sm font-semibold ${isNight ? 'text-white' : 'text-black'}`}>9:41</div>
               <div className="flex items-center space-x-1">
                 <div className="flex space-x-1">
-                  <div className="w-1 h-3 bg-black rounded-full"></div>
-                  <div className="w-1 h-4 bg-black rounded-full"></div>
-                  <div className="w-1 h-5 bg-black rounded-full"></div>
-                  <div className="w-1 h-6 bg-black rounded-full"></div>
+                  <div className={`w-1 h-3 rounded-full ${isNight ? 'bg-white' : 'bg-black'}`}></div>
+                  <div className={`w-1 h-4 rounded-full ${isNight ? 'bg-white' : 'bg-black'}`}></div>
+                  <div className={`w-1 h-5 rounded-full ${isNight ? 'bg-white' : 'bg-black'}`}></div>
+                  <div className={`w-1 h-6 rounded-full ${isNight ? 'bg-white' : 'bg-black'}`}></div>
                 </div>
-                <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M2.166 4.999c5.208-5.208 13.651-5.208 18.859 0a.833.833 0 1 1-1.178 1.178c-4.375-4.375-11.471-4.375-15.846 0a.833.833 0 0 1-1.178-1.178z"/>
-                  <path d="M5.01 7.844c3.125-3.125 8.195-3.125 11.32 0a.833.833 0 1 1-1.178 1.178c-2.292-2.292-6.014-2.292-8.306 0a.833.833 0 0 1-1.178-1.178z"/>
-                  <path d="M7.854 10.688c1.042-1.042 2.734-1.042 3.776 0a.833.833 0 1 1-1.178 1.178.833.833 0 0 0-1.178 0 .833.833 0 0 1-1.178-1.178z"/>
-                  <circle cx="10" cy="15" r="1.5"/>
+                <svg className={`w-4 h-4 ${isNight ? 'text-white' : 'text-black'}`} fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2.166 4.999c5.208-5.208 13.651-5.208 18.859 0a.833.833 0 1 1-1.178 1.178c-4.375-4.375-11.471-4.375-15.846 0a.833.833 0 0 1-1.178-1.178z" />
+                  <path d="M5.01 7.844c3.125-3.125 8.195-3.125 11.32 0a.833.833 0 1 1-1.178 1.178c-2.292-2.292-6.014-2.292-8.306 0a.833.833 0 0 1-1.178-1.178z" />
+                  <path d="M7.854 10.688c1.042-1.042 2.734-1.042 3.776 0a.833.833 0 1 1-1.178 1.178.833.833 0 0 0-1.178 0 .833.833 0 0 1-1.178-1.178z" />
+                  <circle cx="10" cy="15" r="1.5" />
                 </svg>
                 <div className="flex items-center">
-                  <div className="w-6 h-3 border border-black rounded-sm relative">
+                  <div className={`w-6 h-3 border rounded-sm relative ${isNight ? 'border-white/80' : 'border-black'}`}>
                     <div className="w-4 h-1.5 bg-green-500 rounded-sm absolute top-0.5 left-0.5"></div>
                   </div>
-                  <div className="w-0.5 h-1.5 bg-black rounded-r-sm ml-0.5"></div>
+                  <div className={`w-0.5 h-1.5 rounded-r-sm ml-0.5 ${isNight ? 'bg-white/80' : 'bg-black'}`}></div>
                 </div>
               </div>
             </div>
 
             {/* 微信公众号头部 */}
-            <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                字
+            <div
+              className={`border-b px-4 py-3 flex items-center ${isNight ? 'bg-[#1c1c1e] border-white/10' : 'bg-white border-gray-100'
+                }`}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-[#2a80ff] to-secondary text-white shadow-[0_14px_36px_-18px_rgba(0,102,255,0.65)]">
+                <span className="text-sm font-semibold">Z</span>
               </div>
               <div className="ml-3 flex-1">
-                <div className="text-base font-medium text-gray-900 break-words whitespace-normal">
+                <div className={`text-base font-medium break-words whitespace-normal ${isNight ? 'text-white' : 'text-gray-900'}`}>
                   {title || '字流'}
                 </div>
-                <div className="text-xs text-gray-500">刚刚</div>
+                <div className={`text-xs ${isNight ? 'text-white/60' : 'text-gray-500'}`}>刚刚</div>
               </div>
               <div className="flex items-center space-x-3">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-5 h-5 ${isNight ? 'text-white/40' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01" />
                 </svg>
               </div>
             </div>
 
             {/* 文章内容区域 */}
-            <div className="flex-1 overflow-auto bg-white">
+            <div className={`flex-1 overflow-auto ${isNight ? 'bg-[#1c1c1e]' : 'bg-white'}`}>
               <div className="px-4 py-4">
                 <div
-                  className="wechat-content text-sm leading-relaxed"
+                  className={isNight ? 'wechat-preview text-[#f2f2f7]' : 'wechat-preview text-[#111827]'}
+                  data-wechat-theme={wechatTheme}
                   dangerouslySetInnerHTML={{ __html: content }}
                 />
               </div>
             </div>
 
             {/* 底部安全区域 */}
-            <div className="h-8 bg-white"></div>
+            <div className={`h-8 ${isNight ? 'bg-[#1c1c1e]' : 'bg-white'}`}></div>
           </div>
         </div>
 
         {/* 手机标签 */}
-        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 font-medium">
-          iPhone 14 Pro 预览
+        <div className={`absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-medium ${isNight ? 'text-white/60' : 'text-gray-500'}`}>
+          iPhone 14 Pro 预览 · {isNight ? '夜间' : '日间'}
         </div>
       </div>
     </div>

@@ -18,11 +18,11 @@ interface PublishSettingsProps {
 export function PublishSettings({ platform, onApplySettings }: PublishSettingsProps) {
   // 状态持久化key
   const storageKey = `publish-settings-ui-state-${platform}`;
-  
+
   // 从localStorage获取保存的UI状态
   const getSavedUIState = () => {
     if (typeof window === 'undefined') return null;
-    
+
     try {
       const saved = localStorage.getItem(storageKey);
       return saved ? JSON.parse(saved) : null;
@@ -33,7 +33,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
   };
 
   const savedUIState = getSavedUIState();
-  
+
   const [settings, setSettings] = useState<PlatformSettings[]>([]);
   const [selectedSettingId, setSelectedSettingId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +46,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
   // 保存编辑中的内容到localStorage
   const saveEditingContent = useCallback((settings: PlatformSettings | null) => {
     if (typeof window === 'undefined') return;
-    
+
     try {
       const state = {
         editingSettings: settings,
@@ -189,17 +189,16 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
         variant="outline"
         size="sm"
         onClick={() => setShowDropdown(!showDropdown)}
-        className="text-purple-700 border-purple-200 hover:bg-purple-50"
       >
         <Settings className="h-4 w-4 mr-1" />
         发布设置
       </Button>
 
       {showDropdown && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-[#1e293b]/95 backdrop-blur-xl rounded-lg shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)] border border-white/10 z-50">
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-gray-900 flex items-center">
+              <h3 className="font-medium text-zinc-200 flex items-center">
                 {getPlatformIcon(platform)}
                 <span className="ml-2">{getPlatformName(platform)}发布设置</span>
               </h3>
@@ -215,17 +214,18 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
 
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                <span className="ml-2 text-sm text-gray-500">加载中...</span>
+                <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+                <span className="ml-2 text-sm text-zinc-400">加载中...</span>
               </div>
             ) : settings.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-gray-400 mb-2">⚙️</div>
-                <p className="text-sm text-gray-500 mb-3">暂无发布设置</p>
+                <div className="text-zinc-600 mb-2">⚙️</div>
+                <p className="text-sm text-zinc-500 mb-3">暂无发布设置</p>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleCreateSettings}
+                  className="bg-white/5 border-white/10 hover:bg-white/10 text-zinc-300"
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   创建设置
@@ -238,16 +238,15 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                   {settings.map((setting) => (
                     <div
                       key={setting.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                        selectedSettingId === setting.id
-                          ? 'border-purple-200 bg-purple-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedSettingId === setting.id
+                        ? 'border-primary/25 bg-primary/5'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
                       onClick={() => setSelectedSettingId(setting.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <div className="font-medium text-sm text-gray-900">
+                          <div className="font-medium text-sm text-zinc-200">
                             {setting.name}
                           </div>
                           {setting.isDefault && (
@@ -258,7 +257,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 hover:bg-gray-100"
+                            className="h-6 w-6 p-0 hover:bg-white/10 text-zinc-400 hover:text-white"
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingSettings(setting);
@@ -301,9 +300,9 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                           </Button>
                         </div>
                       </div>
-                      
+
                       {/* 显示设置摘要 */}
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-zinc-500 mt-1">
                         {platform === 'wechat' && setting.authorName && `作者: ${setting.authorName}`}
                         {(platform === 'zhihu' || platform === 'juejin') && '支持开头和结尾内容设置'}
                         {platform === 'zsxq' && '知识星球一键发布，自动识别所有星球'}
@@ -313,11 +312,12 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                 </div>
 
                 {/* 操作按钮 */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between pt-3 border-t border-white/10">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleCreateSettings}
+                    className="bg-white/5 border-white/10 hover:bg-white/10 text-zinc-300"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     新建设置
@@ -327,7 +327,6 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     size="sm"
                     onClick={handleApplySettings}
                     disabled={!selectedSettingId}
-                    className="bg-purple-600 hover:bg-purple-700"
                   >
                     <Settings className="h-4 w-4 mr-1" />
                     应用设置
@@ -341,10 +340,10 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
 
       {/* 创建/编辑设置表单 */}
       {showCreateForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#0f172a] border border-white/10 rounded-xl p-6 w-96 max-h-[80vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">
+              <h3 className="text-lg font-medium text-white">
                 {editingSettings?.id ? '编辑' : '创建'}{getPlatformName(platform)}发布设置
               </h3>
               <Button
@@ -363,13 +362,13 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-zinc-400 mb-1">
                   设置名称
                 </label>
                 <Input
                   value={editingSettings?.name || ''}
                   onChange={(e) => {
-                    const newSettings = editingSettings ? {...editingSettings, name: e.target.value} : null;
+                    const newSettings = editingSettings ? { ...editingSettings, name: e.target.value } : null;
                     setEditingSettings(newSettings);
                     saveEditingContent(newSettings);
                   }}
@@ -381,13 +380,13 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
               {platform === 'wechat' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-zinc-400 mb-1">
                       作者名称
                     </label>
                     <Input
                       value={editingSettings?.authorName || ''}
                       onChange={(e) => {
-                        const newSettings = editingSettings ? {...editingSettings, authorName: e.target.value} : null;
+                        const newSettings = editingSettings ? { ...editingSettings, authorName: e.target.value } : null;
                         setEditingSettings(newSettings);
                         saveEditingContent(newSettings);
                       }}
@@ -421,7 +420,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.headerContent || ''}
                         onChange={(e) => {
-                          const newSettings = editingSettings ? {...editingSettings, headerContent: e.target.value} : null;
+                          const newSettings = editingSettings ? { ...editingSettings, headerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
                         }}
@@ -457,7 +456,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.footerContent || ''}
                         onChange={(e) => {
-                          const newSettings = editingSettings ? {...editingSettings, footerContent: e.target.value} : null;
+                          const newSettings = editingSettings ? { ...editingSettings, footerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
                         }}
@@ -474,7 +473,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                 <>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label className="block text-sm font-medium text-zinc-400">
                         开头内容
                       </label>
                       <Button
@@ -499,7 +498,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.headerContent || ''}
                         onChange={(e) => {
-                          const newSettings = editingSettings ? {...editingSettings, headerContent: e.target.value} : null;
+                          const newSettings = editingSettings ? { ...editingSettings, headerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
                         }}
@@ -535,7 +534,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.footerContent || ''}
                         onChange={(e) => {
-                          const newSettings = editingSettings ? {...editingSettings, footerContent: e.target.value} : null;
+                          const newSettings = editingSettings ? { ...editingSettings, footerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
                         }}
@@ -552,7 +551,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                 <>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label className="block text-sm font-medium text-zinc-400">
                         开头内容
                       </label>
                       <Button
@@ -565,10 +564,10 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       </Button>
                     </div>
                     {showHeaderPreview ? (
-                      <div className="border rounded-md p-3 bg-gray-50 min-h-[80px] text-sm">
+                      <div className="border border-white/10 rounded-md p-3 bg-white/5 min-h-[80px] text-sm text-zinc-300">
                         <div
                           dangerouslySetInnerHTML={{
-                            __html: editingSettings?.headerContent || '<p class="text-gray-400">暂无开头内容</p>'
+                            __html: editingSettings?.headerContent || '<p class="text-zinc-500">暂无开头内容</p>'
                           }}
                         />
                       </div>
@@ -576,7 +575,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.headerContent || ''}
                         onChange={(e) => {
-                          const newSettings = editingSettings ? {...editingSettings, headerContent: e.target.value} : null;
+                          const newSettings = editingSettings ? { ...editingSettings, headerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
                         }}
@@ -600,10 +599,10 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       </Button>
                     </div>
                     {showFooterPreview ? (
-                      <div className="border rounded-md p-3 bg-gray-50 min-h-[80px] text-sm">
+                      <div className="border border-white/10 rounded-md p-3 bg-white/5 min-h-[80px] text-sm text-zinc-300">
                         <div
                           dangerouslySetInnerHTML={{
-                            __html: editingSettings?.footerContent || '<p class="text-gray-400">暂无结尾内容</p>'
+                            __html: editingSettings?.footerContent || '<p class="text-zinc-500">暂无结尾内容</p>'
                           }}
                         />
                       </div>
@@ -611,7 +610,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.footerContent || ''}
                         onChange={(e) => {
-                          const newSettings = editingSettings ? {...editingSettings, footerContent: e.target.value} : null;
+                          const newSettings = editingSettings ? { ...editingSettings, footerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
                         }}
@@ -624,15 +623,15 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
               )}
 
               {/* 平台特定配置 */}
-              <div className="border-t pt-4">
+              <div className="border-t border-white/10 pt-4">
                 <PlatformConfigForm
                   platform={platform}
                   config={editingSettings?.platformConfig || getDefaultPlatformConfig(platform)}
-                  onChange={(config) => setEditingSettings(prev => prev ? {...prev, platformConfig: config} : null)}
+                  onChange={(config) => setEditingSettings(prev => prev ? { ...prev, platformConfig: config } : null)}
                 />
               </div>
-              
-              <div className="flex items-center justify-end space-x-2 pt-4 border-t">
+
+              <div className="flex items-center justify-end space-x-2 pt-4 border-t border-white/10">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -640,6 +639,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                     setEditingSettings(null);
                     saveEditingContent(null);
                   }}
+                  className="border-white/10 hover:bg-white/10 text-zinc-300"
                 >
                   取消
                 </Button>
@@ -687,7 +687,6 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       alert('保存失败，请重试');
                     }
                   }}
-                  className="bg-purple-600 hover:bg-purple-700"
                 >
                   保存
                 </Button>

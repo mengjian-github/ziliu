@@ -16,6 +16,7 @@
     "r2:create-bucket": "node ./scripts/create-r2-bucket.js",
     "ext:dev": "node ./scripts/build-extension.js development",
     "ext:build": "node ./scripts/build-extension.js production",
+    "ext:watch": "node ./scripts/watch-extension.js development",
     "package:extension": "node ./scripts/build-extension.mjs",
     "prepare": "node ./scripts/setup-git-hooks.mjs"
   },

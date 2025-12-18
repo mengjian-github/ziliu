@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MultiPlatformEditor } from './multi-platform-editor';
 import { PlatformPreview } from './platform-preview';
 import { Button } from '@/components/ui/button';
@@ -42,12 +42,80 @@ export function EditorLayout({
     visible: false, message: '', type: 'success'
   });
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ visible: true, message, type });
     setTimeout(() => {
       setToast((prev) => ({ ...prev, visible: false }));
     }, 3000);
-  };
+  }, []);
+
+  const draftStorageKey = useMemo(() => {
+    const key = articleId ? `ziliu:editor:draft:${articleId}` : 'ziliu:editor:draft:new';
+    return key;
+  }, [articleId]);
+
+  const baseRef = useRef({ title: initialTitle, content: initialContent });
+  const persistTimerRef = useRef<number | null>(null);
+
+  const isDirty = title !== baseRef.current.title || content !== baseRef.current.content;
+
+  useEffect(() => {
+    const raw = localStorage.getItem(draftStorageKey);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as { title?: unknown; content?: unknown; updatedAt?: unknown };
+      const draftTitle = typeof parsed.title === 'string' ? parsed.title : undefined;
+      const draftContent = typeof parsed.content === 'string' ? parsed.content : undefined;
+
+      const hasAnyDraft = Boolean((draftTitle && draftTitle.trim()) || (draftContent && draftContent.trim()));
+      if (!hasAnyDraft) {
+        localStorage.removeItem(draftStorageKey);
+        return;
+      }
+
+      const base = baseRef.current;
+      const effectiveTitle = draftTitle ?? base.title;
+      const effectiveContent = draftContent ?? base.content;
+      const differsFromBase = effectiveTitle !== base.title || effectiveContent !== base.content;
+
+      if (differsFromBase) {
+        setTitle(effectiveTitle);
+        setContent(effectiveContent);
+        showToast('已恢复未保存草稿（本地）', 'info');
+      } else {
+        localStorage.removeItem(draftStorageKey);
+      }
+    } catch {
+      localStorage.removeItem(draftStorageKey);
+    }
+  }, [draftStorageKey, showToast]);
+
+  useEffect(() => {
+    if (persistTimerRef.current) {
+      window.clearTimeout(persistTimerRef.current);
+    }
+
+    if (!isDirty) {
+      localStorage.removeItem(draftStorageKey);
+      return;
+    }
+
+    persistTimerRef.current = window.setTimeout(() => {
+      const payload = {
+        title,
+        content,
+        updatedAt: Date.now(),
+      };
+      localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+    }, 400);
+
+    return () => {
+      if (persistTimerRef.current) {
+        window.clearTimeout(persistTimerRef.current);
+      }
+    };
+  }, [title, content, isDirty, draftStorageKey]);
 
   // 处理编辑器内容变化
   const handleTitleChange = (newTitle: string) => {
@@ -73,6 +141,8 @@ export function EditorLayout({
     try {
       if (onSave) {
         await onSave(title, content);
+        baseRef.current = { title, content };
+        localStorage.removeItem(draftStorageKey);
         setLastSaved(new Date());
         showToast('保存成功', 'success');
       }
@@ -95,17 +165,19 @@ export function EditorLayout({
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-[#020617] overflow-hidden relative">
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary/20 blur-[100px] pointer-events-none rounded-full mix-blend-screen opacity-20" />
+      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-secondary/10 blur-[120px] pointer-events-none rounded-full mix-blend-screen opacity-20" />
+
       {/* Toast 提示 */}
       {toast.visible && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg border flex items-center gap-2 text-sm ${
-            toast.type === 'success'
-              ? 'bg-green-50 border-green-200 text-green-700'
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg border flex items-center gap-2 text-sm backdrop-blur-xl ${toast.type === 'success'
+              ? 'bg-green-500/10 border-green-500/20 text-green-400'
               : toast.type === 'info'
-              ? 'bg-blue-50 border-blue-200 text-blue-700'
-              : 'bg-red-50 border-red-200 text-red-700'
-          }`}
+                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}
         >
           {toast.type === 'success' ? (
             <CheckCircle2 className="h-4 w-4" />
@@ -119,19 +191,19 @@ export function EditorLayout({
       )}
 
       {/* 顶部工具栏 */}
-      <div className="border-b bg-white shadow-sm">
+      <div className="border-b border-white/5 bg-black/20 backdrop-blur-xl z-10 sticky top-0">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             {/* 左侧：返回和统计 */}
             <div className="flex items-center space-x-4">
               <Link href="/dashboard">
-                <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700">
+                <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white hover:bg-white/10">
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   返回工作台
                 </Button>
               </Link>
-              <div className="h-4 w-px bg-gray-300"></div>
-              <div className="flex items-center space-x-3 text-sm text-gray-500">
+              <div className="h-4 w-px bg-white/10"></div>
+              <div className="flex items-center space-x-3 text-sm text-zinc-500">
                 <FileText className="h-4 w-4" />
                 <span>{wordCount} 字</span>
                 <span>·</span>
@@ -139,7 +211,7 @@ export function EditorLayout({
                 {lastSaved && (
                   <>
                     <span>·</span>
-                    <span className="text-gray-400">
+                    <span className="text-zinc-600">
                       上次保存: {lastSaved.toLocaleTimeString()}
                     </span>
                   </>
@@ -153,7 +225,7 @@ export function EditorLayout({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFeishuImport(true)}
-                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                className="text-blue-400 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300"
               >
                 <Upload className="h-4 w-4 mr-1" />
                 导入飞书
@@ -163,7 +235,7 @@ export function EditorLayout({
                 size="sm"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
               >
                 {isSaving ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -178,11 +250,11 @@ export function EditorLayout({
       </div>
 
       {/* 左右分栏布局 */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-0">
         {/* 主编辑区域 */}
         <div className="flex-1 flex overflow-hidden">
           {/* 左侧：编辑器 */}
-          <div className="w-1/2 border-r border-gray-200">
+          <div className="w-1/2 border-r border-white/5 bg-white/[0.02]">
             <MultiPlatformEditor
               title={title}
               content={content}
@@ -192,7 +264,7 @@ export function EditorLayout({
           </div>
 
           {/* 右侧：预览区域 */}
-          <div className="w-1/2 bg-gray-50">
+          <div className="w-1/2 bg-black/20">
             <PlatformPreview
               title={title}
               content={content}
