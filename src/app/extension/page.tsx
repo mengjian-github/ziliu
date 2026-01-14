@@ -87,7 +87,7 @@ export default function ExtensionPage() {
     try {
       // 创建下载链接
       const link = document.createElement('a');
-      const href = latest?.url || '/ziliu-extension-v1.2.0.zip';
+      const href = latest?.url || '/ziliu-extension-v1.3.4.zip';
       link.href = href; // 默认回退
       link.download = href.split('/').pop() || 'ziliu-extension.zip';
       link.click();
