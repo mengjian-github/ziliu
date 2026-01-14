@@ -25,16 +25,25 @@ class YouTubePlatformPlugin extends BasePlatformPlugin {
 
     const search = (node) => {
       if (!node) return;
+
+      // 1. 在当前节点（或 ShadowRoot）上查找
       try {
-        node.querySelectorAll(selector).forEach(el => results.add(el));
+        if (typeof node.querySelectorAll === 'function') {
+          node.querySelectorAll(selector).forEach(el => results.add(el));
+        }
       } catch (_) {
-        // ignore invalid selectors in some roots
+        // ignore invalid selectors
       }
 
-      // 遍历 shadow hosts
+      // 2. 如果该节点有 ShadowRoot，进入其中查找
+      if (node.shadowRoot) {
+        search(node.shadowRoot);
+      }
+
+      // 3. 遍历所有子节点，检查它们是否有 ShadowRoot
       try {
-        const all = node.querySelectorAll ? node.querySelectorAll('*') : [];
-        all.forEach(el => {
+        const children = node.querySelectorAll ? node.querySelectorAll('*') : [];
+        children.forEach(el => {
           if (el && el.shadowRoot) {
             search(el.shadowRoot);
           }
@@ -67,7 +76,7 @@ class YouTubePlatformPlugin extends BasePlatformPlugin {
   }
 
   findInputByLabelKeywords(keywords) {
-    const candidates = this.querySelectorAllWithShadow('textarea, input');
+    const candidates = this.querySelectorAllWithShadow('textarea, input, div[contenteditable="true"]');
 
     // 优先找可见的
     const visible = candidates.filter(el => this.isVisible(el));
@@ -80,6 +89,7 @@ class YouTubePlatformPlugin extends BasePlatformPlugin {
       const placeholder = el.getAttribute?.('placeholder') || '';
       const title = el.getAttribute?.('title') || '';
       const dataLabel = el.getAttribute?.('data-label') || '';
+      const text = el.innerText || '';
 
       if (
         this.matchAny(aria, keywords) ||
@@ -101,10 +111,28 @@ class YouTubePlatformPlugin extends BasePlatformPlugin {
       elements: {}
     };
 
-    // 仅在 Studio 中尝试查找上传详情的输入框
-    elements.elements.title = this.findInputByLabelKeywords(['title', '标题', 'video title', 'add a title']);
-    elements.elements.description = this.findInputByLabelKeywords(['description', '描述', '说明', 'video description', 'add a description']);
-    elements.elements.tags = this.findInputByLabelKeywords(['tags', '标签']);
+    // 针对 YouTube Studio 的特殊优化：
+    // Title 和 Description 都是 div[contenteditable="true"]，且在特定的 component 下
+    const titleContainer = this.querySelectorAllWithShadow('ytcp-social-suggestions-textbox#title-textarea').shift();
+    if (titleContainer) {
+      elements.elements.title = this.querySelectorAllWithShadow('div#textbox', titleContainer).shift();
+    }
+
+    const descContainer = this.querySelectorAllWithShadow('ytcp-social-suggestions-textbox#description-textarea').shift();
+    if (descContainer) {
+      elements.elements.description = this.querySelectorAllWithShadow('div#textbox', descContainer).shift();
+    }
+
+    // 如果没找到，尝试模糊匹配
+    if (!elements.elements.title) {
+      elements.elements.title = this.findInputByLabelKeywords(['title', '标题', 'video title', 'add a title']);
+    }
+    if (!elements.elements.description) {
+      elements.elements.description = this.findInputByLabelKeywords(['description', '描述', '说明', '介绍', 'video description', 'add a description']);
+    }
+
+    // Tags 往往需要点击 "SHOW MORE" 才会出现
+    elements.elements.tags = this.findInputByLabelKeywords(['tags', '标签', 'add tags']);
 
     elements.isEditor = !!(elements.elements.title || elements.elements.description);
 
@@ -169,7 +197,17 @@ class YouTubePlatformPlugin extends BasePlatformPlugin {
       results.description = await this.fillVideoDescription(elements.elements.description, processedDesc);
     }
 
-    if (elements.elements.tags && tags) {
+    // 尝试填充 Tags
+    let tagsElement = elements.elements.tags;
+    if (!tagsElement) {
+      // 尝试展开“更多选项”以显示标签
+      await this.revealMoreOptions();
+      await this.delay(1000);
+      const reFound = this._findElements();
+      tagsElement = reFound.elements.tags;
+    }
+
+    if (tagsElement && tags) {
       let tagsArray = [];
       if (typeof tags === 'string') {
         try {
@@ -184,27 +222,44 @@ class YouTubePlatformPlugin extends BasePlatformPlugin {
       // YouTube tags 通常用逗号分隔
       if (tagsArray.length > 0) {
         const tagsText = tagsArray.slice(0, 15).join(', ');
-        results.tags = await this.fillVideoTitle(elements.elements.tags, tagsText);
+        results.tags = await this.fillVideoTitle(tagsElement, tagsText);
       }
     }
 
     return results;
   }
 
+  async revealMoreOptions() {
+    try {
+      const buttons = this.querySelectorAllWithShadow('ytcp-button#toggle-button');
+      for (const btn of buttons) {
+        const text = btn.innerText || '';
+        if (text.includes('更多选项') || text.includes('SHOW MORE')) {
+          console.log('🔘 正在点击“更多选项”...');
+          btn.click();
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('点击展开更多选项失败:', e);
+    }
+    return false;
+  }
+
   async fillVideoTitle(element, title) {
     try {
-      await this.setInputValue(element, title);
+      await this.setEditorContent(element, title);
       await this.delay(150);
       return { success: true, value: title };
     } catch (error) {
-      console.error('YouTube 标题填充失败:', error);
+      console.error('YouTube 标题/标签填充失败:', error);
       return { success: false, error: error.message };
     }
   }
 
   async fillVideoDescription(element, description) {
     try {
-      await this.setInputValue(element, description);
+      await this.setEditorContent(element, description);
       await this.delay(150);
       return { success: true, value: description };
     } catch (error) {
