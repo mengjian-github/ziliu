@@ -31,6 +31,35 @@ window.ZiliuPluginConfig = {
       priority: 10
     },
     {
+      id: 'wechat_xiaolushu',
+      name: '微信小绿书平台插件',
+      displayName: '小绿书',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'wechat_xiaolushu-platform',
+      // 小绿书与长文同域名，靠 URL 参数区分：createType=8
+      urlPatterns: [
+        'https://mp.weixin.qq.com/cgi-bin/appmsg*createType=8*',
+        'http://mp.weixin.qq.com/cgi-bin/appmsg*createType=8*'
+      ],
+      editorUrl: 'https://mp.weixin.qq.com/',
+      // 微信编辑器由专用插件处理，这里的 selectors 仅用于展示/兜底
+      selectors: {
+        title: '#title',
+        content: '.ProseMirror, .rich_media_content .ProseMirror, [contenteditable="true"]:not(.editor_content_placeholder)'
+      },
+      // 小绿书通常不需要作者/摘要，先保持最小字段
+      features: ['title', 'content', 'richText'],
+      // 同微信编辑器：仍然使用 HTML 转换和富文本填充
+      contentType: 'html',
+      specialHandling: {
+        initDelay: 500,
+        noCopyButton: true
+      },
+      // 高于 wechat，让 createType=8 优先匹配
+      priority: 11
+    },
+    {
       id: 'zhihu',
       name: '知乎平台插件',
       displayName: '知乎',
@@ -271,7 +300,7 @@ window.ZiliuPluginConfig = {
     {
       id: 'xiaohongshu',
       name: '小红书平台插件',
-      displayName: '小红书',
+      displayName: '小红书（视频）',
       enabled: true,
       requiredPlan: 'pro',
       featureId: 'xiaohongshu-platform',
@@ -279,37 +308,376 @@ window.ZiliuPluginConfig = {
         'https://creator.xiaohongshu.com/publish/publish*'
       ],
       editorUrl: 'https://creator.xiaohongshu.com/publish/publish',
+      // 小红书页面复杂，由专用插件处理，selectors 用于兜底
       selectors: {
         title: 'input[placeholder*="填写标题"]',
-        content: 'div[contenteditable="true"]',
-        topicButton: 'button:has-text("话题")',
-        recommendTags: '.recommend-topic-wrapper > *'
+        description: 'div[contenteditable="true"]'
       },
       features: ['videoTitle', 'videoDescription', 'tags', 'topics'],
       contentType: 'video',
       specialHandling: {
+        // 与小红书图文共用 URL，允许根据网站端选择的平台进行匹配
+        sharedUrlGroup: 'xiaohongshu',
         initDelay: 2000,
         retryOnFail: true,
         retryDelay: 2000,
         buttonConfig: {
           fillButton: {
-            text: '📖 填充小红书',
-            tooltip: '智能填充标题、描述和话题标签到小红书编辑器'
+            text: '📕 填充小红书视频',
+            tooltip: '填充视频标题、描述与话题标签到小红书编辑器'
           },
           copyButton: {
-            text: '📋 复制笔记内容',
-            tooltip: '复制适合小红书的笔记内容'
+            text: '📋 复制视频文案',
+            tooltip: '复制适合小红书视频的文案'
           }
         },
-        // 小红书特有功能
-        smartTopicMatching: true,    // 智能话题匹配
-        useRecommendTopics: true,    // 优先使用推荐话题
-        addTopicsToContent: true,    // 支持将话题添加到内容区
+        smartTopicMatching: true,
+        useRecommendTopics: true,
+        addTopicsToContent: true,
         titleLimit: { min: 1, max: 20 },
         contentLimit: { max: 1000 },
         topicLimit: { max: 10 }
       },
       priority: 9
+    },
+    {
+      id: 'xiaohongshu_note',
+      name: '小红书图文平台插件',
+      displayName: '小红书（图文）',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'xiaohongshu_note-platform',
+      // 目前小红书图文/视频在创作者平台大多共用 publish 页面，因此先复用 URL
+      urlPatterns: [
+        'https://creator.xiaohongshu.com/publish/publish*'
+      ],
+      editorUrl: 'https://creator.xiaohongshu.com/publish/publish',
+      selectors: {
+        title: 'input[placeholder*="填写标题"]',
+        content: 'div[contenteditable="true"]',
+        topicButton: 'button[class*="contentBtn"]',
+        recommendTags: '.recommend-topic-wrapper > *'
+      },
+      features: ['title', 'content', 'tags', 'topics'],
+      contentType: 'text',
+      specialHandling: {
+        sharedUrlGroup: 'xiaohongshu',
+        initDelay: 2000,
+        retryOnFail: true,
+        retryDelay: 2000,
+        buttonConfig: {
+          fillButton: {
+            text: '📕 填充小红书图文',
+            tooltip: '填充标题、正文与话题标签到小红书图文编辑器'
+          },
+          copyButton: {
+            text: '📋 复制笔记内容',
+            tooltip: '复制适合小红书图文的笔记内容'
+          }
+        },
+        smartTopicMatching: true,
+        useRecommendTopics: true,
+        addTopicsToContent: true,
+        titleLimit: { min: 1, max: 20 },
+        contentLimit: { max: 1000 },
+        topicLimit: { max: 10 }
+      },
+      priority: 8
+    },
+
+    // =========================
+    // 🇨🇳 国内短图文（微博 / 即刻）
+    // =========================
+    {
+      id: 'weibo',
+      name: '微博平台插件',
+      displayName: '微博',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'weibo-platform',
+      urlPatterns: [
+        'https://weibo.com/*',
+        'https://www.weibo.com/*'
+      ],
+      editorUrl: 'https://weibo.com/',
+      selectors: {
+        content: [
+          'textarea[placeholder*="新鲜事"]',
+          'textarea[placeholder*="说点什么"]',
+          'div[role="textbox"][contenteditable="true"]',
+          'div[contenteditable="true"]'
+        ]
+      },
+      features: ['content'],
+      contentType: 'text',
+      specialHandling: {
+        initDelay: 1500,
+        waitForEditor: true,
+        maxWaitTime: 10000,
+        buttonConfig: {
+          fillButton: {
+            text: '填充微博',
+            tooltip: '填充短文案到微博输入框'
+          },
+          copyButton: {
+            text: '复制文案',
+            tooltip: '复制适合微博的短文案'
+          }
+        },
+        contentLimit: { max: 2000 }
+      },
+      priority: 8
+    },
+    {
+      id: 'jike',
+      name: '即刻平台插件',
+      displayName: '即刻',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'jike-platform',
+      urlPatterns: [
+        'https://web.okjike.com/*'
+      ],
+      editorUrl: 'https://web.okjike.com/',
+      selectors: {
+        content: [
+          'div[role="dialog"] div[role="textbox"][contenteditable="true"]',
+          'div[role="textbox"][contenteditable="true"]',
+          'div[contenteditable="true"]',
+          'textarea'
+        ]
+      },
+      features: ['content'],
+      contentType: 'text',
+      specialHandling: {
+        initDelay: 1500,
+        waitForEditor: true,
+        maxWaitTime: 10000,
+        buttonConfig: {
+          fillButton: {
+            text: '填充即刻',
+            tooltip: '填充短文案到即刻发布框'
+          },
+          copyButton: {
+            text: '复制文案',
+            tooltip: '复制适合即刻的短文案'
+          }
+        },
+        contentLimit: { max: 2000 }
+      },
+      priority: 8
+    },
+
+    // =========================
+    // 🌍 海外 / 出海平台（短图文）
+    // =========================
+    {
+      id: 'x',
+      name: 'X 平台插件',
+      displayName: 'X',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'x-platform',
+      urlPatterns: [
+        'https://x.com/*',
+        'https://twitter.com/*'
+      ],
+      editorUrl: 'https://x.com/home',
+      selectors: {
+        content: [
+          'div[data-testid="tweetTextarea_0"][contenteditable="true"]',
+          'div[data-testid="tweetTextarea_0"] div[contenteditable="true"]',
+          'div[role="textbox"][contenteditable="true"][data-testid^="tweetTextarea_"]',
+          'div[role="textbox"][contenteditable="true"][aria-label*="Post"]',
+          'div[role="textbox"][contenteditable="true"][aria-label*="Tweet"]'
+        ]
+      },
+      features: ['content'],
+      contentType: 'text',
+      specialHandling: {
+        initDelay: 1500,
+        waitForEditor: true,
+        maxWaitTime: 10000,
+        buttonConfig: {
+          fillButton: {
+            text: '填充文案',
+            tooltip: '填充短文案到 X 发布框'
+          },
+          copyButton: {
+            text: '复制文案',
+            tooltip: '复制适合 X 的短文案'
+          }
+        },
+        contentLimit: { max: 4000 }
+      },
+      priority: 9
+    },
+    {
+      id: 'linkedin',
+      name: 'LinkedIn 平台插件',
+      displayName: 'LinkedIn',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'linkedin-platform',
+      urlPatterns: [
+        'https://www.linkedin.com/*'
+      ],
+      editorUrl: 'https://www.linkedin.com/feed/',
+      selectors: {
+        content: [
+          // 发帖弹窗优先（避免误选消息输入框）
+          'div[role="dialog"] div[role="textbox"][contenteditable="true"]',
+          // 兼容不同语言/版本的占位属性
+          'div[role="textbox"][contenteditable="true"][data-placeholder*="What"]',
+          'div[role="textbox"][contenteditable="true"][data-placeholder*="分享"]',
+          'div[role="textbox"][contenteditable="true"][data-placeholder*="想要"]',
+          // 兜底
+          'div[role="textbox"][contenteditable="true"][aria-label*="Text"]'
+        ]
+      },
+      features: ['content'],
+      contentType: 'text',
+      specialHandling: {
+        initDelay: 1500,
+        waitForEditor: true,
+        maxWaitTime: 10000,
+        buttonConfig: {
+          fillButton: {
+            text: '填充动态',
+            tooltip: '填充内容到 LinkedIn 发帖编辑器（建议先点“开始发帖”打开弹窗）'
+          },
+          copyButton: {
+            text: '复制动态',
+            tooltip: '复制适合 LinkedIn 的内容'
+          }
+        },
+        contentLimit: { max: 3000 }
+      },
+      priority: 9
+    },
+    {
+      id: 'instagram',
+      name: 'Instagram 平台插件',
+      displayName: 'Instagram',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'instagram-platform',
+      urlPatterns: [
+        'https://www.instagram.com/*'
+      ],
+      editorUrl: 'https://www.instagram.com/',
+      selectors: {
+        content: [
+          // 发布弹窗/编辑页的文案输入框（不同语言/版本）
+          'div[role="dialog"] textarea',
+          'textarea[aria-label*="Write a caption"]',
+          'textarea[aria-label*="Write a caption…"]',
+          'textarea[placeholder*="Write a caption"]',
+          'textarea[aria-label*="写说明"]',
+          'textarea',
+          // 兜底：少数场景用 contenteditable
+          'div[role="textbox"][contenteditable="true"]'
+        ]
+      },
+      features: ['content'],
+      contentType: 'text',
+      specialHandling: {
+        initDelay: 1500,
+        waitForEditor: true,
+        maxWaitTime: 10000,
+        buttonConfig: {
+          fillButton: {
+            text: '填充文案',
+            tooltip: '填充内容到 Instagram 发布文案输入框（建议先打开“创建帖子”弹窗）'
+          },
+          copyButton: {
+            text: '复制文案',
+            tooltip: '复制适合 Instagram 的文案'
+          }
+        },
+        contentLimit: { max: 2200 }
+      },
+      priority: 9
+    },
+    {
+      id: 'facebook',
+      name: 'Facebook 平台插件',
+      displayName: 'Facebook',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'facebook-platform',
+      urlPatterns: [
+        'https://www.facebook.com/*'
+      ],
+      editorUrl: 'https://www.facebook.com/',
+      selectors: {
+        content: [
+          // 发帖弹窗优先
+          'div[role="dialog"] div[role="textbox"][contenteditable="true"]',
+          // 兼容英文/中文 aria-label
+          'div[role="textbox"][contenteditable="true"][aria-label*="What"]',
+          'div[role="textbox"][contenteditable="true"][aria-label*="有什么新鲜事"]',
+          'div[role="textbox"][contenteditable="true"][aria-label*="在想些"]',
+          // 兜底
+          'div[role="textbox"][contenteditable="true"]'
+        ]
+      },
+      features: ['content'],
+      contentType: 'text',
+      specialHandling: {
+        initDelay: 1500,
+        waitForEditor: true,
+        maxWaitTime: 10000,
+        buttonConfig: {
+          fillButton: {
+            text: '填充动态',
+            tooltip: '填充内容到 Facebook 发帖框（建议先打开“发帖”弹窗）'
+          },
+          copyButton: {
+            text: '复制动态',
+            tooltip: '复制适合 Facebook 的动态内容'
+          }
+        }
+      },
+      priority: 9
+    },
+    // =========================
+    // 🌍 海外 / 出海平台（视频）
+    // =========================
+    {
+      id: 'youtube',
+      name: 'YouTube 平台插件',
+      displayName: 'YouTube',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'youtube-platform',
+      urlPatterns: [
+        'https://studio.youtube.com/*'
+      ],
+      editorUrl: 'https://studio.youtube.com/',
+      // YouTube Studio 使用 Web Components + Shadow DOM：由专用插件完成元素查找
+      selectors: {},
+      features: ['videoTitle', 'videoDescription', 'tags'],
+      contentType: 'video',
+      specialHandling: {
+        initDelay: 2000,
+        waitForEditor: true,
+        maxWaitTime: 15000,
+        buttonConfig: {
+          fillButton: {
+            text: '🎬 填充 YouTube',
+            tooltip: '填充标题、简介到 YouTube Studio（需在上传详情页）'
+          },
+          copyButton: {
+            text: '📋 复制文案',
+            tooltip: '复制适合 YouTube 的标题/简介'
+          }
+        },
+        titleLimit: { min: 1, max: 100 },
+        contentLimit: { max: 5000 },
+        supportTags: true
+      },
+      priority: 10
     }
   ],
 

@@ -208,14 +208,14 @@ body {
 /* 知乎样式 */
 .zhihu-content {
   line-height: 1.7;
-  color: #1a202c;
+  color: inherit;
   font-size: 16px;
 }
 
 .zhihu-content h1,
 .zhihu-content h2,
 .zhihu-content h3 {
-  color: #1a202c;
+  color: inherit;
   margin: 2em 0 1em 0;
   font-weight: 600;
 }
@@ -238,14 +238,14 @@ body {
 
 .zhihu-content blockquote {
   border-left: 3px solid #0084ff;
-  background: #f6f8fa;
+  background: rgba(127, 127, 127, 0.1);
   padding: 1em 1.5em;
   margin: 1.5em 0;
   font-style: italic;
 }
 
 .zhihu-content code {
-  background: #f6f8fa;
+  background: rgba(127, 127, 127, 0.15);
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-family: 'SF Mono', Monaco, monospace;
@@ -253,12 +253,12 @@ body {
 }
 
 .zhihu-content pre {
-  background: #f6f8fa;
+  background: rgba(0, 0, 0, 0.2);
   padding: 1.2em;
   border-radius: 6px;
   overflow-x: auto;
   margin: 1.5em 0;
-  border: 1px solid #e1e4e8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .zhihu-content pre code {
@@ -269,14 +269,14 @@ body {
 /* 掘金样式 */
 .juejin-content {
   line-height: 1.7;
-  color: #2e3135;
+  color: inherit;
   font-size: 16px;
 }
 
 .juejin-content h1,
 .juejin-content h2,
 .juejin-content h3 {
-  color: #2e3135;
+  color: inherit;
   margin: 2em 0 1em 0;
   font-weight: 600;
 }
@@ -299,18 +299,18 @@ body {
 
 .juejin-content blockquote {
   border-left: 4px solid #1e80ff;
-  background: #f4f5f5;
+  background: rgba(127, 127, 127, 0.1);
   padding: 1em 1.5em;
   margin: 1.5em 0;
 }
 
 .juejin-content code {
-  background: #f4f5f5;
+  background: rgba(127, 127, 127, 0.1);
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-family: 'SF Mono', Monaco, monospace;
   font-size: 14px;
-  color: #476582;
+  color: #1e80ff;
 }
 
 .juejin-content pre {

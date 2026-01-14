@@ -84,7 +84,43 @@ export const FEATURES: Record<string, FeatureConfig> = {
   'xiaohongshu-platform': {
     id: 'xiaohongshu-platform',
     name: '小红书平台',
-    description: '发布到小红书视频',
+    description: '发布到小红书（视频）',
+    plans: ['pro']
+  },
+  'xiaohongshu_note-platform': {
+    id: 'xiaohongshu_note-platform',
+    name: '小红书图文',
+    description: '发布到小红书（图文）',
+    plans: ['pro']
+  },
+  'wechat_xiaolushu-platform': {
+    id: 'wechat_xiaolushu-platform',
+    name: '小绿书',
+    description: '发布到微信小绿书',
+    plans: ['pro']
+  },
+  'weibo-platform': {
+    id: 'weibo-platform',
+    name: '微博平台',
+    description: '发布到微博',
+    plans: ['pro']
+  },
+  'jike-platform': {
+    id: 'jike-platform',
+    name: '即刻平台',
+    description: '发布到即刻',
+    plans: ['pro']
+  },
+  'x-platform': {
+    id: 'x-platform',
+    name: 'X 平台',
+    description: '发布到 X（Twitter）',
+    plans: ['pro']
+  },
+  'youtube-platform': {
+    id: 'youtube-platform',
+    name: 'YouTube 平台',
+    description: '发布到 YouTube Studio',
     plans: ['pro']
   },
 

@@ -9,17 +9,18 @@ import { z } from 'zod';
 // 请求验证schema
 const getVideoContentSchema = z.object({
   articleId: z.string(),
-  platform: z.enum(['video_wechat', 'douyin', 'bilibili', 'xiaohongshu']),
+  platform: z.enum(['video_wechat', 'douyin', 'bilibili', 'xiaohongshu', 'youtube']),
 });
 
 const saveVideoContentSchema = z.object({
   articleId: z.string(),
-  platform: z.enum(['video_wechat', 'douyin', 'bilibili', 'xiaohongshu']),
+  platform: z.enum(['video_wechat', 'douyin', 'bilibili', 'xiaohongshu', 'youtube']),
   videoTitle: z.string(),
   videoDescription: z.string(),
   speechScript: z.string(),
   tags: z.array(z.string()),
   coverSuggestion: z.string().optional(),
+  coverImage: z.string().optional(),
   platformTips: z.array(z.string()).optional(),
   estimatedDuration: z.number().optional(),
 });
@@ -71,6 +72,7 @@ export async function GET(request: NextRequest) {
         speechScript: content.speechScript,
         tags: content.tags ? JSON.parse(content.tags) : [],
         coverSuggestion: content.coverSuggestion,
+        coverImage: content.coverImage,
         platformTips: content.platformTips ? JSON.parse(content.platformTips) : [],
         estimatedDuration: content.estimatedDuration,
       }
@@ -117,6 +119,7 @@ export async function POST(request: NextRequest) {
       speechScript: validatedData.speechScript,
       tags: JSON.stringify(validatedData.tags),
       coverSuggestion: validatedData.coverSuggestion,
+      coverImage: validatedData.coverImage,
       platformTips: JSON.stringify(validatedData.platformTips || []),
       estimatedDuration: validatedData.estimatedDuration,
       updatedAt: new Date(),

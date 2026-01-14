@@ -9,12 +9,20 @@ import { PlatformGuard, StyleGuard } from '@/lib/subscription/components/Feature
 import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
 import { useExtensionDetector } from '@/hooks/useExtensionDetector';
 import { useRouter } from 'next/navigation';
+import { extractImagesFromMarkdown, markdownToPlainText as markdownToPlainTextUtil, type ExtractedImage } from '@/lib/markdown-utils';
 
 interface PlatformPreviewProps {
   title: string;
   content: string;
   articleId?: string;
 }
+
+type ShortTextGenerated = {
+  title?: string;
+  content: string;
+  tags?: string[];
+  images?: ExtractedImage[];
+};
 
 export function PlatformPreview({ title, content, articleId }: PlatformPreviewProps) {
   // 状态持久化key
@@ -38,12 +46,16 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(savedState?.platform || 'wechat');
   const [selectedStyle, setSelectedStyle] = useState<'default' | 'tech' | 'minimal' | 'elegant'>(savedState?.style || 'default');
   const [previewHtml, setPreviewHtml] = useState('');
+  const [previewText, setPreviewText] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [appliedSettings, setAppliedSettings] = useState<any>(savedState?.settings || null);
   const [finalContent, setFinalContent] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const [videoMetadata, setVideoMetadata] = useState<any>(null);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [shortTextCache, setShortTextCache] = useState<Partial<Record<Platform, ShortTextGenerated>>>({});
+  const [shortTextImages, setShortTextImages] = useState<ExtractedImage[]>([]);
+  const [isGeneratingShortText, setIsGeneratingShortText] = useState(false);
 
   // 保存状态到localStorage
   const saveState = useCallback((platform: Platform, style: string, settings: any) => {
@@ -98,7 +110,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   }, [title, content, selectedStyle]);
 
   // 图文平台配置
-  const textPlatforms = [
+  const longTextPlatforms = [
     {
       id: 'wechat' as Platform,
       name: '公众号',
@@ -129,6 +141,45 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     }
   ];
 
+  // 短图文平台配置
+  const shortTextPlatforms = [
+    {
+      id: 'wechat_xiaolushu' as Platform,
+      name: '小绿书',
+      icon: '🟢',
+      color: 'bg-emerald-600',
+      description: '微信小绿书'
+    },
+    {
+      id: 'xiaohongshu_note' as Platform,
+      name: '小红书（图文）',
+      icon: '📕',
+      color: 'bg-red-500',
+      description: '小红书图文笔记'
+    },
+    {
+      id: 'weibo' as Platform,
+      name: '微博',
+      icon: '🧣',
+      color: 'bg-red-600',
+      description: '微博短内容'
+    },
+    {
+      id: 'jike' as Platform,
+      name: '即刻',
+      icon: '🟡',
+      color: 'bg-yellow-500',
+      description: '即刻动态'
+    },
+    {
+      id: 'x' as Platform,
+      name: 'X',
+      icon: '𝕏',
+      color: 'bg-black',
+      description: 'X（Twitter）'
+    }
+  ];
+
   // 视频平台配置
   const videoPlatforms = [
     {
@@ -154,10 +205,17 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     },
     {
       id: 'xiaohongshu' as Platform,
-      name: '小红书',
-      icon: '📖',
-      color: 'bg-red-500',
-      description: '小红书视频笔记发布'
+      name: '小红书（视频）',
+      icon: '📕',
+      color: 'bg-red-600',
+      description: '小红书视频发布'
+    },
+    {
+      id: 'youtube' as Platform,
+      name: 'YouTube',
+      icon: '🎬',
+      color: 'bg-red-600',
+      description: 'YouTube 视频发布'
     }
   ];
 
@@ -179,6 +237,63 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
     return fullContent;
   }, []);
+
+  // 简单的 Markdown -> 纯文本（用于短图文平台预览/复制）
+  const markdownToPlainText = useCallback((markdown: string) => {
+    return markdownToPlainTextUtil(markdown);
+  }, []);
+
+  // 生成短图文平台文案（AI）
+  const generateShortTextContent = useCallback(async () => {
+    if (getPlatformType(selectedPlatform) !== 'short_text') return;
+    if (!content.trim()) return;
+
+    setIsGeneratingShortText(true);
+    try {
+      const response = await fetch('/api/short-text/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: selectedPlatform,
+          title,
+          content: finalContent || content,
+        }),
+      });
+
+      const data = await response.json();
+      if (!data?.success) {
+        console.error('短图文生成失败:', data?.error);
+        alert(data?.error || '生成失败，请重试');
+        return;
+      }
+
+      const generated: ShortTextGenerated = {
+        title: data.data?.title,
+        content: data.data?.content || '',
+        tags: data.data?.tags || [],
+        images: data.data?.images || [],
+      };
+
+      setShortTextCache(prev => ({ ...prev, [selectedPlatform]: generated }));
+      setPreviewText(generated.content || '');
+      setShortTextImages(generated.images || []);
+    } catch (error) {
+      console.error('短图文生成出错:', error);
+      alert('生成失败，请重试');
+    } finally {
+      setIsGeneratingShortText(false);
+    }
+  }, [selectedPlatform, content, finalContent, title]);
+
+  const copyShortTextImages = useCallback(async () => {
+    try {
+      const urls = (shortTextImages || []).map(img => img.url).filter(Boolean).join('\n');
+      if (!urls) return;
+      await navigator.clipboard.writeText(urls);
+    } catch (error) {
+      console.error('复制图片链接失败:', error);
+    }
+  }, [shortTextImages]);
 
   // 更新最终内容
   useEffect(() => {
@@ -206,6 +321,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               speechScript: loadData.data.speechScript,
               tags: loadData.data.tags,
               coverSuggestion: loadData.data.coverSuggestion,
+              coverImage: loadData.data.coverImage,
               platformTips: loadData.data.platformTips,
               estimatedDuration: loadData.data.estimatedDuration
             });
@@ -267,6 +383,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
             speechScript: speechData.data.speechScript,
             tags: metadataData.data.tags,
             coverSuggestion: metadataData.data.coverSuggestion,
+            coverImage: metadataData.data.coverImage,
             platformTips: metadataData.data.platformTips,
             estimatedDuration: speechData.data.estimatedDuration
           })
@@ -346,9 +463,12 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
   // 转换预览（仅用于图文平台）
   const handlePreview = useCallback(async (platform: Platform, style: string) => {
+    const platformType = getPlatformType(platform);
+
     // 视频平台不需要调用转换预览
     if (isVideoPlatform(platform)) {
       setPreviewHtml('');
+      setPreviewText('');
       setIsConverting(false);
       return;
     }
@@ -357,6 +477,19 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
     if (!contentToPreview.trim()) {
       setPreviewHtml('');
+      setPreviewText('');
+      setShortTextImages([]);
+      return;
+    }
+
+    // 短图文平台：不走 HTML 转换，直接展示纯文本（或 AI 生成后的文案）
+    if (platformType === 'short_text') {
+      setIsConverting(false);
+      setPreviewHtml('');
+      const images = extractImagesFromMarkdown(contentToPreview);
+      setShortTextImages(images);
+      const cached = shortTextCache[platform];
+      setPreviewText((cached?.content || markdownToPlainText(contentToPreview)).trim());
       return;
     }
 
@@ -369,7 +502,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         },
         body: JSON.stringify({
           content: contentToPreview,
-          platform,
+          // convert API 目前仅支持长文平台；小绿书与公众号同编辑器，统一走 wechat
+          platform: platform === 'wechat_xiaolushu' ? 'wechat' : platform,
           style,
         }),
       });
@@ -377,11 +511,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       const data = await response.json();
       if (data.success) {
         // 微信公众号预览：用 inlineHtml 渲染，保证预览与最终粘贴到公众号编辑器的效果一致
-        const htmlForPreview =
-          platform === 'wechat'
-            ? (data.data.inlineHtml || data.data.html)
-            : data.data.html;
+        const isWechatLike = platform === 'wechat' || platform === 'wechat_xiaolushu';
+        const htmlForPreview = isWechatLike ? (data.data.inlineHtml || data.data.html) : data.data.html;
         setPreviewHtml(htmlForPreview);
+        setPreviewText('');
       } else {
         console.error('转换失败:', data.error);
       }
@@ -390,7 +523,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     } finally {
       setIsConverting(false);
     }
-  }, [finalContent, content]);
+  }, [finalContent, content, markdownToPlainText, shortTextCache]);
 
   // 自动预览
   useEffect(() => {
@@ -454,21 +587,32 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   const getPlatformUrl = (platform: Platform) => {
     switch (platform) {
       case 'wechat':
-        return 'https://mp.weixin.qq.com/';
+        return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&createType=0&lang=zh_CN';
+      case 'wechat_xiaolushu':
+        return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&createType=8&lang=zh_CN';
       case 'zhihu':
         return 'https://zhuanlan.zhihu.com/write';
       case 'juejin':
         return 'https://juejin.cn/editor/drafts/new?v=2';
       case 'zsxq':
         return 'https://wx.zsxq.com/';
+      case 'xiaohongshu_note':
+      case 'xiaohongshu':
+        return 'https://creator.xiaohongshu.com/publish/publish';
+      case 'weibo':
+        return 'https://weibo.com/';
+      case 'jike':
+        return 'https://web.okjike.com/';
+      case 'x':
+        return 'https://x.com/compose/post';
       case 'video_wechat':
         return 'https://channels.weixin.qq.com/platform/post/create';
       case 'douyin':
         return 'https://creator.douyin.com/creator-micro/content/post/video';
       case 'bilibili':
         return 'https://member.bilibili.com/platform/upload/video/frame';
-      case 'xiaohongshu':
-        return 'https://creator.xiaohongshu.com/publish/publish';
+      case 'youtube':
+        return 'https://studio.youtube.com/';
       default:
         return '';
     }
@@ -490,27 +634,29 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
     try {
       const contentToPublish = finalContent || content;
+      const platformType = getPlatformType(selectedPlatform);
       const platformUrl = getPlatformUrl(selectedPlatform);
 
       // 准备要复制的内容
       let contentToCopy = '';
 
-      // 添加标题
-      if (title) {
-        contentToCopy += `# ${title}\n\n`;
-      }
+      if (platformType === 'short_text') {
+        const cached = shortTextCache[selectedPlatform];
+        const plainBody = (cached?.content || markdownToPlainText(contentToPublish)).trim();
+        const finalTitle = (cached?.title || title).trim();
 
-      // 添加内容（优先使用Markdown格式）
-      contentToCopy += contentToPublish;
-
-      // 添加发布预设的开头和结尾内容
-      if (appliedSettings) {
-        if (appliedSettings.headerContent) {
-          contentToCopy = appliedSettings.headerContent + '\n\n' + contentToCopy;
+        // 部分短图文平台存在“标题+正文”的概念，复制时同时给出，方便手动兜底
+        if (selectedPlatform === 'xiaohongshu_note') {
+          contentToCopy = `${finalTitle}\n\n${plainBody}`.trim();
+        } else {
+          contentToCopy = plainBody;
         }
-        if (appliedSettings.footerContent) {
-          contentToCopy += '\n\n' + appliedSettings.footerContent;
+      } else {
+        // 长图文平台：保留 Markdown 标题，方便手动粘贴兜底
+        if (title) {
+          contentToCopy += `# ${title}\n\n`;
         }
+        contentToCopy += contentToPublish;
       }
 
       // 将当前文章ID与所选样式告知插件，方便插件拉取对应样式
@@ -542,7 +688,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     } finally {
       setIsPublishing(false);
     }
-  }, [selectedPlatform, title, content, finalContent, appliedSettings, isInstalled, router]);
+  }, [title, content, finalContent, selectedPlatform, isInstalled, router, articleId, selectedStyle, markdownToPlainText, shortTextCache]);
 
   return (
     <div className="flex flex-col h-full">
@@ -571,11 +717,56 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
             <span className="text-sm font-medium text-zinc-400">发布平台:</span>
           </div>
 
-          {/* 图文平台 */}
+          {/* 长图文平台 */}
           <div className="mb-3">
-            <div className="text-xs text-zinc-500 mb-2">图文平台</div>
+            <div className="text-xs text-zinc-500 mb-2">长图文平台</div>
             <div className="flex bg-white/5 rounded-xl p-1 gap-1">
-              {textPlatforms.map((platform) => {
+              {longTextPlatforms.map((platform) => {
+                const platformFeatureId = `${platform.id}-platform`;
+                const hasAccess = hasFeature(platformFeatureId);
+                const accessResult = checkFeatureAccess(platformFeatureId);
+
+                return (
+                  <div key={platform.id} className="relative flex items-center">
+                    <button
+                      onClick={() => {
+                        if (hasAccess) {
+                          handlePlatformChange(platform.id);
+                        } else {
+                          // 锁定平台采用tooltip提示，不再弹窗
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${selectedPlatform === platform.id
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                        : hasAccess
+                          ? 'text-zinc-400 hover:text-white hover:bg-white/10'
+                          : 'text-zinc-600 cursor-not-allowed opacity-40'
+                        }`}
+                      disabled={!hasAccess}
+                      title={!hasAccess ? accessResult.reason : platform.description}
+                    >
+                      <span>{platform.icon}</span>
+                      <span>{platform.name}</span>
+                      {!hasAccess && platform.id !== 'wechat' && (
+                        <Crown className="h-3 w-3 text-amber-500 ml-1" />
+                      )}
+                    </button>
+                    {!hasAccess && (
+                      <div className="ml-1">
+                        <UpgradePrompt scenario="platform-locked" style="tooltip" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 短图文平台 */}
+          <div className="mb-3">
+            <div className="text-xs text-zinc-500 mb-2">短图文平台</div>
+            <div className="flex bg-white/5 rounded-xl p-1 gap-1 flex-wrap">
+              {shortTextPlatforms.map((platform) => {
                 const platformFeatureId = `${platform.id}-platform`;
                 const hasAccess = hasFeature(platformFeatureId);
                 const accessResult = checkFeatureAccess(platformFeatureId);
@@ -662,43 +853,72 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
           </div>
         </div>
 
-        {/* 样式选择器和发布设置 - 只对图文平台显示 */}
+        {/* 长图文/短图文：发布设置 + 去发布 */}
         {!isVideoPlatform(selectedPlatform) && (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Palette className="h-4 w-4 text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-400">样式:</span>
-              </div>
-              <select
-                value={selectedStyle}
-                onChange={(e) => {
-                  const newStyle = e.target.value;
-                  if (newStyle !== 'default') {
-                    const styleAccess = checkFeatureAccess('advanced-styles');
-                    if (!styleAccess.hasAccess) {
-                      alert(styleAccess.reason || '高级样式需要专业版权限');
-                      return;
+              {getPlatformType(selectedPlatform) === 'long_text' ? (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <Palette className="h-4 w-4 text-zinc-500" />
+                    <span className="text-sm font-medium text-zinc-400">样式:</span>
+                  </div>
+                  <select
+                    value={selectedStyle}
+                    onChange={(e) => {
+                      const newStyle = e.target.value;
+                      if (newStyle !== 'default') {
+                        const styleAccess = checkFeatureAccess('advanced-styles');
+                        if (!styleAccess.hasAccess) {
+                          alert(styleAccess.reason || '高级样式需要专业版权限');
+                          return;
+                        }
+                      }
+                      handleStyleChange(newStyle);
+                    }}
+                    className="text-sm border border-white/10 rounded-lg px-3 py-1.5 bg-white/5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent [&>option]:bg-[#020617] [&>option]:text-zinc-200"
+                  >
+                    <option value="default">默认样式</option>
+                    <option value="tech" disabled={!hasFeature('advanced-styles')}>
+                      技术风格（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                    <option value="minimal" disabled={!hasFeature('advanced-styles')}>
+                      简约风格（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                    <option value="elegant" disabled={!hasFeature('advanced-styles')}>
+                      雅致杂志（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                  </select>
+                  {!hasFeature('advanced-styles') && (
+                    <div className="ml-1">
+                      <UpgradePrompt scenario="style-locked" style="tooltip" />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-zinc-500">
+                    短图文平台：支持提取配图 + AI 适配文案（生成后将用于复制/发布）
+                  </div>
+                  <button
+                    onClick={generateShortTextContent}
+                    disabled={
+                      isGeneratingShortText || !content.trim() || getPlatformType(selectedPlatform) !== 'short_text'
                     }
-                  }
-                  handleStyleChange(newStyle);
-                }}
-                className="text-sm border border-white/10 rounded-lg px-3 py-1.5 bg-white/5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent [&>option]:bg-[#020617] [&>option]:text-zinc-200"
-              >
-                <option value="default">默认样式</option>
-                <option value="tech" disabled={!hasFeature('advanced-styles')}>
-                  技术风格（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
-                </option>
-                <option value="minimal" disabled={!hasFeature('advanced-styles')}>
-                  简约风格（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
-                </option>
-                <option value="elegant" disabled={!hasFeature('advanced-styles')}>
-                  雅致杂志（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
-                </option>
-              </select>
-              {!hasFeature('advanced-styles') && (
-                <div className="ml-1">
-                  <UpgradePrompt scenario="style-locked" style="tooltip" />
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="用AI将正文改写为对应平台的短图文文案"
+                  >
+                    {isGeneratingShortText ? '生成中...' : 'AI生成文案'}
+                  </button>
+                  {shortTextImages.length > 0 && (
+                    <button
+                      onClick={copyShortTextImages}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10"
+                      title="复制所有图片链接（每行一个）"
+                    >
+                      复制图片链接（{shortTextImages.length}）
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -762,7 +982,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     ? 'bg-white/5 text-zinc-500 cursor-not-allowed'
                     : 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30'
                     }`}
-                  title={`复制内容并打开${[...textPlatforms, ...videoPlatforms].find(p => p.id === selectedPlatform)?.name}`}
+                  title={`复制内容并打开${PLATFORM_CONFIGS[selectedPlatform]?.name || selectedPlatform}`}
                 >
                   {isPublishing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -863,8 +1083,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
       {/* 预览内容 */}
       <div className="flex-1 overflow-auto flex flex-col">
-        {/* 图文平台预览 */}
-        {!isVideoPlatform(selectedPlatform) && (
+        {/* 长图文平台预览 */}
+        {getPlatformType(selectedPlatform) === 'long_text' && (
           <>
             {isConverting || !content ? (
               <div className="flex items-center justify-center h-full">
@@ -893,6 +1113,28 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               </div>
             )}
           </>
+        )}
+
+        {/* 短图文平台预览 */}
+        {getPlatformType(selectedPlatform) === 'short_text' && (
+          <div className="flex-1 flex flex-col p-6">
+            {!content.trim() ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-2 text-zinc-500">
+                  <div className="text-3xl">📝</div>
+                  <div className="text-sm">开始输入内容以查看预览</div>
+                </div>
+              </div>
+            ) : (
+              <ShortTextPreview
+                platform={selectedPlatform}
+                title={shortTextCache[selectedPlatform]?.title || title}
+                content={previewText}
+                tags={shortTextCache[selectedPlatform]?.tags || []}
+                images={shortTextImages}
+              />
+            )}
+          </div>
         )}
 
         {/* 视频平台预览 */}
@@ -958,21 +1200,21 @@ function VideoPreview({ platform, metadata, title, platformInfo }: {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="p-6 h-full flex flex-col">
+      <div className="max-w-4xl mx-auto w-full bg-white/5 rounded-xl border border-white/10 backdrop-blur-sm">
         {/* 视频平台头部 */}
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className={`w-12 h-12 ${platformInfo.color} rounded-lg flex items-center justify-center text-white text-2xl shadow-sm`}>
+        <div className="p-6 border-b border-white/5">
+          <div className="flex items-center space-x-4 mb-4">
+            <div className={`w-12 h-12 ${platformInfo.color} rounded-xl flex items-center justify-center text-white text-2xl shadow-lg ring-1 ring-white/20`}>
               {platformInfo.icon}
             </div>
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900">{platformInfo.name}发布预览</h2>
-              <p className="text-sm text-gray-500 mt-1">{platformInfo.description}</p>
+              <h2 className="text-xl font-bold text-white">{platformInfo.name}发布预览</h2>
+              <p className="text-sm text-zinc-400 mt-1">{platformInfo.description}</p>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">预计时长</div>
-              <div className="text-lg font-semibold text-gray-900">{metadata.estimatedDuration}秒</div>
+            <div className="text-right bg-white/5 px-4 py-2 rounded-lg border border-white/5">
+              <div className="text-xs text-zinc-500 uppercase tracking-wider mb-0.5">预计时长</div>
+              <div className="text-lg font-mono font-semibold text-primary">{metadata.estimatedDuration}秒</div>
             </div>
           </div>
         </div>
@@ -980,52 +1222,61 @@ function VideoPreview({ platform, metadata, title, platformInfo }: {
         {/* 视频内容区域 */}
         <div className="p-6 space-y-6">
           {/* 标题 */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">视频标题</h3>
+              <h3 className="text-sm font-medium text-zinc-300 flex items-center">
+                <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                视频标题
+              </h3>
               <button
                 onClick={() => copyToClipboard(metadata.title, '标题')}
-                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                className="text-xs px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 rounded-md transition-all hover:text-white"
               >
                 复制
               </button>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg border">
-              <p className="text-gray-800 font-medium">{metadata.title}</p>
+            <div className="p-4 bg-black/20 rounded-lg border border-white/5 group hover:border-white/10 transition-colors">
+              <p className="text-white font-medium text-lg">{metadata.title}</p>
             </div>
           </div>
 
           {/* 描述 */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">视频描述</h3>
+              <h3 className="text-sm font-medium text-zinc-300 flex items-center">
+                <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                视频描述
+              </h3>
               <button
                 onClick={() => copyToClipboard(metadata.description, '描述')}
-                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                className="text-xs px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 rounded-md transition-all hover:text-white"
               >
                 复制
               </button>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg border">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{metadata.description}</p>
+            <div className="p-4 bg-black/20 rounded-lg border border-white/5 group hover:border-white/10 transition-colors">
+              <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap">{metadata.description}</p>
             </div>
           </div>
 
           {/* 标签 */}
           {metadata.tags && metadata.tags.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">标签</h3>
+                <h3 className="text-sm font-medium text-zinc-300 flex items-center">
+                  <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                  标签
+                </h3>
                 <button
                   onClick={() => copyToClipboard(metadata.tags.map((tag: string) => `#${tag}`).join(' '), '标签')}
-                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                  className="text-xs px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 rounded-md transition-all hover:text-white"
                 >
-                  复制
+                  复制全部
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {metadata.tags.map((tag: string, index: number) => (
-                  <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                  <span key={index} className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-sm font-medium hover:bg-primary/20 transition-colors cursor-default">
                     #{tag}
                   </span>
                 ))}
@@ -1033,32 +1284,67 @@ function VideoPreview({ platform, metadata, title, platformInfo }: {
             </div>
           )}
 
-          {/* 封面建议 */}
-          {metadata.coverSuggestion && (
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-900">封面建议</h3>
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-blue-800">{metadata.coverSuggestion}</p>
+          {/* 封面 */}
+          {(metadata.coverImage || metadata.coverSuggestion) && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-zinc-300 flex items-center">
+                  <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                  视频封面
+                </h3>
+                {metadata.coverImage && (
+                  <button
+                    onClick={() => copyToClipboard(metadata.coverImage, '封面图片')}
+                    className="text-xs px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 rounded-md transition-all hover:text-white"
+                  >
+                    复制Base64
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {metadata.coverImage && (
+                  <div className="p-3 bg-black/40 rounded-lg border border-white/10">
+                    <img
+                      src={metadata.coverImage}
+                      alt="AI生成封面"
+                      className="w-full rounded-md object-cover shadow-sm"
+                    />
+                  </div>
+                )}
+                {metadata.coverSuggestion && (
+                  <div className={`p-4 rounded-lg border border-blue-500/20 bg-blue-500/5 ${!metadata.coverImage ? 'col-span-full' : ''}`}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">🎨</span>
+                      <div>
+                        <div className="text-sm font-medium text-blue-400 mb-1">封面设计建议</div>
+                        <p className="text-sm text-blue-200/80 leading-relaxed">{metadata.coverSuggestion}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {/* 口播稿 */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">口播稿</h3>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-gray-500">{metadata.speechScript?.length || 0}字</span>
+              <h3 className="text-sm font-medium text-zinc-300 flex items-center">
+                <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                口播稿
+              </h3>
+              <div className="flex items-center space-x-3">
+                <span className="text-xs text-zinc-500 font-mono">{metadata.speechScript?.length || 0} 字</span>
                 <button
                   onClick={() => copyToClipboard(metadata.speechScript, '口播稿')}
-                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                  className="text-xs px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 rounded-md transition-all hover:text-white"
                 >
                   复制
                 </button>
               </div>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg border">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap font-mono text-sm">
+            <div className="p-4 bg-black/20 rounded-lg border border-white/5 group hover:border-white/10 transition-colors">
+              <p className="text-zinc-400 leading-relaxed whitespace-pre-wrap font-mono text-sm opacity-90">
                 {metadata.speechScript}
               </p>
             </div>
@@ -1066,14 +1352,17 @@ function VideoPreview({ platform, metadata, title, platformInfo }: {
 
           {/* 平台建议 */}
           {metadata.platformTips && metadata.platformTips.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-900">平台发布建议</h3>
-              <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                <ul className="space-y-2">
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-zinc-300 flex items-center">
+                <span className="w-1 h-4 bg-yellow-500/80 rounded-full mr-2"></span>
+                平台发布建议
+              </h3>
+              <div className="p-4 bg-yellow-500/5 rounded-lg border border-yellow-500/10">
+                <ul className="space-y-3">
                   {metadata.platformTips.map((tip: string, index: number) => (
-                    <li key={index} className="flex items-start space-x-2 text-yellow-800">
-                      <span className="text-yellow-600 mt-0.5">💡</span>
-                      <span className="text-sm">{tip}</span>
+                    <li key={index} className="flex items-start gap-3 text-sm text-yellow-200/80">
+                      <span className="text-yellow-500 mt-0.5">💡</span>
+                      <span>{tip}</span>
                     </li>
                   ))}
                 </ul>
@@ -1081,6 +1370,122 @@ function VideoPreview({ platform, metadata, title, platformInfo }: {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// 短图文平台预览（纯文本）
+function ShortTextPreview({ platform, title, content, tags = [], images = [] }: {
+  platform: Platform;
+  title: string;
+  content: string;
+  tags?: string[];
+  images?: ExtractedImage[];
+}) {
+  const platformInfo = PLATFORM_CONFIGS[platform];
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (error) {
+      console.error('复制失败:', error);
+    }
+  };
+
+  const limits: Partial<Record<Platform, number>> = {
+    xiaohongshu_note: 1000,
+    weibo: 2000,
+    jike: 2000,
+    x: 4000,
+  };
+
+  const max = limits[platform];
+  const charCount = (content || '').length;
+  const isOverLimit = typeof max === 'number' && max > 0 && charCount > max;
+
+  return (
+    <div className="max-w-3xl mx-auto w-full">
+      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{platformInfo.icon}</span>
+            <div>
+              <div className="text-zinc-200 font-medium">{platformInfo.name} 预览</div>
+              <div className="text-xs text-zinc-500 mt-0.5">短图文平台以纯文本为准（实际样式以平台为准）</div>
+            </div>
+          </div>
+          <div className={`text-xs font-medium ${isOverLimit ? 'text-red-400' : 'text-zinc-400'}`}>
+            {max ? `${charCount} / ${max} 字` : `${charCount} 字`}
+          </div>
+        </div>
+
+        {platform === 'xiaohongshu_note' && title?.trim() && (
+          <div className="mb-3">
+            <div className="text-xs text-zinc-500 mb-1">标题</div>
+            <div className="text-sm text-zinc-200 whitespace-pre-wrap">{title.trim()}</div>
+          </div>
+        )}
+
+        <div>
+          <div className="text-xs text-zinc-500 mb-1">正文</div>
+          <pre className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">{content}</pre>
+        </div>
+
+        {tags.length > 0 && (
+          <div className="mt-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-zinc-500">建议话题</div>
+              <button
+                onClick={() => copyToClipboard(tags.map(t => `#${t}`).join(' '))}
+                className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 rounded"
+                title="复制话题到剪贴板"
+              >
+                复制
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {tags.map((tag, index) => (
+                <span key={index} className="px-2 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-zinc-200">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {images.length > 0 && (
+          <div className="mt-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-zinc-500">配图（{images.length}）</div>
+              <button
+                onClick={() => copyToClipboard(images.map(img => img.url).join('\n'))}
+                className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 rounded"
+                title="复制图片链接（每行一个）"
+              >
+                复制链接
+              </button>
+            </div>
+            <div className="mt-2 space-y-1">
+              {images.slice(0, 12).map((img, index) => (
+                <div key={`${img.url}-${index}`} className="text-xs text-zinc-300 break-all">
+                  {index + 1}. {img.alt ? `${img.alt} - ` : ''}{img.url}
+                </div>
+              ))}
+              {images.length > 12 && (
+                <div className="text-xs text-zinc-500">
+                  仅展示前12张，复制链接可获取全部。
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isOverLimit && (
+          <div className="mt-4 text-xs text-red-400">
+            当前内容可能超出平台字数限制；建议精简或拆分为多条。
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1094,7 +1499,7 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
       const saved = localStorage.getItem('wechat-preview-theme');
       if (saved === 'night' || saved === 'day') return saved;
     } catch { }
-    return 'day';
+    return 'night';
   });
 
   useEffect(() => {
@@ -1107,10 +1512,7 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
 
   return (
     <div
-      className={`p-6 flex flex-col items-center justify-center gap-4 min-h-full ${isNight
-        ? 'bg-gradient-to-br from-[#0b0b0c] to-[#16161a]'
-        : 'bg-gradient-to-br from-gray-50 to-gray-100'
-        }`}
+      className={`p-6 flex flex-col items-center justify-center gap-6 min-h-full bg-transparent`}
     >
       {/* 日/夜模式切换（仅影响预览，不影响导出） */}
       <div
@@ -1235,45 +1637,45 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
 // 知乎预览
 function ZhihuPreview({ title, content }: { title: string; content: string }) {
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="p-6 h-full flex flex-col">
+      <div className="max-w-4xl mx-auto w-full bg-white/5 rounded-xl border border-white/10 backdrop-blur-sm">
         {/* 知乎头部 */}
-        <div className="p-6 border-b border-gray-100">
+        <div className="p-6 border-b border-white/5">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
               知
             </div>
             <div>
-              <div className="font-medium text-gray-900">字流</div>
-              <div className="text-sm text-gray-500">刚刚发布</div>
+              <div className="font-medium text-white">字流</div>
+              <div className="text-sm text-zinc-500">刚刚发布</div>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{title || '文章标题'}</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">{title || '文章标题'}</h1>
         </div>
 
         {/* 文章内容 */}
         <div className="p-6">
           <div
-            className="zhihu-content prose prose-lg max-w-none"
+            className="zhihu-content prose prose-invert prose-lg max-w-none"
             dangerouslySetInnerHTML={{ __html: content }}
           />
         </div>
 
         {/* 底部操作栏 */}
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center space-x-6">
-          <button className="flex items-center space-x-2 text-gray-500 hover:text-blue-600">
+        <div className="px-6 py-4 border-t border-white/5 flex items-center space-x-6">
+          <button className="flex items-center space-x-2 text-zinc-500 hover:text-blue-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V9a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2.61l.69.83L10 18h4m-7-10v2m0-2V9a2 2 0 012-2h2a2 2 0 012 2v1" />
             </svg>
             <span>赞同</span>
           </button>
-          <button className="flex items-center space-x-2 text-gray-500 hover:text-blue-600">
+          <button className="flex items-center space-x-2 text-zinc-500 hover:text-blue-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
             <span>评论</span>
           </button>
-          <button className="flex items-center space-x-2 text-gray-500 hover:text-blue-600">
+          <button className="flex items-center space-x-2 text-zinc-500 hover:text-blue-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
             </svg>
@@ -1288,17 +1690,17 @@ function ZhihuPreview({ title, content }: { title: string; content: string }) {
 // 掘金预览
 function JuejinPreview({ title, content }: { title: string; content: string }) {
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="p-6 h-full flex flex-col">
+      <div className="max-w-4xl mx-auto w-full bg-white/5 rounded-xl border border-white/10 backdrop-blur-sm">
         {/* 掘金头部 */}
-        <div className="p-6 border-b border-gray-100">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{title || '文章标题'}</h1>
-          <div className="flex items-center space-x-4 text-sm text-gray-500">
+        <div className="p-6 border-b border-white/5">
+          <h1 className="text-3xl font-bold text-white mb-4">{title || '文章标题'}</h1>
+          <div className="flex items-center space-x-4 text-sm text-zinc-500">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                 掘
               </div>
-              <span>字流</span>
+              <span className="text-zinc-300">字流</span>
             </div>
             <span>·</span>
             <span>刚刚</span>
@@ -1310,28 +1712,28 @@ function JuejinPreview({ title, content }: { title: string; content: string }) {
         {/* 文章内容 */}
         <div className="p-6">
           <div
-            className="juejin-content prose prose-lg max-w-none"
+            className="juejin-content prose prose-invert prose-lg max-w-none"
             dangerouslySetInnerHTML={{ __html: content }}
           />
         </div>
 
         {/* 底部操作栏 */}
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button className="flex items-center space-x-2 text-gray-500 hover:text-red-500">
+            <button className="flex items-center space-x-2 text-zinc-500 hover:text-red-400">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
               <span>点赞</span>
             </button>
-            <button className="flex items-center space-x-2 text-gray-500 hover:text-blue-500">
+            <button className="flex items-center space-x-2 text-zinc-500 hover:text-blue-400">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               <span>评论</span>
             </button>
           </div>
-          <button className="flex items-center space-x-2 text-gray-500 hover:text-blue-500">
+          <button className="flex items-center space-x-2 text-zinc-500 hover:text-blue-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
             </svg>
@@ -1347,45 +1749,45 @@ function JuejinPreview({ title, content }: { title: string; content: string }) {
 // 知识星球预览
 function ZsxqPreview({ title, content }: { title: string; content: string }) {
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="p-6 h-full flex flex-col">
+      <div className="max-w-4xl mx-auto w-full bg-white/5 rounded-xl border border-white/10 backdrop-blur-sm">
         {/* 知识星球头部 */}
-        <div className="p-6 border-b border-gray-100">
+        <div className="p-6 border-b border-white/5">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">
               星
             </div>
             <div>
-              <div className="font-medium text-gray-900">字流</div>
-              <div className="text-sm text-gray-500">刚刚发布</div>
+              <div className="font-medium text-white">字流</div>
+              <div className="text-sm text-zinc-500">刚刚发布</div>
             </div>
           </div>
-          {title && <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>}
+          {title && <h1 className="text-2xl font-bold text-white mb-2">{title}</h1>}
         </div>
 
         {/* 文章内容 */}
         <div className="p-6">
           <div
-            className="zsxq-content prose prose-lg max-w-none"
+            className="zsxq-content prose prose-invert prose-lg max-w-none"
             dangerouslySetInnerHTML={{ __html: content }}
           />
         </div>
 
         {/* 底部操作栏 */}
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center space-x-6">
-          <button className="flex items-center space-x-2 text-gray-500 hover:text-yellow-600">
+        <div className="px-6 py-4 border-t border-white/5 flex items-center space-x-6">
+          <button className="flex items-center space-x-2 text-zinc-500 hover:text-yellow-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V9a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2.61l.69.83L10 18h4m-7-10v2m0-2V9a2 2 0 012-2h2a2 2 0 012 2v1" />
             </svg>
             <span>点赞</span>
           </button>
-          <button className="flex items-center space-x-2 text-gray-500 hover:text-yellow-600">
+          <button className="flex items-center space-x-2 text-zinc-500 hover:text-yellow-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
             <span>评论</span>
           </button>
-          <button className="flex items-center space-x-2 text-gray-500 hover:text-yellow-600">
+          <button className="flex items-center space-x-2 text-zinc-500 hover:text-yellow-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
             </svg>

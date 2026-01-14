@@ -108,7 +108,62 @@ class SubscriptionService {
       'xiaohongshu-platform': {
         id: 'xiaohongshu-platform',
         name: '小红书平台',
-        description: '发布到小红书视频',
+        description: '发布到小红书（视频）',
+        plans: ['pro']
+      },
+      'xiaohongshu_note-platform': {
+        id: 'xiaohongshu_note-platform',
+        name: '小红书图文',
+        description: '发布到小红书（图文）',
+        plans: ['pro']
+      },
+      // 海外/出海平台支持
+      'x-platform': {
+        id: 'x-platform',
+        name: 'X',
+        description: '发布到 X（Twitter）',
+        plans: ['pro']
+      },
+      'linkedin-platform': {
+        id: 'linkedin-platform',
+        name: 'LinkedIn',
+        description: '发布到 LinkedIn',
+        plans: ['pro']
+      },
+      'instagram-platform': {
+        id: 'instagram-platform',
+        name: 'Instagram',
+        description: '发布到 Instagram',
+        plans: ['pro']
+      },
+      'facebook-platform': {
+        id: 'facebook-platform',
+        name: 'Facebook',
+        description: '发布到 Facebook',
+        plans: ['pro']
+      },
+      'weibo-platform': {
+        id: 'weibo-platform',
+        name: '微博',
+        description: '发布到微博',
+        plans: ['pro']
+      },
+      'jike-platform': {
+        id: 'jike-platform',
+        name: '即刻',
+        description: '发布到即刻',
+        plans: ['pro']
+      },
+      'wechat_xiaolushu-platform': {
+        id: 'wechat_xiaolushu-platform',
+        name: '小绿书',
+        description: '发布到微信小绿书',
+        plans: ['pro']
+      },
+      'youtube-platform': {
+        id: 'youtube-platform',
+        name: 'YouTube',
+        description: '发布到 YouTube Studio',
         plans: ['pro']
       }
     };

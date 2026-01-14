@@ -36,8 +36,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       ],
       // 小红书的话题标签系统
       topicButton: [
-        'button:has-text("话题")',
-        '.contentBtn:has-text("话题")',
+        'button[class*="contentBtn"]',
         '[class*="topic-btn"]'
       ],
       recommendTags: [
@@ -56,6 +55,15 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
         '[class*="tag-item"]',
         '.topic-tag',
         '[class*="hashtag"]'
+      ],
+      // 封面
+      cover: [
+        '.upload-container input[type="file"]',
+        'input[type="file"][accept*="image"]',
+        '.upload-input',
+        '.upload-wrapper input',
+        '.upload-drag-container input',
+        '.ant-upload input[type="file"]'
       ]
     };
   }
@@ -87,9 +95,10 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       }
     }
 
-    // 查找话题按钮
-    elements.topicButton = document.querySelector('button[class*="contentBtn"]') ||
-                          document.querySelector('button:has-text("话题")');
+    // 查找话题按钮（不要使用 :has-text 这类非标准选择器）
+    elements.topicButton =
+      document.querySelector('button[class*="contentBtn"]') ||
+      this.findButtonByText(['话题', 'Topic']);
 
     // 查找推荐标签
     elements.recommendTags = document.querySelectorAll('.recommend-topic-wrapper > *');
@@ -99,7 +108,35 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
     elements.activityTopics = document.querySelectorAll('[class*="activity-topic"]');
     console.log('🎯 找到小红书活动话题:', elements.activityTopics.length, '个');
 
+    // 查找封面输入框
+    for (const selector of selectors.cover) {
+      const element = document.querySelector(selector);
+      if (element) {
+        elements.cover = element;
+        console.log('🎯 找到小红书封面输入框:', selector);
+        break;
+      }
+    }
+
     return elements;
+  }
+
+  /**
+   * 在页面中按文字查找按钮（用于替代非标准的 :has-text 选择器）
+   */
+  findButtonByText(texts = []) {
+    try {
+      const candidates = Array.from(document.querySelectorAll('button, [role="button"]'));
+      for (const el of candidates) {
+        if (!this.isElementVisible(el)) continue;
+        const label = (el.textContent || '').trim();
+        if (!label) continue;
+        if (texts.some(t => label.includes(t))) return el;
+      }
+    } catch (error) {
+      console.warn('按文字查找按钮失败:', error);
+    }
+    return null;
   }
 
   /**
@@ -107,7 +144,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
    */
   async fillContent(data) {
     console.log('📖 开始填充小红书内容:', data);
-    
+
     // 打印数据结构以调试
     console.log('📊 数据分析:', {
       原始数据: {
@@ -115,7 +152,8 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
         hasContent: !!data.content,
         hasVideoTitle: !!data.videoTitle,
         hasVideoDescription: !!data.videoDescription,
-        hasTags: !!data.tags
+        hasTags: !!data.tags,
+        hasCoverImage: !!data.coverImage
       }
     });
 
@@ -142,7 +180,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
           processedTitle = processedTitle.substring(0, 20);
           console.log('⚠️ 标题超长，已截取到20字符');
         }
-        
+
         results.title = await this.fillVideoTitle(elements.title, processedTitle);
         if (results.title.success) {
           fillCount++;
@@ -187,6 +225,17 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
         }
       }
 
+      // 填充封面
+      if (elements.cover && data.coverImage) {
+        results.cover = await this.fillCover(elements.cover, data.coverImage);
+        if (results.cover.success) {
+          fillCount++;
+          console.log('✅ 小红书封面填充完成');
+        } else {
+          console.warn('⚠️ 小红书封面填充失败:', results.cover.error);
+        }
+      }
+
       if (fillCount > 0) {
         console.log('✅ 小红书内容填充成功，填充了', fillCount, '个字段');
         return results;
@@ -201,30 +250,89 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
   }
 
   /**
+   * 填充封面图片
+   */
+  async fillCover(element, imageUrl) {
+    try {
+      console.log('🖼️ 开始填充封面:', imageUrl.substring(0, 50) + '...');
+
+      // 1. 获取图片Blob数据
+      const blob = await this.fetchImageBlob(imageUrl);
+      if (!blob) throw new Error('无法获取图片数据');
+
+      // 2. 创建File对象
+      const file = new File([blob], 'cover.png', { type: 'image/png' });
+
+      // 3. 模拟文件上传
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      element.files = dataTransfer.files;
+
+      // 4. 触发事件
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+
+      await this.sleep(1500); // 等待上传反应
+
+      return { success: true };
+    } catch (error) {
+      console.error('封面填充失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 获取图片Blob
+   */
+  async fetchImageBlob(url) {
+    // 如果是base64，直接转换
+    if (url.startsWith('data:')) {
+      const res = await fetch(url);
+      return await res.blob();
+    }
+
+    // 如果是URL，通过background script获取（避开CORS）
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        action: 'fetchBlob',
+        data: { url }
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          fetch(url).then(res => res.blob()).then(resolve).catch(reject);
+        } else if (response && response.success && response.data) {
+          fetch(response.data).then(res => res.blob()).then(resolve).catch(reject);
+        } else {
+          fetch(url).then(res => res.blob()).then(resolve).catch(reject);
+        }
+      });
+    });
+  }
+
+  /**
    * 智能填充话题标签 - 小红书的特色功能
    */
   async fillTags(elements, tagsArray) {
     try {
       console.log('🏷️ 开始智能填充小红书话题标签:', tagsArray);
-      
+
       let addedTags = 0;
       const maxTags = 10; // 小红书话题限制
       const addedTagTexts = [];
-      
+
       // 先尝试点击推荐标签（类似B站的逻辑）
       const recommendTags = elements.recommendTags || document.querySelectorAll('.recommend-topic-wrapper > *');
-      
+
       for (const tag of tagsArray.slice(0, maxTags)) {
         let tagText = tag.toString().trim();
-        
+
         // 确保话题以#开头
         if (!tagText.startsWith('#')) {
           tagText = `#${tagText}`;
         }
-        
+
         // 尝试在推荐标签中找到匹配的话题
         const matchedRecommendTag = await this.findAndClickRecommendTag(recommendTags, tagText);
-        
+
         if (matchedRecommendTag) {
           addedTagTexts.push(tagText);
           addedTags++;
@@ -242,20 +350,20 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
             }
           }
         }
-        
+
         if (addedTags >= maxTags) {
           console.log('⚠️ 已达到话题数量限制');
           break;
         }
       }
-      
+
       return {
         success: addedTags > 0,
         addedCount: addedTags,
         addedTags: addedTagTexts,
         value: addedTagTexts.join(' ')
       };
-      
+
     } catch (error) {
       console.error('❌ 话题标签填充失败:', error);
       return { success: false, error: error.message };
@@ -268,32 +376,32 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
   async findAndClickRecommendTag(recommendTags, targetTag) {
     try {
       const normalizedTarget = targetTag.toLowerCase().replace(/[#\s]/g, '');
-      
+
       for (const tagElement of recommendTags) {
         const tagText = tagElement.textContent?.trim().toLowerCase().replace(/[#\s]/g, '');
-        
+
         // 精确匹配或包含匹配
-        if (tagText === normalizedTarget || 
-            tagText.includes(normalizedTarget) || 
-            normalizedTarget.includes(tagText)) {
-          
+        if (tagText === normalizedTarget ||
+          tagText.includes(normalizedTarget) ||
+          normalizedTarget.includes(tagText)) {
+
           console.log(`🎯 找到匹配的推荐话题: "${tagElement.textContent?.trim()}" -> "${targetTag}"`);
-          
+
           // 检查是否已经选中
-          if (tagElement.classList.contains('selected') || 
-              tagElement.classList.contains('active')) {
+          if (tagElement.classList.contains('selected') ||
+            tagElement.classList.contains('active')) {
             console.log('⚠️ 话题已选中，跳过');
             return true;
           }
-          
+
           // 点击添加话题
           tagElement.click();
           await this.sleep(200);
-          
+
           return true;
         }
       }
-      
+
       return false;
     } catch (error) {
       console.error('推荐话题点击失败:', error);
@@ -307,17 +415,17 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
   async addTagToContent(contentElement, tagText) {
     try {
       console.log(`📝 将话题添加到内容区: ${tagText}`);
-      
+
       // 聚焦内容编辑器
       contentElement.focus();
       await this.sleep(100);
-      
+
       // 获取当前内容
       const currentContent = contentElement.textContent || contentElement.value || '';
-      
+
       // 在内容末尾添加话题
       const newContent = currentContent ? `${currentContent} ${tagText}` : tagText;
-      
+
       if (contentElement.contentEditable === 'true') {
         // 对于可编辑div
         contentElement.textContent = newContent;
@@ -327,7 +435,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
         contentElement.value = newContent;
         contentElement.dispatchEvent(new Event('input', { bubbles: true }));
       }
-      
+
       await this.sleep(100);
       return true;
     } catch (error) {
@@ -342,7 +450,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
   async fillVideoTitle(element, title) {
     try {
       console.log('📖 开始填充标题到元素:', element.tagName, title);
-      
+
       // 确保标题长度在限制范围内
       let processedTitle = title;
       if (title.length > 20) {
@@ -371,7 +479,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
   async fillVideoDescription(element, description) {
     try {
       console.log('📖 开始填充内容到元素:', element.tagName, description);
-      
+
       // 确保内容长度在限制范围内
       let processedContent = description;
       if (description.length > 1000) {
@@ -387,7 +495,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
         console.log('📝 使用contentEditable填充');
         element.innerHTML = '';
         element.textContent = processedContent;
-        
+
         // 触发输入事件
         const events = ['input', 'change', 'blur'];
         for (const eventType of events) {
@@ -426,7 +534,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
 
       // 设置新值
       element.value = value;
-      
+
       // 触发事件
       const events = ['input', 'change', 'blur'];
       for (const eventType of events) {
@@ -470,10 +578,15 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
 
 // 自动注册插件
 if (typeof window !== 'undefined' && window.ZiliuPlatformRegistry) {
-  const config = window.ZiliuPluginConfig?.platforms?.find(p => p.id === 'xiaohongshu');
-  if (config) {
-    const xiaohongshuPlugin = new XiaohongshuPlugin(config);
-    window.ZiliuPlatformRegistry.register(xiaohongshuPlugin);
-    console.log('📖 小红书插件已注册到平台注册中心');
-  }
+  const configs = (window.ZiliuPluginConfig?.platforms || [])
+    .filter(p => (p.id === 'xiaohongshu' || p.id === 'xiaohongshu_note') && p.enabled);
+
+  configs.forEach((config) => {
+    // 避免重复注册
+    if (window.ZiliuPlatformRegistry.get(config.id)) return;
+
+    const plugin = new XiaohongshuPlugin(config);
+    window.ZiliuPlatformRegistry.register(plugin);
+    console.log(`📖 小红书插件已注册到平台注册中心: ${config.displayName || config.id}`);
+  });
 }

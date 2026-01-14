@@ -47,7 +47,7 @@ chrome.runtime.onInstalled.addListener(() => {
 // 处理插件图标点击事件
 chrome.action.onClicked.addListener((tab) => {
   console.log('字流助手图标被点击，跳转到官网');
-  
+
   // 创建新标签页打开字流官网
   chrome.tabs.create({
     url: ZILIU_CONFIG.baseUrl,
@@ -138,6 +138,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       };
     },
 
+    // 获取图片Blob (转换为Base64返回，避开CORS)
+    fetchBlob: async ({ url }) => {
+      try {
+        console.log('🖼️ Background fetching image:', url);
+        const response = await fetch(url);
+        const blob = await response.blob();
+
+        // Convert blob to base64
+        const reader = new FileReader();
+        return new Promise((resolve) => {
+          reader.onloadend = () => {
+            resolve({ success: true, data: reader.result });
+          };
+          reader.onerror = () => {
+            resolve({ success: false, error: 'Failed to read blob' });
+          };
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error('❌ Fetch blob failed:', error);
+        return { success: false, error: error.message };
+      }
+    },
+
     // 动态设置 API 基础地址（来自网页 /api/config 或插件设置）
     setBaseURL: async ({ baseUrl }) => {
       try {
@@ -171,7 +195,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 async function handleApiRequest(requestData) {
   console.log('🔧 handleApiRequest 开始处理请求:', requestData);
   console.log('🔧 当前ZILIU_CONFIG.baseUrl:', ZILIU_CONFIG.baseUrl);
-  
+
   try {
     // 优先使用存储中的值，再退回到动态配置
     const result = await chrome.storage.sync.get(['apiBaseUrl']);
@@ -207,7 +231,7 @@ async function handleApiRequest(requestData) {
 
     const response = await Promise.race([
       fetch(url, fetchOptions),
-      new Promise((_, reject) => 
+      new Promise((_, reject) =>
         setTimeout(() => reject(new Error('请求超时')), 30000)
       )
     ]);
@@ -215,7 +239,7 @@ async function handleApiRequest(requestData) {
     // 处理响应
     let data;
     const contentType = response.headers.get('content-type');
-    
+
     if (contentType && contentType.includes('application/json')) {
       data = await response.json();
     } else {
@@ -239,7 +263,7 @@ async function handleApiRequest(requestData) {
       console.error('❌ 网络连接失败，请检查服务器是否运行:', error);
       throw new Error('无法连接到服务器，请检查网络连接和服务器状态');
     }
-    
+
     console.error('❌ API请求异常:', error);
     throw error;
   }
@@ -254,7 +278,7 @@ function notifyPlatformTabs() {
 
   // 获取所有支持的平台URL模式
   const supportedPlatforms = globalThis.ZiliuPlatformManager.getSupportedPlatforms();
-  
+
   supportedPlatforms.forEach(platformId => {
     const platform = globalThis.ZiliuPlatformManager.getPlatformInfo(platformId);
     if (platform && platform.urlPatterns) {
@@ -320,7 +344,7 @@ function getPlatformConfig(platform) {
         };
       }
     }
-    
+
     // 最后的硬编码兜底（理论上不应该到这里）
     return {
       urlPattern: '*://mp.weixin.qq.com/*',
@@ -332,10 +356,10 @@ function getPlatformConfig(platform) {
 
   // 规范化平台ID
   const normalizedId = globalThis.ZiliuPlatformManager.normalizePlatformId(platform) || 'wechat';
-  
+
   // 获取平台发布配置
   const config = globalThis.ZiliuPlatformManager.getPlatformPublishConfig(normalizedId);
-  
+
   if (!config) {
     console.warn(`⚠️ 未找到平台配置: ${platform}, 使用默认配置`);
     return globalThis.ZiliuPlatformManager.getPlatformPublishConfig('wechat');
@@ -348,7 +372,7 @@ function getPlatformConfig(platform) {
 async function handlePlatformPublish(data, config) {
   try {
     const { urlPattern, newTabUrl, platformName, loadDelay = 2000 } = config;
-    
+
     // 查找现有的编辑页面
     const existingTabs = await chrome.tabs.query({ url: urlPattern });
 
@@ -357,7 +381,7 @@ async function handlePlatformPublish(data, config) {
       const targetTab = existingTabs[0];
       await chrome.tabs.update(targetTab.id, { active: true });
       console.log(`✅ 激活现有${platformName}页面`);
-      
+
       return sendFillMessage(targetTab.id, data, 500);
     } else {
       // 创建新页面
@@ -395,7 +419,7 @@ function waitForTabAndFill(tabId, data, loadDelay) {
     const listener = (currentTabId, changeInfo) => {
       if (currentTabId === tabId && changeInfo.status === 'complete') {
         chrome.tabs.onUpdated.removeListener(listener);
-        
+
         setTimeout(() => {
           chrome.tabs.sendMessage(tabId, {
             action: 'fillContent',
@@ -426,11 +450,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       if (result.ziliu_content && result.ziliu_content.source === 'one_click_publish') {
         // 检查是否是支持的平台
         const platformConfig = findMatchingPlatform(tab.url);
-        
+
         if (platformConfig) {
           console.log(`🎯 检测到${platformConfig.platformName}页面:`, tab.url);
           console.log(`🔄 自动填充内容到${platformConfig.platformName}`);
-          
+
           // 延迟填充，确保页面完全加载
           setTimeout(() => {
             chrome.tabs.sendMessage(tabId, {

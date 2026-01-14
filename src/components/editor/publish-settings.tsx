@@ -69,13 +69,19 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
   const getPlatformIcon = (platform: Platform) => {
     const icons = {
       wechat: '📱',
+      wechat_xiaolushu: '🟢',
       zhihu: '🔵',
       juejin: '⚡',
       zsxq: '🌟',
+      xiaohongshu_note: '📕',
+      xiaohongshu: '📕',
+      weibo: '🧣',
+      jike: '🟡',
+      x: '𝕏',
       video_wechat: '📹',
       douyin: '🎵',
       bilibili: '📺',
-      xiaohongshu: '📖'
+      youtube: '🎬'
     };
     return icons[platform] || '📄';
   };
@@ -84,13 +90,19 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
   const getPlatformName = (platform: Platform) => {
     const names = {
       wechat: '公众号',
+      wechat_xiaolushu: '小绿书',
       zhihu: '知乎',
       juejin: '掘金',
       zsxq: '知识星球',
+      xiaohongshu_note: '小红书（图文）',
+      xiaohongshu: '小红书（视频）',
+      weibo: '微博',
+      jike: '即刻',
+      x: 'X',
       video_wechat: '微信视频号',
       douyin: '抖音',
       bilibili: 'B站',
-      xiaohongshu: '小红书'
+      youtube: 'YouTube'
     };
     return names[platform] || platform;
   };

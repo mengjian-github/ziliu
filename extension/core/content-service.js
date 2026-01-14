@@ -31,11 +31,11 @@ class ZiliuContentService {
     try {
       // 获取文章详情
       const articleDetail = await this.fetchArticleDetail(data.articleId);
-      
+
       // 根据平台类型决定处理方式
       const platformId = currentPlatform?.id;
-      const isVideoPlatform = ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu'].includes(platformId);
-      
+      const isVideoPlatform = ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu', 'youtube'].includes(platformId);
+
       console.log('🔍 平台类型分析:', {
         platformId,
         isVideoPlatform,
@@ -48,7 +48,7 @@ class ZiliuContentService {
         // 视频平台：获取AI转换后的视频数据
         console.log('📹 处理视频平台数据，获取AI转换后的视频内容');
         const videoData = await this.getVideoContent(data.articleId, platformId);
-        
+
         // 同时保留原始文章数据作为回退
         baseData = {
           title: articleDetail.title,
@@ -57,40 +57,79 @@ class ZiliuContentService {
           ...videoData
         };
       } else {
-        // 普通平台：处理文章格式转换
-        const targetFormat = platformId === 'zhihu' ? 'zhihu' : 'wechat';
-        console.log('📝 处理普通平台数据，转换格式:', targetFormat);
-        
+        // 普通平台：根据平台 contentType 决定使用 HTML / Markdown / 纯文本
         const sourceContent = articleDetail.originalContent || articleDetail.content;
-        const convertedContent = await this.convertArticleFormat(
-          sourceContent,
-          targetFormat,
-          articleDetail.style || 'default'
-        );
+        const platformContentType = currentPlatform?.contentType || 'html';
 
-        // 获取原始Markdown
+        // 获取原始Markdown（短文本/Markdown 平台更可靠）
         let originalMarkdown = '';
         try {
           const markdownData = await this.fetchArticleMarkdown(data.articleId);
           originalMarkdown = markdownData.content || '';
         } catch (error) {
-          console.warn('获取原始Markdown失败，将使用HTML内容:', error);
+          console.warn('获取原始Markdown失败，将使用文章内容回退:', error);
+          originalMarkdown = '';
+        }
+
+        // 获取预设信息（用于短文本/Markdown 平台拼接开头/结尾）
+        const preset = data.preset || selectedPreset;
+
+        let contentForFill = '';
+        let shortData = null;
+
+        if (platformContentType === 'html') {
+          // HTML 平台：走 convert API 生成内联样式
+          const targetFormat = platformId === 'zhihu' ? 'zhihu' : 'wechat';
+          console.log('📝 处理普通平台数据，转换为HTML格式:', targetFormat);
+
+          contentForFill = await this.convertArticleFormat(
+            sourceContent,
+            targetFormat,
+            articleDetail.style || 'default'
+          );
+        } else if (platformContentType === 'markdown') {
+          contentForFill = originalMarkdown || sourceContent || '';
+          contentForFill = this.applyPresetToContent(contentForFill, preset, 'markdown');
+        } else if (platformContentType === 'text') {
+          // 短图文平台：优先从服务端获取 AI 改写后的文案（并返回图片列表）
+          const markdown = originalMarkdown || sourceContent || '';
+
+          try {
+            if (platformId) {
+              shortData = await this.getShortTextContent(data.articleId, platformId);
+            }
+          } catch (error) {
+            console.warn('获取短图文AI内容失败，将使用纯文本回退:', error);
+            shortData = null;
+          }
+
+          const baseText = shortData?.content ? shortData.content : this.markdownToPlainText(markdown);
+          contentForFill = this.applyPresetToContent(baseText, preset, 'text');
+        } else {
+          // 未知类型：尽量用Markdown回退
+          contentForFill = originalMarkdown || sourceContent || '';
         }
 
         baseData = {
-          title: articleDetail.title,
-          content: convertedContent,
+          // 若 AI 返回了平台化标题（如小红书图文），优先使用
+          title: (platformContentType === 'text' && typeof shortData?.title === 'string' && shortData.title.trim())
+            ? shortData.title
+            : articleDetail.title,
+          content: contentForFill,
+          // 额外字段：短图文可用
+          tags: platformContentType === 'text' ? (shortData?.tags || []) : undefined,
+          images: platformContentType === 'text' ? (shortData?.images || []) : undefined,
           originalMarkdown: originalMarkdown
         };
       }
 
       // 获取预设信息
       const preset = data.preset || selectedPreset;
-      
+
       // 构建完整的填充数据
       return {
         ...baseData,
-        author: data.author || preset?.author,
+        author: data.author || preset?.authorName,
         preset: preset,
         style: articleDetail.style || 'default'  // 确保传递文章样式
       };
@@ -116,11 +155,11 @@ class ZiliuContentService {
    */
   async convertArticleFormat(content, targetFormat, style = 'default') {
     const response = await ZiliuApiService.content.convert(content || '', targetFormat, style);
-    
+
     if (!response.success) {
       throw new Error(response.error || '格式转换失败');
     }
-    
+
     // 按照legacy的逻辑，返回inlineHtml字段
     if (response.data?.inlineHtml) {
       console.log('✅ 使用 convert API 生成内联样式 HTML');
@@ -148,7 +187,7 @@ class ZiliuContentService {
   async getVideoContent(articleId, platform) {
     try {
       console.log('🎬 获取视频平台内容:', { articleId, platform });
-      
+
       // 通过background script发送API请求，避免CORS问题
       const response = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
@@ -179,6 +218,7 @@ class ZiliuContentService {
         speechScript: response.data.speechScript,
         tags: response.data.tags,
         coverSuggestion: response.data.coverSuggestion,
+        coverImage: response.data.coverImage,
         platformTips: response.data.platformTips,
         estimatedDuration: response.data.estimatedDuration
       };
@@ -196,6 +236,114 @@ class ZiliuContentService {
         estimatedDuration: 0
       };
     }
+  }
+
+  /**
+   * 获取短图文平台的 AI 改写后内容 + 图片列表
+   * 通过 background script 代理请求（避免CORS/cookie问题）
+   */
+  async getShortTextContent(articleId, platform) {
+    try {
+      console.log('🧩 获取短图文平台内容:', { articleId, platform });
+
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          action: 'apiRequest',
+          data: {
+            method: 'POST',
+            endpoint: '/api/short-text/generate',
+            body: {
+              articleId,
+              platform
+            }
+          }
+        }, (resp) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(resp);
+          }
+        });
+      });
+
+      if (!response || !response.success) {
+        throw new Error(response?.error || '获取短图文内容失败');
+      }
+
+      const data = response.data || {};
+      return {
+        title: data.title || '',
+        content: data.content || '',
+        tags: data.tags || [],
+        images: data.images || []
+      };
+    } catch (error) {
+      console.error('❌ 获取短图文内容失败:', error);
+      return {
+        title: '',
+        content: '',
+        tags: [],
+        images: []
+      };
+    }
+  }
+
+  /**
+   * 将 Markdown 粗略转换为纯文本（用于短图文平台）
+   */
+  markdownToPlainText(markdown) {
+    if (!markdown) return '';
+    const text = String(markdown);
+
+    return text
+      // 移除代码块（保留代码块中的纯文本会让短文案过长，先整体去掉）
+      .replace(/```[\s\S]*?```/g, '')
+      // 行内代码
+      .replace(/`([^`]+)`/g, '$1')
+      // 图片：![alt](url) -> alt
+      .replace(/!\[([^\]]*)\]\([^\)]*\)/g, '$1')
+      // 链接：[text](url) -> text (url)
+      .replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '$1 ($2)')
+      // 引用/标题标记
+      .replace(/^\s{0,3}>\s?/gm, '')
+      .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+      // 粗体/斜体
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      // HTML 标签兜底清理
+      .replace(/<[^>]*>/g, '')
+      // 多余空行与空格
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  /**
+   * 按平台内容类型应用预设开头/结尾
+   */
+  applyPresetToContent(content, preset, contentType) {
+    if (!preset) return content;
+
+    let result = content || '';
+
+    const header = preset.headerContent || '';
+    const footer = preset.footerContent || '';
+
+    if (contentType === 'text') {
+      const headerText = header ? this.markdownToPlainText(header) : '';
+      const footerText = footer ? this.markdownToPlainText(footer) : '';
+
+      if (headerText) result = `${headerText}\n\n${result}`;
+      if (footerText) result = `${result}\n\n${footerText}`;
+      return result.trim();
+    }
+
+    // markdown：直接拼接
+    if (header) result = `${header}\n\n${result}`;
+    if (footer) result = `${result}\n\n${footer}`;
+    return result.trim();
   }
 }
 

@@ -20,6 +20,16 @@
     "https://creator.douyin.com/*",
     "https://member.bilibili.com/*",
     "https://creator.xiaohongshu.com/*",
+    "https://weibo.com/*",
+    "https://www.weibo.com/*",
+    "https://web.okjike.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://www.linkedin.com/*",
+    "https://www.instagram.com/*",
+    "https://www.facebook.com/*",
+    "https://facebook.com/*",
+    "https://studio.youtube.com/*",
     "https://www.ziliu.online/*",
     "https://ziliu.online/*",
     "https://www.ziliu.online/*",
@@ -247,6 +257,199 @@
         "plugins/config.js",
         "plugins/base-platform.js",
         "plugins/platforms/xiaohongshu.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://weibo.com/*",
+        "https://www.weibo.com/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://web.okjike.com/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://www.linkedin.com/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://www.instagram.com/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://www.facebook.com/*",
+        "https://facebook.com/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://studio.youtube.com/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "plugins/platforms/youtube.js",
         "ui/panel.js",
         "ui/features.js",
         "ui/subscription-status.js",

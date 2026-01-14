@@ -15,7 +15,7 @@ class BilibiliPlugin extends BasePlatformPlugin {
   isPlatformMatch() {
     const url = window.location.href;
     const isMatch = url.includes('member.bilibili.com/platform/upload/video/frame') ||
-                   url.includes('member.bilibili.com/york/video-up');
+      url.includes('member.bilibili.com/york/video-up');
     console.log('📺 B站平台检测:', { url, isMatch });
     return isMatch;
   }
@@ -50,6 +50,12 @@ class BilibiliPlugin extends BasePlatformPlugin {
       existingTags: [
         '.selected-tag',
         '.tag-item'
+      ],
+      // 封面上传
+      cover: [
+        '.cover-upload-container input[type="file"]',
+        'input[type="file"][accept*="image"]',
+        '.upload-cover-btn input'
       ]
     };
   }
@@ -91,9 +97,15 @@ class BilibiliPlugin extends BasePlatformPlugin {
       }
     }
 
-    // 查找推荐标签
-    elements.recommendTags = document.querySelectorAll('.hot-tag-container');
-    console.log('🎯 找到B站推荐标签:', elements.recommendTags.length, '个');
+    // 查找封面输入框
+    for (const selector of selectors.cover) {
+      const element = document.querySelector(selector);
+      if (element) {
+        elements.cover = element;
+        console.log('🎯 找到B站封面输入框:', selector);
+        break;
+      }
+    }
 
     return elements;
   }
@@ -103,17 +115,6 @@ class BilibiliPlugin extends BasePlatformPlugin {
    */
   async fillContent(data) {
     console.log('📺 开始填充B站内容:', data);
-    
-    // 打印数据结构以调试
-    console.log('📊 数据分析:', {
-      原始数据: {
-        hasTitle: !!data.title,
-        hasContent: !!data.content,
-        hasVideoTitle: !!data.videoTitle,
-        hasVideoDescription: !!data.videoDescription,
-        hasTags: !!data.tags
-      }
-    });
 
     try {
       const elements = this.findElements();
@@ -125,40 +126,20 @@ class BilibiliPlugin extends BasePlatformPlugin {
       const videoDescription = data.videoDescription || data.content;
       const tags = data.tags || [];
 
-      console.log('📺 使用的视频数据:', {
-        videoTitle,
-        videoDescription: videoDescription?.substring(0, 100) + '...',
-        tags: typeof tags === 'string' ? JSON.parse(tags) : tags
-      });
-
       // 填充标题
       if (elements.title && videoTitle) {
-        // B站标题限制80字符
-        let processedTitle = videoTitle.toString();
-        if (processedTitle.length > 80) {
-          processedTitle = processedTitle.substring(0, 80);
-          console.log('⚠️ 标题超长，已截取到80字符');
-        }
-        
-        results.title = await this.fillVideoTitle(elements.title, processedTitle);
-        if (results.title.success) {
-          fillCount++;
-          console.log('✅ B站标题填充完成');
-        }
+        results.title = await this.fillVideoTitle(elements.title, videoTitle);
+        if (results.title.success) fillCount++;
       }
 
       // 填充简介
       if (elements.description && videoDescription) {
         results.description = await this.fillVideoDescription(elements.description, videoDescription);
-        if (results.description.success) {
-          fillCount++;
-          console.log('✅ B站简介填充完成');
-        }
+        if (results.description.success) fillCount++;
       }
 
-      // 填充标签 - 这是重点功能
-      if (tags) {
-        // 处理标签数据
+      // 填充标签
+      if (elements.tagInput && tags) {
         let tagsArray = [];
         if (typeof tags === 'string') {
           try {
@@ -172,10 +153,18 @@ class BilibiliPlugin extends BasePlatformPlugin {
 
         if (tagsArray.length > 0) {
           results.tags = await this.fillTags(elements, tagsArray);
-          if (results.tags.success) {
-            fillCount++;
-            console.log('✅ B站标签填充完成');
-          }
+          if (results.tags.success) fillCount++;
+        }
+      }
+
+      // 填充封面
+      if (elements.cover && data.coverImage) {
+        results.cover = await this.fillCover(elements.cover, data.coverImage);
+        if (results.cover.success) {
+          fillCount++;
+          console.log('✅ B站封面填充完成');
+        } else {
+          console.warn('⚠️ B站封面填充失败:', results.cover.error);
         }
       }
 
@@ -193,57 +182,108 @@ class BilibiliPlugin extends BasePlatformPlugin {
   }
 
   /**
-   * 智能填充标签 - B站的核心功能
+   * 填充封面图片
+   */
+  async fillCover(element, imageUrl) {
+    try {
+      console.log('🖼️ 开始填充封面:', imageUrl.substring(0, 50) + '...');
+
+      // 1. 获取图片Blob数据
+      const blob = await this.fetchImageBlob(imageUrl);
+      if (!blob) throw new Error('无法获取图片数据');
+
+      // 2. 创建File对象
+      const file = new File([blob], 'cover.png', { type: 'image/png' });
+
+      // 3. 模拟文件上传
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      element.files = dataTransfer.files;
+
+      // 4. 触发事件
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+
+      await this.sleep(1500); // 等待上传反应
+
+      return { success: true };
+    } catch (error) {
+      console.error('封面填充失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 获取图片Blob
+   */
+  async fetchImageBlob(url) {
+    // 如果是base64，直接转换
+    if (url.startsWith('data:')) {
+      const res = await fetch(url);
+      return await res.blob();
+    }
+
+    // 如果是URL，通过background script获取（避开CORS）
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        action: 'fetchBlob',
+        data: { url }
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          fetch(url).then(res => res.blob()).then(resolve).catch(reject);
+        } else if (response && response.success && response.data) {
+          fetch(response.data).then(res => res.blob()).then(resolve).catch(reject);
+        } else {
+          fetch(url).then(res => res.blob()).then(resolve).catch(reject);
+        }
+      });
+    });
+  }
+
+  /**
+   * 智能填充标签
    */
   async fillTags(elements, tagsArray) {
     try {
       console.log('🏷️ 开始智能填充B站标签:', tagsArray);
-      
+
       let addedTags = 0;
-      const maxTags = 10; // B站标签限制
-      
-      // 首先尝试点击推荐标签
-      const recommendTags = elements.recommendTags || document.querySelectorAll('.hot-tag-container');
-      const addedTagTexts = [];
-      
-      for (const tag of tagsArray.slice(0, maxTags)) {
-        const tagText = tag.toString().trim();
-        if (!tagText) continue;
-        
-        // 尝试在推荐标签中找到匹配的标签
-        const matchedRecommendTag = await this.findAndClickRecommendTag(recommendTags, tagText);
-        
-        if (matchedRecommendTag) {
-          addedTagTexts.push(tagText);
-          addedTags++;
-          console.log(`✅ 通过推荐标签添加: ${tagText}`);
-          await this.sleep(200); // 等待UI更新
-        } else {
-          // 如果推荐标签中没有，通过输入框手动添加
-          if (elements.tagInput) {
-            const manualAdded = await this.addTagManually(elements.tagInput, tagText);
-            if (manualAdded) {
-              addedTagTexts.push(tagText);
-              addedTags++;
-              console.log(`✅ 通过输入框添加: ${tagText}`);
-              await this.sleep(500); // 手动输入需要更长等待时间
-            }
+      const maxTags = 10;
+      const { tagInput } = elements;
+
+      // 首先尝试添加热门/推荐标签（如果存在且匹配）
+      const hotTags = document.querySelectorAll(this.getSelectors().recommendTags.join(','));
+      if (hotTags.length > 0) {
+        for (const hotTag of hotTags) {
+          const tagText = hotTag.textContent?.trim();
+          if (tagsArray.includes(tagText)) {
+            hotTag.click();
+            addedTags++;
+            await this.sleep(100);
           }
         }
-        
-        if (addedTags >= maxTags) {
-          console.log('⚠️ 已达到标签数量限制');
-          break;
+      }
+
+      // 手动输入剩余标签
+      for (const tag of tagsArray) {
+        if (addedTags >= maxTags) break;
+
+        // 检查是否已经添加（避免重复）
+        const existingTags = document.querySelectorAll(this.getSelectors().existingTags.join(','));
+        const tagExists = Array.from(existingTags).some(el => el.textContent?.includes(tag));
+
+        if (!tagExists) {
+          const success = await this.addTagManually(tagInput, tag);
+          if (success) addedTags++;
         }
       }
-      
+
       return {
         success: addedTags > 0,
         addedCount: addedTags,
-        addedTags: addedTagTexts,
-        value: addedTagTexts.join(', ')
+        value: tagsArray.join(',')
       };
-      
+
     } catch (error) {
       console.error('❌ 标签填充失败:', error);
       return { success: false, error: error.message };
@@ -251,67 +291,26 @@ class BilibiliPlugin extends BasePlatformPlugin {
   }
 
   /**
-   * 在推荐标签中查找并点击匹配的标签
-   */
-  async findAndClickRecommendTag(recommendTags, targetTag) {
-    try {
-      const normalizedTarget = targetTag.toLowerCase().replace(/[#\s]/g, '');
-      
-      for (const tagElement of recommendTags) {
-        const tagText = tagElement.textContent.trim().toLowerCase().replace(/[#\s]/g, '');
-        
-        // 精确匹配或包含匹配
-        if (tagText === normalizedTarget || 
-            tagText.includes(normalizedTarget) || 
-            normalizedTarget.includes(tagText)) {
-          
-          console.log(`🎯 找到匹配的推荐标签: "${tagElement.textContent.trim()}" -> "${targetTag}"`);
-          
-          // 检查是否已经选中
-          if (tagElement.classList.contains('hot-tag-container-selected')) {
-            console.log('⚠️ 标签已选中，跳过');
-            return true; // 认为已经添加成功
-          }
-          
-          // 点击添加标签
-          tagElement.click();
-          await this.sleep(200);
-          
-          // 验证是否添加成功（检查是否获得selected类）
-          if (tagElement.classList.contains('hot-tag-container-selected')) {
-            return true;
-          }
-        }
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('推荐标签点击失败:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 通过输入框手动添加标签
+   * 手动添加标签
    */
   async addTagManually(tagInput, tagText) {
+    if (!tagInput) return false;
+
     try {
-      console.log(`📝 手动添加标签: ${tagText}`);
-      
       // 聚焦输入框
       tagInput.focus();
       await this.sleep(100);
-      
+
       // 清空输入框
       tagInput.value = '';
       tagInput.dispatchEvent(new Event('input', { bubbles: true }));
       await this.sleep(100);
-      
+
       // 输入标签文本
       tagInput.value = tagText;
       tagInput.dispatchEvent(new Event('input', { bubbles: true }));
       await this.sleep(200);
-      
+
       // 按回车键添加标签
       const enterEvent = new KeyboardEvent('keydown', {
         key: 'Enter',
@@ -321,11 +320,11 @@ class BilibiliPlugin extends BasePlatformPlugin {
       });
       tagInput.dispatchEvent(enterEvent);
       await this.sleep(300);
-      
+
       // 清空输入框
       tagInput.value = '';
       tagInput.dispatchEvent(new Event('input', { bubbles: true }));
-      
+
       return true;
     } catch (error) {
       console.error('手动添加标签失败:', error);
@@ -339,7 +338,7 @@ class BilibiliPlugin extends BasePlatformPlugin {
   async fillVideoTitle(element, title) {
     try {
       console.log('📺 开始填充标题到元素:', element.tagName, title);
-      
+
       // 确保标题长度在限制范围内
       let processedTitle = title;
       if (title.length > 80) {
@@ -368,7 +367,7 @@ class BilibiliPlugin extends BasePlatformPlugin {
   async fillVideoDescription(element, description) {
     try {
       console.log('📺 开始填充简介到元素:', element.tagName, description);
-      
+
       // 确保元素获得焦点
       element.focus();
       await this.sleep(200);
@@ -377,7 +376,7 @@ class BilibiliPlugin extends BasePlatformPlugin {
         console.log('📝 使用contentEditable填充');
         element.innerHTML = '';
         element.textContent = description;
-        
+
         // 触发输入事件
         const events = ['input', 'change', 'blur'];
         for (const eventType of events) {
@@ -416,7 +415,7 @@ class BilibiliPlugin extends BasePlatformPlugin {
 
       // 设置新值
       element.value = value;
-      
+
       // 触发事件
       const events = ['input', 'change', 'blur'];
       for (const eventType of events) {

@@ -136,7 +136,16 @@ class BasePlatformPlugin {
    */
   findElement(selector) {
     try {
-      return document.querySelector(selector);
+      const first = document.querySelector(selector);
+      if (first && this.isElementVisible(first)) return first;
+
+      // 如果第一个匹配项不可用（可能隐藏），尝试返回第一个可见的匹配项
+      const all = document.querySelectorAll(selector);
+      for (const el of all) {
+        if (this.isElementVisible(el)) return el;
+      }
+
+      return first;
     } catch (error) {
       console.warn(`元素选择器错误 [${this.id}]:`, { selector, error });
       return null;
@@ -163,10 +172,29 @@ class BasePlatformPlugin {
   }
 
   /**
+   * 判断元素是否可见（用于选择更可靠的编辑器节点）
+   */
+  isElementVisible(element) {
+    try {
+      if (!element) return false;
+      const style = window.getComputedStyle(element);
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    } catch (e) {
+      // 获取样式/rect 失败时，保守返回 true，避免误杀
+      return true;
+    }
+  }
+
+  /**
    * 填充内容到编辑器
    */
   async fillContent(data) {
-    const elements = this.findEditorElements(false); // 强制不使用缓存
+    // 支持需要等待编辑器动态加载的平台（常见于弹窗/React 富文本框）
+    const elements = (this.specialHandling?.waitForEditor && typeof this._waitForEditor === 'function')
+      ? await this._waitForEditor()
+      : this.findEditorElements(false); // 强制不使用缓存
     
     if (!elements.isEditor) {
       throw new Error(`当前页面不是${this.displayName}编辑器`);
@@ -219,6 +247,13 @@ class BasePlatformPlugin {
     });
 
     return results;
+  }
+
+  /**
+   * 默认等待编辑器（子类/动态插件可重写）
+   */
+  async _waitForEditor() {
+    return this.findEditorElements(false);
   }
 
   /**
@@ -285,12 +320,32 @@ class BasePlatformPlugin {
   async setInputValue(element, value) {
     if (!element || value === undefined) return;
 
+    const setNativeValue = (el, val) => {
+      try {
+        const proto = el.tagName === 'TEXTAREA'
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype;
+
+        const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
+        const setter = descriptor?.set;
+
+        if (setter) {
+          setter.call(el, val);
+        } else {
+          el.value = val;
+        }
+      } catch (e) {
+        // 最后兜底
+        el.value = val;
+      }
+    };
+
     // 清空当前值
     element.focus();
-    element.value = '';
+    setNativeValue(element, '');
     
     // 设置新值
-    element.value = value;
+    setNativeValue(element, value);
 
     // 触发必要的事件
     const events = ['input', 'change', 'blur'];
@@ -308,15 +363,67 @@ class BasePlatformPlugin {
     if (!element || content === undefined) return;
 
     if (element.contentEditable === 'true' || element.isContentEditable) {
-      // 可编辑div
+      // 可编辑 div：不同平台差异较大
       element.focus();
-      element.innerHTML = content;
-      
+
+      // HTML 平台（如公众号/知识星球）使用 innerHTML；短文本平台用“插入文本”更可靠
+      if (this.contentType === 'html') {
+        element.innerHTML = content;
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+
+      const text = String(content ?? '');
+
+      // 清空原内容（尽量模拟真实编辑器行为）
+      try {
+        const selection = window.getSelection?.();
+        if (selection) {
+          selection.removeAllRanges();
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          selection.addRange(range);
+        }
+        const deleted = document.execCommand?.('delete', false, null);
+        if (!deleted) {
+          element.textContent = '';
+        }
+      } catch (e) {
+        element.textContent = '';
+      }
+
+      // 插入文本：优先 execCommand，其次 paste，最后直接赋值
+      let inserted = false;
+      try {
+        inserted = !!document.execCommand?.('insertText', false, text);
+      } catch (e) {
+        inserted = false;
+      }
+
+      if (!inserted) {
+        try {
+          const dataTransfer = new DataTransfer();
+          dataTransfer.setData('text/plain', text);
+          const pasteEvent = new ClipboardEvent('paste', {
+            clipboardData: dataTransfer,
+            bubbles: true,
+            cancelable: true
+          });
+          element.dispatchEvent(pasteEvent);
+          inserted = true;
+        } catch (e) {
+          inserted = false;
+        }
+      }
+
+      if (!inserted) {
+        element.textContent = text;
+      }
+
       // 触发输入事件
-      const event = new Event('input', { bubbles: true });
-      element.dispatchEvent(event);
-    } else if (element.tagName === 'TEXTAREA') {
-      // 文本域
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+      // 文本域 / 输入框
       await this.setInputValue(element, content);
     } else {
       console.warn(`不支持的编辑器元素类型: ${element.tagName}`);
@@ -392,6 +499,39 @@ class BasePlatformPlugin {
   async copyArticleContent(articleId) {
     try {
       console.log(`📋 ${this.displayName} 平台复制内容，文章ID:`, articleId);
+
+      // 短图文平台：复制“纯文本/AI改写后文案”，避免把 Markdown 语法带到平台输入框
+      if (this.contentType === 'text') {
+        const currentPreset = window.ZiliuApp?.getSelectedPreset?.();
+        const contentService = window.ZiliuContentService;
+
+        let fillData = null;
+        if (contentService && typeof contentService.processContentData === 'function') {
+          fillData = await contentService.processContentData({ articleId }, this.config, currentPreset);
+        }
+
+        const title = (fillData?.title || '').toString().trim();
+        const body = (fillData?.content || '').toString().trim();
+
+        let contentToCopy = body;
+        // 小红书图文：标题 + 正文更方便兜底（平台实际也有标题字段）
+        if (this.id === 'xiaohongshu_note' && title) {
+          contentToCopy = `${title}\n\n${body}`.trim();
+        }
+
+        if (!contentToCopy) {
+          throw new Error('文章内容为空');
+        }
+
+        await navigator.clipboard.writeText(contentToCopy);
+
+        return {
+          success: true,
+          content: contentToCopy,
+          format: 'text',
+          message: '短文案已复制到剪贴板！'
+        };
+      }
       
       // 获取文章内容
       const response = await window.ZiliuApiService.articles.get(articleId, 'raw');

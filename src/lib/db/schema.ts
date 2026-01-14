@@ -40,7 +40,7 @@ export const publishRecords = sqliteTable('publish_records', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   articleId: text('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  platform: text('platform', { enum: ['wechat', 'zhihu', 'juejin', 'zsxq', 'video_wechat', 'douyin', 'bilibili', 'xiaohongshu'] }).notNull(),
+  platform: text('platform', { enum: ['wechat', 'zhihu', 'juejin', 'zsxq', 'video_wechat', 'douyin', 'bilibili', 'xiaohongshu', 'youtube'] }).notNull(),
   status: text('status', { enum: ['pending', 'success', 'failed'] }).notNull().default('pending'),
   platformArticleId: text('platform_article_id'), // 平台返回的文章ID
   platformUrl: text('platform_url'), // 发布后的URL
@@ -102,7 +102,7 @@ export const videoContents = sqliteTable('video_contents', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   articleId: text('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  platform: text('platform', { enum: ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu'] }).notNull(),
+  platform: text('platform', { enum: ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu', 'youtube'] }).notNull(),
   
   // 视频元数据
   videoTitle: text('video_title'), // 视频标题
@@ -110,6 +110,7 @@ export const videoContents = sqliteTable('video_contents', {
   speechScript: text('speech_script'), // 口播稿
   tags: text('tags'), // JSON数组，存储标签
   coverSuggestion: text('cover_suggestion'), // 封面建议
+  coverImage: text('cover_image'), // 封面图片（Base64 data URL）
   platformTips: text('platform_tips'), // JSON数组，存储平台特定建议
   estimatedDuration: integer('estimated_duration'), // 预计时长（秒）
   

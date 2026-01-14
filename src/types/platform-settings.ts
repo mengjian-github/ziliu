@@ -1,9 +1,19 @@
 // 平台特定的发布设置类型定义
 
-// 图文平台
-export type TextPlatform = 'wechat' | 'zhihu' | 'juejin' | 'zsxq';
+// 长图文平台（文章/长文）
+export type LongTextPlatform = 'wechat' | 'wechat_xiaolushu' | 'zhihu' | 'juejin' | 'zsxq';
+
+// 短图文平台（短文案/配图）
+export type ShortTextPlatform =
+  | 'xiaohongshu_note'
+  | 'weibo'
+  | 'jike'
+  | 'x';
+
+// 文本平台（长图文 + 短图文）
+export type TextPlatform = LongTextPlatform | ShortTextPlatform;
 // 视频平台
-export type VideoPlatform = 'video_wechat' | 'douyin' | 'bilibili' | 'xiaohongshu';
+export type VideoPlatform = 'video_wechat' | 'douyin' | 'bilibili' | 'xiaohongshu' | 'youtube';
 // 所有平台
 export type Platform = TextPlatform | VideoPlatform;
 
@@ -25,6 +35,7 @@ export interface VideoSettings {
   videoTitle?: string;          // 视频标题
   videoDescription?: string;    // 视频描述
   videoTags?: string[];        // 视频标签
+  coverImage?: string;         // 封面图片（Base64 data URL）
   platformTips?: string[];     // 平台特定建议
 }
 
@@ -46,6 +57,10 @@ export interface WechatSettings extends BasePlatformSettings {
   platform: 'wechat';
 }
 
+export interface WechatXiaolushuSettings extends BasePlatformSettings {
+  platform: 'wechat_xiaolushu';
+}
+
 export interface ZhihuSettings extends BasePlatformSettings {
   platform: 'zhihu';
 }
@@ -57,6 +72,27 @@ export interface JuejinSettings extends BasePlatformSettings {
 export interface ZsxqSettings extends BasePlatformSettings {
   platform: 'zsxq';
   groupIds?: string[]; // 知识星球ID列表，支持多个星球
+}
+
+// 短图文平台设置
+export interface XiaohongshuSettings extends BasePlatformSettings {
+  platform: 'xiaohongshu';
+}
+
+export interface XiaohongshuNoteSettings extends BasePlatformSettings {
+  platform: 'xiaohongshu_note';
+}
+
+export interface WeiboSettings extends BasePlatformSettings {
+  platform: 'weibo';
+}
+
+export interface JikeSettings extends BasePlatformSettings {
+  platform: 'jike';
+}
+
+export interface XSettings extends BasePlatformSettings {
+  platform: 'x';
 }
 
 // 视频平台设置
@@ -72,8 +108,8 @@ export interface BilibiliSettings extends BasePlatformSettings {
   platform: 'bilibili';
 }
 
-export interface XiaohongshuSettings extends BasePlatformSettings {
-  platform: 'xiaohongshu';
+export interface YouTubeSettings extends BasePlatformSettings {
+  platform: 'youtube';
 }
 
 // 平台信息
@@ -95,6 +131,14 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformInfo> = {
     color: 'bg-green-500',
     description: '微信公众号文章发布',
     supportedFeatures: ['原创标记', '赞赏功能', '留言功能', '精选文章', '定制卡片']
+  },
+  wechat_xiaolushu: {
+    id: 'wechat_xiaolushu',
+    name: '小绿书',
+    icon: '🟢',
+    color: 'bg-emerald-600',
+    description: '微信小绿书发布（与公众号同编辑器）',
+    supportedFeatures: ['富文本填充', '图片处理', '样式转换（同公众号）']
   },
   zhihu: {
     id: 'zhihu',
@@ -119,6 +163,39 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformInfo> = {
     color: 'bg-yellow-500',
     description: '知识星球文章和主题发布',
     supportedFeatures: ['多星球发布', '富文本编辑', 'Markdown支持', '文章模式', '主题模式']
+  },
+  // 短图文平台
+  xiaohongshu_note: {
+    id: 'xiaohongshu_note',
+    name: '小红书（图文）',
+    icon: '📕',
+    color: 'bg-red-500',
+    description: '小红书图文笔记发布',
+    supportedFeatures: ['标题优化', '正文填充', '话题标签', '互动引导']
+  },
+  weibo: {
+    id: 'weibo',
+    name: '微博',
+    icon: '🧣',
+    color: 'bg-red-600',
+    description: '微博短内容发布',
+    supportedFeatures: ['短文案', '话题标签', '链接引导']
+  },
+  jike: {
+    id: 'jike',
+    name: '即刻',
+    icon: '🟡',
+    color: 'bg-yellow-500',
+    description: '即刻动态发布',
+    supportedFeatures: ['短文案', '话题标签', '链接引导']
+  },
+  x: {
+    id: 'x',
+    name: 'X',
+    icon: '𝕏',
+    color: 'bg-black',
+    description: 'X（Twitter）短帖发布',
+    supportedFeatures: ['短文案', '线程拆分（规划）', '标签建议（规划）']
   },
   video_wechat: {
     id: 'video_wechat',
@@ -146,26 +223,43 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformInfo> = {
   },
   xiaohongshu: {
     id: 'xiaohongshu',
-    name: '小红书',
-    icon: '📖',
-    color: 'bg-red-500',
-    description: '小红书视频笔记发布',
-    supportedFeatures: ['种草文案', '标签推荐', '地点添加', '封面优化', '互动引导']
+    name: '小红书（视频）',
+    icon: '📕',
+    color: 'bg-red-600',
+    description: '小红书视频发布',
+    supportedFeatures: ['视频标题', '视频描述', '话题标签', '封面建议']
+  },
+  youtube: {
+    id: 'youtube',
+    name: 'YouTube',
+    icon: '🎬',
+    color: 'bg-red-600',
+    description: 'YouTube 视频发布',
+    supportedFeatures: ['标题优化', '简介撰写', '标签建议', '封面建议', 'SEO关键词']
   }
 };
 
 // 平台类型判断工具函数
 export function isVideoPlatform(platform: Platform): platform is VideoPlatform {
-  return ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu'].includes(platform as VideoPlatform);
+  return ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu', 'youtube'].includes(platform as VideoPlatform);
+}
+
+export function isLongTextPlatform(platform: Platform): platform is LongTextPlatform {
+  return ['wechat', 'wechat_xiaolushu', 'zhihu', 'juejin', 'zsxq'].includes(platform as LongTextPlatform);
+}
+
+export function isShortTextPlatform(platform: Platform): platform is ShortTextPlatform {
+  return ['xiaohongshu_note', 'weibo', 'jike', 'x'].includes(platform as ShortTextPlatform);
 }
 
 export function isTextPlatform(platform: Platform): platform is TextPlatform {
-  return ['wechat', 'zhihu', 'juejin', 'zsxq'].includes(platform as TextPlatform);
+  return !isVideoPlatform(platform);
 }
 
 // 获取平台类型
-export function getPlatformType(platform: Platform): 'text' | 'video' {
-  return isVideoPlatform(platform) ? 'video' : 'text';
+export function getPlatformType(platform: Platform): 'long_text' | 'short_text' | 'video' {
+  if (isVideoPlatform(platform)) return 'video';
+  return isLongTextPlatform(platform) ? 'long_text' : 'short_text';
 }
 
 // 获取平台默认配置（暂时返回空对象，未来扩展时添加平台特定字段）

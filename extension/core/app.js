@@ -155,8 +155,48 @@ class ZiliuApp {
         return;
       }
 
-      // 选择优先级最高的平台
-      const platformConfig = matchedPlatforms.sort((a, b) => b.priority - a.priority)[0];
+      // 选择平台：默认按优先级；如存在“同 URL 多平台”的场景（例如：小红书图文/视频共用 URL），
+      // 则优先尊重网站端传入并存储的 platform 选择（ziliu_content.platform）。
+      let platformConfig = null;
+
+      if (matchedPlatforms.length > 1) {
+        try {
+          const storedPlatformId = await new Promise((resolve) => {
+            try {
+              if (!chrome?.storage?.local?.get) return resolve(null);
+              chrome.storage.local.get(['ziliu_content'], (result) => {
+                resolve(result?.ziliu_content?.platform || null);
+              });
+            } catch (_e) {
+              resolve(null);
+            }
+          });
+
+          if (storedPlatformId) {
+            const storedMatch = matchedPlatforms.find(p => p.id === storedPlatformId);
+            const sharedGroup = storedMatch?.specialHandling?.sharedUrlGroup;
+
+            if (storedMatch && sharedGroup) {
+              const groupMatches = matchedPlatforms.filter(p => p.specialHandling?.sharedUrlGroup === sharedGroup);
+              if (groupMatches.length > 1) {
+                platformConfig = storedMatch;
+                console.log('🎯 同URL多平台：使用网站端选择的平台匹配:', {
+                  storedPlatformId,
+                  sharedGroup,
+                  matched: groupMatches.map(p => p.id)
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('同URL多平台匹配失败，将回退到优先级规则:', e);
+        }
+      }
+
+      // 回退：按优先级最高的平台
+      if (!platformConfig) {
+        platformConfig = matchedPlatforms.slice().sort((a, b) => b.priority - a.priority)[0];
+      }
       console.log('🎯 匹配到平台:', platformConfig.displayName);
 
       // 动态加载平台插件

@@ -1465,27 +1465,36 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
 }
 
-// 配置驱动的自动注册
+// 配置驱动的自动注册（支持多个微信编辑器变体，例如：公众号长文 / 小绿书）
 if (window.ZiliuPlatformRegistry && window.ZiliuPluginConfig) {
-  const wechatConfig = window.ZiliuPluginConfig.platforms.find(p => p.id === 'wechat');
-  
-  if (wechatConfig && wechatConfig.enabled) {
-    const shouldRegister = wechatConfig.urlPatterns.some(pattern => {
+  const wechatLikeIds = ['wechat', 'wechat_xiaolushu'];
+  const platformConfigs = (window.ZiliuPluginConfig.platforms || [])
+    .filter(p => wechatLikeIds.includes(p.id) && p.enabled);
+
+  const matchesUrl = (patterns) => {
+    return (patterns || []).some(pattern => {
       try {
-        const escapedPattern = pattern.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '.*');
+        const escapedPattern = pattern
+          .replace(/[.+^${}()|[\]\\?]/g, '\\$&')
+          .replace(/\*/g, '.*');
         const regex = new RegExp('^' + escapedPattern + '$', 'i');
         return regex.test(window.location.href);
-      } catch (e) {
+      } catch (_e) {
         return false;
       }
     });
+  };
 
-    if (shouldRegister) {
-      console.log('🔧 注册微信专用插件（配置驱动）');
-      const wechatPlugin = new WeChatPlatformPlugin(wechatConfig);
-      ZiliuPlatformRegistry.register(wechatPlugin);
-    }
-  }
+  platformConfigs.forEach((config) => {
+    if (!matchesUrl(config.urlPatterns)) return;
+
+    // 避免重复注册
+    if (window.ZiliuPlatformRegistry.get(config.id)) return;
+
+    console.log(`🔧 注册微信专用插件（配置驱动）: ${config.displayName || config.id}`);
+    const plugin = new WeChatPlatformPlugin(config);
+    window.ZiliuPlatformRegistry.register(plugin);
+  });
 }
 
 window.WeChatPlatformPlugin = WeChatPlatformPlugin;
