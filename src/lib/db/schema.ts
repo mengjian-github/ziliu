@@ -103,17 +103,19 @@ export const videoContents = sqliteTable('video_contents', {
   articleId: text('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   platform: text('platform', { enum: ['video_wechat', 'douyin', 'bilibili', 'xiaohongshu', 'youtube'] }).notNull(),
-  
+
   // 视频元数据
   videoTitle: text('video_title'), // 视频标题
   videoDescription: text('video_description'), // 视频描述
   speechScript: text('speech_script'), // 口播稿
   tags: text('tags'), // JSON数组，存储标签
   coverSuggestion: text('cover_suggestion'), // 封面建议
-  coverImage: text('cover_image'), // 封面图片（Base64 data URL）
+  coverImage: text('cover_image'), // 默认封面图片（Base64 data URL）
+  coverImage169: text('cover_image_169'), // 16:9 封面
+  coverImage43: text('cover_image_43'), // 4:3 封面
   platformTips: text('platform_tips'), // JSON数组，存储平台特定建议
   estimatedDuration: integer('estimated_duration'), // 预计时长（秒）
-  
+
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

@@ -21,6 +21,8 @@ const saveVideoContentSchema = z.object({
   tags: z.array(z.string()),
   coverSuggestion: z.string().optional(),
   coverImage: z.string().optional(),
+  coverImage169: z.string().optional(),
+  coverImage43: z.string().optional(),
   platformTips: z.array(z.string()).optional(),
   estimatedDuration: z.number().optional(),
 });
@@ -63,7 +65,7 @@ export async function GET(request: NextRequest) {
     }
 
     const content = existingContent[0];
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -73,6 +75,8 @@ export async function GET(request: NextRequest) {
         tags: content.tags ? JSON.parse(content.tags) : [],
         coverSuggestion: content.coverSuggestion,
         coverImage: content.coverImage,
+        coverImage169: content.coverImage169,
+        coverImage43: content.coverImage43,
         platformTips: content.platformTips ? JSON.parse(content.platformTips) : [],
         estimatedDuration: content.estimatedDuration,
       }
@@ -120,6 +124,8 @@ export async function POST(request: NextRequest) {
       tags: JSON.stringify(validatedData.tags),
       coverSuggestion: validatedData.coverSuggestion,
       coverImage: validatedData.coverImage,
+      coverImage169: validatedData.coverImage169,
+      coverImage43: validatedData.coverImage43,
       platformTips: JSON.stringify(validatedData.platformTips || []),
       estimatedDuration: validatedData.estimatedDuration,
       updatedAt: new Date(),

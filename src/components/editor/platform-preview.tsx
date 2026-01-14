@@ -322,6 +322,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               tags: loadData.data.tags,
               coverSuggestion: loadData.data.coverSuggestion,
               coverImage: loadData.data.coverImage,
+              coverImage169: loadData.data.coverImage169,
+              coverImage43: loadData.data.coverImage43,
               platformTips: loadData.data.platformTips,
               estimatedDuration: loadData.data.estimatedDuration
             });
@@ -384,6 +386,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
             tags: metadataData.data.tags,
             coverSuggestion: metadataData.data.coverSuggestion,
             coverImage: metadataData.data.coverImage,
+            coverImage169: metadataData.data.coverImage169,
+            coverImage43: metadataData.data.coverImage43,
             platformTips: metadataData.data.platformTips,
             estimatedDuration: speechData.data.estimatedDuration
           })
@@ -1285,39 +1289,85 @@ function VideoPreview({ platform, metadata, title, platformInfo }: {
           )}
 
           {/* 封面 */}
-          {(metadata.coverImage || metadata.coverSuggestion) && (
+          {(metadata.coverImage || metadata.coverImage169 || metadata.coverImage43 || metadata.coverSuggestion) && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-zinc-300 flex items-center">
                   <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
                   视频封面
                 </h3>
-                {metadata.coverImage && (
-                  <button
-                    onClick={() => copyToClipboard(metadata.coverImage, '封面图片')}
-                    className="text-xs px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 rounded-md transition-all hover:text-white"
-                  >
-                    复制Base64
-                  </button>
-                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {metadata.coverImage && (
-                  <div className="p-3 bg-black/40 rounded-lg border border-white/10">
-                    <img
-                      src={metadata.coverImage}
-                      alt="AI生成封面"
-                      className="w-full rounded-md object-cover shadow-sm"
-                    />
-                  </div>
+                {platform === 'bilibili' && (metadata.coverImage169 || metadata.coverImage43) ? (
+                  <>
+                    {metadata.coverImage169 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-xs text-zinc-500 flex items-center">
+                            <Monitor className="w-3 h-3 mr-1" />
+                            个人空间封面 (16:9)
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(metadata.coverImage169, '16:9 封面')}
+                            className="text-[10px] px-2 py-0.5 bg-white/5 hover:bg-white/10 text-zinc-400 border border-white/5 rounded transition-colors"
+                          >复制图片数据</button>
+                        </div>
+                        <div className="p-2 bg-black/40 rounded-xl border border-white/10 group relative overflow-hidden">
+                          <img src={metadata.coverImage169} alt="16:9 封面" className="w-full aspect-video rounded-lg object-cover shadow-2xl transition-transform duration-500 group-hover:scale-105" />
+                          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                            <span className="text-[10px] text-white/80 font-medium">B站个人中心展示建议规格</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {metadata.coverImage43 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-xs text-zinc-500 flex items-center">
+                            <Smartphone className="w-3 h-3 mr-1" />
+                            首页推荐封面 (4:3)
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(metadata.coverImage43, '4:3 封面')}
+                            className="text-[10px] px-2 py-0.5 bg-white/5 hover:bg-white/10 text-zinc-400 border border-white/5 rounded transition-colors"
+                          >复制图片数据</button>
+                        </div>
+                        <div className="p-2 bg-black/40 rounded-xl border border-white/10 group relative overflow-hidden">
+                          <img src={metadata.coverImage43} alt="4:3 封面" className="w-full aspect-[4/3] rounded-lg object-cover shadow-2xl transition-transform duration-500 group-hover:scale-105" />
+                          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                            <span className="text-[10px] text-white/80 font-medium">B站瀑布流及搜索展示规划</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  metadata.coverImage && (
+                    <div className="p-3 bg-black/40 rounded-xl border border-white/10 relative group">
+                      <img
+                        src={metadata.coverImage}
+                        alt="AI生成封面"
+                        className="w-full rounded-lg object-cover shadow-sm transition-transform duration-500 group-hover:scale-[1.02]"
+                      />
+                      <button
+                        onClick={() => copyToClipboard(metadata.coverImage, '封面图片')}
+                        className="absolute top-5 right-5 text-[10px] px-2 py-1 bg-black/60 backdrop-blur-md text-white border border-white/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity shadow-xl"
+                      >
+                        复制
+                      </button>
+                    </div>
+                  )
                 )}
+
                 {metadata.coverSuggestion && (
-                  <div className={`p-4 rounded-lg border border-blue-500/20 bg-blue-500/5 ${!metadata.coverImage ? 'col-span-full' : ''}`}>
+                  <div className={`p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 ${(!metadata.coverImage && !metadata.coverImage169) ? 'col-span-full' : ''}`}>
                     <div className="flex items-start gap-3">
-                      <span className="text-xl">🎨</span>
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 flex-shrink-0">
+                        <Palette className="w-4 h-4" />
+                      </div>
                       <div>
                         <div className="text-sm font-medium text-blue-400 mb-1">封面设计建议</div>
-                        <p className="text-sm text-blue-200/80 leading-relaxed">{metadata.coverSuggestion}</p>
+                        <p className="text-sm text-blue-200/80 leading-relaxed italic">"{metadata.coverSuggestion}"</p>
                       </div>
                     </div>
                   </div>

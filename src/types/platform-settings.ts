@@ -35,7 +35,9 @@ export interface VideoSettings {
   videoTitle?: string;          // 视频标题
   videoDescription?: string;    // 视频描述
   videoTags?: string[];        // 视频标签
-  coverImage?: string;         // 封面图片（Base64 data URL）
+  coverImage?: string;         // 默认封面图片（Base64 data URL）
+  coverImage169?: string;      // 16:9 封面
+  coverImage43?: string;       // 4:3 封面
   platformTips?: string[];     // 平台特定建议
 }
 

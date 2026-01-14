@@ -219,6 +219,8 @@ class ZiliuContentService {
         tags: response.data.tags,
         coverSuggestion: response.data.coverSuggestion,
         coverImage: response.data.coverImage,
+        coverImage169: response.data.coverImage169,
+        coverImage43: response.data.coverImage43,
         platformTips: response.data.platformTips,
         estimatedDuration: response.data.estimatedDuration
       };

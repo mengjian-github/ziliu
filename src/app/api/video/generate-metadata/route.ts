@@ -9,7 +9,7 @@ const METADATA_PROMPTS = {
 1. 标题：必须严格控制在6-16个汉字之间（不包括标点符号），突出实用价值，适合微信社交传播。如果内容过长请精简，如果过短请适当扩展。
 2. 描述：80-120字，温和友好，引导互动，必须包含核心价值点与适用人群或场景
 3. 标签：3-5个相关话题标签，用#号格式
-4. 封面建议：一句话描述适合的封面内容
+4. 封面建议：一句话描述适合的封面内容（优先用物件/图标/场景/插画，避免人物）
 5. 不能直接复述文章第一句话，要进行提炼总结
 
 重要：标题字数限制是硬性要求，必须在6-16个汉字范围内，超出或不足都不符合平台规范！
@@ -28,7 +28,7 @@ const METADATA_PROMPTS = {
 1. 标题：制造悬念或冲突，包含数字或极端词汇
 2. 描述：30-55字，节奏感强，多用标签和emoji，必须包含1个核心亮点
 3. 标签：5-8个热门话题标签，用#号格式
-4. 封面建议：强调视觉冲击力和对比
+4. 封面建议：强调视觉冲击力和对比（避免真人与人物特写）
 5. 不能直接复述文章第一句话，要进行提炼总结
 
 请按以下格式输出：
@@ -45,7 +45,7 @@ const METADATA_PROMPTS = {
 1. 标题：信息量大，可以稍长，体现专业性
 2. 描述：150-250字，详细介绍内容大纲和亮点，包含2-3个要点
 3. 标签：选择合适的B站分区标签和内容标签
-4. 封面建议：信息丰富，突出重点内容
+4. 封面建议：信息丰富，突出重点内容（以图标/数据/场景为主，避免人物）
 5. 不能直接复述文章第一句话，要进行提炼总结
 
 请按以下格式输出：
@@ -62,7 +62,7 @@ const METADATA_PROMPTS = {
 1. 标题：真实体验感，多用感叹号和问号
 2. 描述：200-500字，详细分享经历，多用emoji和换行，突出真实体验和效果
 3. 标签：包含品类、功效、适用人群等标签
-4. 封面建议：突出颜值和真实性
+4. 封面建议：突出主题与质感（优先物件/场景/插画，避免人物）
 5. 不能直接复述文章第一句话，要进行提炼总结
 
 请按以下格式输出：
@@ -71,7 +71,7 @@ const METADATA_PROMPTS = {
 标签：#标签1 #标签2 #标签3 #标签4 #标签5
 封面：[封面建议]
 `
-,
+  ,
 
   youtube: `
 请为以下内容生成适合 YouTube 的发布元数据：
@@ -83,7 +83,7 @@ const METADATA_PROMPTS = {
    - 关键链接位（如官网/产品页/Newsletter，可留占位符）
    - 3-5 个 #hashtag
 3. 标签：8-15 个相关关键词（用 #号格式输出）
-4. 封面建议：一句话描述封面构图与文字要点
+4. 封面建议：一句话描述封面构图与文字要点（避免人物）
 5. 保持与原文一致的语言（中文就中文，英文就英文）
 6. 不能直接复述文章第一句话，要进行提炼总结
 
@@ -98,7 +98,7 @@ const METADATA_PROMPTS = {
 export async function POST(request: NextRequest) {
   try {
     const { content, platform, title } = await request.json();
-    
+
     if (!content || !platform) {
       return Response.json({
         success: false,
@@ -115,15 +115,31 @@ export async function POST(request: NextRequest) {
     }
 
     const metadata = await generateMetadataWithAI(content, platform, title);
-    const coverImage = metadata.coverSuggestion
-      ? await generateCoverImage(metadata.coverSuggestion, platform, title)
-      : undefined;
-    
+    let coverImage = undefined;
+    let coverImage169 = undefined;
+    let coverImage43 = undefined;
+
+    if (metadata.coverSuggestion) {
+      if (platform === 'bilibili') {
+        // B站生成两个规格
+        console.log('📺 为B站生成16:9和4:3封面...');
+        [coverImage169, coverImage43] = await Promise.all([
+          generateCoverImage(metadata.coverSuggestion, platform, title, content, '16:9'),
+          generateCoverImage(metadata.coverSuggestion, platform, title, content, '4:3')
+        ]);
+        coverImage = coverImage169; // 默认使用16:9
+      } else {
+        coverImage = await generateCoverImage(metadata.coverSuggestion, platform, title, content);
+      }
+    }
+
     return Response.json({
       success: true,
       data: {
         ...metadata,
         coverImage,
+        coverImage169,
+        coverImage43,
         platform,
         platformTips: getPlatformTips(platform)
       }
@@ -139,7 +155,7 @@ export async function POST(request: NextRequest) {
 
 async function generateMetadataWithAI(content: string, platform: string, originalTitle?: string): Promise<any> {
   const prompt = METADATA_PROMPTS[platform as keyof typeof METADATA_PROMPTS];
-  
+
   // 构建完整的AI请求内容
   const fullPrompt = `
 ${prompt}
@@ -198,7 +214,7 @@ ${content}
 
   } catch (error) {
     console.error('AI生成失败，使用降级方案:', error);
-    
+
     // 降级方案
     return fallbackMetadataGeneration(content, platform, originalTitle);
   }
@@ -207,10 +223,12 @@ ${content}
 async function generateCoverImage(
   coverSuggestion: string,
   platform: string,
-  title?: string
+  title?: string,
+  contentForCover?: string,
+  ratioOverride?: string
 ): Promise<string | undefined> {
   try {
-    const prompt = buildCoverImagePrompt(coverSuggestion, platform, title);
+    const prompt = buildCoverImagePrompt(coverSuggestion, platform, title, contentForCover, ratioOverride);
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -250,14 +268,19 @@ async function generateCoverImage(
   }
 }
 
-function buildCoverImagePrompt(coverSuggestion: string, platform: string, title?: string): string {
+function buildCoverImagePrompt(
+  coverSuggestion: string,
+  platform: string,
+  title?: string,
+  contentForCover?: string,
+  ratioOverride?: string
+): string {
   const base = `根据以下封面建议生成一张更高点击率的封面图片。封面主题：${title || '未指定标题'}。封面建议：${coverSuggestion}`;
 
-  const persona = [
-    '人物人设：男性，年轻、帅气，技术负责人/资深开发者，AI 技术教学者',
-    '人物出现时的约束：若画面包含人物，只能出现男性；风格自信、干净利落、专业可信',
-    '吸引力取向：更能吸引小红书女性用户的男性气质与镜头表现（自然、不油腻）',
-    '人物不相关时：可不出现人物，改用图标/数据/产品场景/生活方式元素'
+  const subjectRules = [
+    '主体优先：物件/图标/数据可视化/场景元素/抽象形状/插画',
+    '避免人物：不出现真人、卡通人物、人物剪影或脸部特写',
+    '如需表达“人群/用户”，使用符号化图标或抽象轮廓替代',
   ].join('\n');
 
   const coverSpecs = {
@@ -276,17 +299,17 @@ function buildCoverImagePrompt(coverSuggestion: string, platform: string, title?
       text: '主标题6-9字，关键词加粗高亮',
     },
     bilibili: {
-      ratio: '16:9',
-      size: '1280x720',
-      layout: '信息量更足，标题+要点/数字+小角标',
+      ratio: ratioOverride || '16:9',
+      size: ratioOverride === '4:3' ? '960x720' : '1280x720',
+      layout: '信息量更足，标题+要点/数字+小角标，主体内容务必保持在画面中央',
       style: '内容导向、清晰利落、专业感',
       text: '主标题6-12字，支持1个关键词高亮',
     },
     xiaohongshu: {
       ratio: '3:4（优先）/1:1（兼容）',
       size: '1080x1440（优先）/1080x1080（兼容）',
-      layout: '竖版构图，人物/物件居中，标题在上或中，留出留白',
-      style: '真实生活感、清新自然、色调柔和',
+      layout: '竖版构图，物件/插画/场景居中，标题在上或中，留出留白',
+      style: '清新自然、质感明确、色调柔和',
       text: '主标题6-12字，副标题8-14字，避免过多文字',
     },
     youtube: {
@@ -298,25 +321,135 @@ function buildCoverImagePrompt(coverSuggestion: string, platform: string, title?
     },
   };
 
+  const coverTemplatesByCategory = {
+    video_wechat: {
+      tutorial: '模板：简洁大标题 + 小副标题 + 单一物件/图标，背景纯色或柔和渐变',
+      review: '模板：对比式布局 + 关键词高亮 + 参数/指标小角标',
+      list: '模板：信息图风格，1个大数字/关键词 + 图标矩阵',
+      news: '模板：版式干净 + 时间/要点条目 + 轻量图标',
+      lifestyle: '模板：清爽生活方式静物 + 柔和渐变 + 细体标题',
+      food: '模板：简洁餐食静物（不含人物）+ 温暖色调 + 关键词高亮',
+      travel: '模板：目的地场景剪影/地标图标 + 位置标签 + 大标题',
+      tech: '模板：科技卡片布局 + 设备/界面图标 + 主标题高亮',
+      finance: '模板：数据面板风 + 上升箭头/图表元素 + 稳重配色',
+      productivity: '模板：清单式布局 + 勾选符号 + 关键字大标题',
+      entertainment: '模板：高对比配色 + 夸张符号元素 + 大标题',
+      general: '模板：简洁大标题 + 单一物件/图标 + 干净背景',
+    },
+    douyin: {
+      tutorial: '模板：高对比撞色背景 + 3-5字超大标题 + 放射光效',
+      review: '模板：对比式排版 + 参数标签贴纸 + 强对比配色',
+      list: '模板：大数字爆款样式 + 标签贴纸 + 高饱和背景',
+      news: '模板：标题条幅 + 热点标签贴纸 + 强对比底色',
+      lifestyle: '模板：明快撞色 + 生活物件拼贴 + 粗体标题',
+      food: '模板：高饱和美食静物 + 夸张贴纸 + 大标题',
+      travel: '模板：明亮场景剪影 + 位置标签 + 关键词高亮',
+      tech: '模板：赛博科技感 + HUD元素 + 关键词高亮',
+      finance: '模板：强对比图表元素 + 关键词高亮 + 警示色点缀',
+      productivity: '模板：清单式大字 + 勾选/计时元素 + 强对比背景',
+      entertainment: '模板：潮流涂鸦风 + 贴纸/emoji点缀 + 粗体大字',
+      general: '模板：高对比撞色背景 + 超大标题 + 简单图标',
+    },
+    bilibili: {
+      tutorial: '模板：标题 + 2-3个要点词 + 小角标，信息层级清晰',
+      review: '模板：参数对比卡片 + 关键词高亮 + 对比色拼贴',
+      list: '模板：大数字清单 + 图标矩阵 + 标题置顶',
+      news: '模板：要点条列 + 关键词高亮 + 轻量图标',
+      lifestyle: '模板：低饱和物件拼贴 + 标题置顶 + 轻量贴纸',
+      food: '模板：美食静物拼贴 + 关键词高亮 + 小角标',
+      travel: '模板：地标/地图图标 + 位置标签 + 标题置顶',
+      tech: '模板：科技感卡片布局 + 图标/数据元素 + 主标题高亮',
+      finance: '模板：数据看板 + 上升/下降图标 + 关键词高亮',
+      productivity: '模板：方法步骤卡片 + 勾选/清单元素 + 标题置顶',
+      entertainment: '模板：强对比拼贴 + 夸张符号元素 + 大标题',
+      general: '模板：信息密度适中，标题 + 要点词 + 小角标',
+    },
+    xiaohongshu: {
+      tutorial: '模板：清新INS风 + 大标题 + 小副标题 + 图标点缀',
+      review: '模板：对比式拼贴 + 关键词高亮 + 结果标签',
+      list: '模板：拼贴图鉴风，多物件排版 + 标题置顶/置中',
+      news: '模板：简洁条目 + 关键词高亮 + 轻量图标',
+      lifestyle: '模板：清新静物 + 留白充足 + 细体标题',
+      food: '模板：温暖色调美食静物 + 手写感标题 + 轻量贴纸',
+      travel: '模板：目的地场景/地标图标 + 位置标签 + 清新配色',
+      tech: '模板：简洁设备/界面图标 + 标题置顶 + 低饱和配色',
+      finance: '模板：简洁数据图表 + 稳重配色 + 标题置顶',
+      productivity: '模板：清单式布局 + 勾选符号 + 关键词高亮',
+      entertainment: '模板：梦幻手绘插画风 + 柔和渐变 + 手写感标题',
+      general: '模板：清新INS风 + 留白 + 精致静物',
+    },
+    youtube: {
+      tutorial: '模板：极简对比，纯色背景 + 超大标题 + 单一物件',
+      review: '模板：参数/评分条 + 关键词高亮 + 对比色背景',
+      list: '模板：大数字标题 + 图标矩阵 + 高对比背景',
+      news: '模板：标题条幅 + 时间/要点 + 轻量图标',
+      lifestyle: '模板：极简静物 + 低饱和背景 + 大标题',
+      food: '模板：美食静物主视觉 + 大标题 + 简洁点缀',
+      travel: '模板：地标剪影 + 位置标签 + 大标题',
+      tech: '模板：科技卡片布局 + 设备/数据元素 + 主标题高亮',
+      finance: '模板：数据看板风 + 上升/下降图标 + 关键词高亮',
+      productivity: '模板：清单式大字 + 计时/勾选元素 + 高对比',
+      entertainment: '模板：电影感海报 + 强光源 + 大标题',
+      general: '模板：极简对比 + 超大标题 + 单一物件',
+    },
+  };
+
   const spec = coverSpecs[platform as keyof typeof coverSpecs];
   const specText = spec
     ? [
-        `画幅比例：${spec.ratio}`,
-        `分辨率建议：${spec.size}`,
-        `版式：${spec.layout}`,
-        `风格：${spec.style}`,
-        `文字：${spec.text}`,
-      ].join('\n')
-    : '画幅比例：16:9\n风格：清晰、主题突出、构图干净。';
+      `画幅比例：${spec.ratio}`,
+      `分辨率建议：${spec.size}`,
+      `版式：${spec.layout}`,
+      `风格：${spec.style}`,
+      `文字：${spec.text}`,
+    ].join('\n')
+    : `画幅比例：${ratioOverride || '16:9'}\n风格：清晰、主题突出、构图干净。`;
+
+  const category = classifyCoverCategory(`${title || ''} ${coverSuggestion} ${contentForCover || ''}`);
+  const templateText =
+    coverTemplatesByCategory[platform as keyof typeof coverTemplatesByCategory]?.[category] ||
+    coverTemplatesByCategory[platform as keyof typeof coverTemplatesByCategory]?.general ||
+    '模板：极简大标题 + 单一物件/图标 + 干净背景';
 
   const commonRules = [
     '文字必须清晰可读，避免过小或过多文字',
     '对比强、主体突出，留出安全边距（四周至少5%留白）',
     '避免复杂背景和杂乱元素',
     '整体构图有明确视觉焦点',
+    '禁止人物/人脸/人体特写，避免真人写实风格',
   ].join('\n');
 
-  return `${base}\n\n人设与人物约束：\n${persona}\n\n平台规格与风格要求：\n${specText}\n\n通用规则：\n${commonRules}`;
+  return `${base}\n\n主体与禁用规则：\n${subjectRules}\n\n平台规格与风格要求：\n${specText}\n\n内容类型判定：${category}\n指定模板：${templateText}\n\n通用规则：\n${commonRules}`;
+}
+
+type CoverCategory =
+  | 'tutorial'
+  | 'review'
+  | 'list'
+  | 'news'
+  | 'lifestyle'
+  | 'food'
+  | 'travel'
+  | 'tech'
+  | 'finance'
+  | 'productivity'
+  | 'entertainment'
+  | 'general';
+
+function classifyCoverCategory(text: string): CoverCategory {
+  const t = text.toLowerCase();
+  if (/(教程|教学|指南|步骤|入门|技巧|方法|how to|tutorial|guide|tips)/i.test(t)) return 'tutorial';
+  if (/(测评|评测|对比|横评|开箱|review|benchmark|vs)/i.test(t)) return 'review';
+  if (/(清单|合集|盘点|top\s?\d+|排行榜|list|合集)/i.test(t)) return 'list';
+  if (/(新闻|快讯|热点|趋势|发布|解读|news|trend|breaking)/i.test(t)) return 'news';
+  if (/(生活|日常|穿搭|护肤|家居|vlog|lifestyle)/i.test(t)) return 'lifestyle';
+  if (/(美食|料理|做饭|餐厅|探店|food|recipe|cooking)/i.test(t)) return 'food';
+  if (/(旅行|攻略|打卡|景点|旅拍|travel|trip|itinerary)/i.test(t)) return 'travel';
+  if (/(科技|数码|软件|硬件|ai|工具|tech|product|app|saas)/i.test(t)) return 'tech';
+  if (/(金融|理财|投资|股票|基金|收益|finance|stock|invest|trade)/i.test(t)) return 'finance';
+  if (/(效率|复盘|习惯|时间管理|生产力|productivity)/i.test(t)) return 'productivity';
+  if (/(游戏|娱乐|影视|电影|综艺|动漫|music|movie|game|entertainment)/i.test(t)) return 'entertainment';
+  return 'general';
 }
 
 // 解析AI返回的结构化内容
@@ -387,11 +520,11 @@ function generateVideoWechatTitle(originalTitle?: string): string {
   if (!originalTitle) {
     return '实用干货分享';
   }
-  
+
   // 移除标点符号后计算汉字长度
   const cleanTitle = originalTitle.replace(/[^\u4e00-\u9fa5]/g, '');
   const length = cleanTitle.length;
-  
+
   if (length >= 6 && length <= 16) {
     // 长度合适，直接返回
     return originalTitle;
@@ -410,7 +543,7 @@ function generateVideoWechatTitle(originalTitle?: string): string {
     // 太短，适当扩展
     const extensions = ['分享', '干货', '技巧', '方法', '经验', '心得'];
     let extended = originalTitle;
-    
+
     for (const ext of extensions) {
       const testTitle = extended + ext;
       const testLength = testTitle.replace(/[^\u4e00-\u9fa5]/g, '').length;
@@ -418,7 +551,7 @@ function generateVideoWechatTitle(originalTitle?: string): string {
         return testTitle;
       }
     }
-    
+
     // 如果还是不够，直接补充
     return originalTitle + '实用分享';
   }
@@ -429,7 +562,7 @@ function fallbackMetadataGeneration(content: string, platform: string, originalT
   const cleanContent = content.replace(/<[^>]*>/g, '').replace(/[#*`]/g, '');
   const keyPoints = extractKeyPoints(cleanContent, 3);
   const summary = buildSummary(keyPoints);
-  
+
   const platformDefaults = {
     video_wechat: {
       title: generateVideoWechatTitle(originalTitle),
@@ -517,6 +650,6 @@ function getPlatformTips(platform: string): string[] {
       '标签更偏SEO关键词，注意相关性'
     ]
   };
-  
+
   return tipsMap[platform as keyof typeof tipsMap] || [];
 }
