@@ -8,6 +8,7 @@ import { and, eq } from 'drizzle-orm';
 import { extractImagesFromMarkdown, markdownToPlainText, type ExtractedImage } from '@/lib/markdown-utils';
 
 const SHORT_TEXT_PLATFORMS = [
+  'wechat_xiaolushu',
   'xiaohongshu_note',
   'weibo',
   'jike',
@@ -25,6 +26,7 @@ const generateSchema = z.object({
 type ShortTextPlatform = (typeof SHORT_TEXT_PLATFORMS)[number];
 
 const OUTPUT_LIMITS: Record<ShortTextPlatform, { titleMax?: number; contentMax?: number; tagMax?: number }> = {
+  wechat_xiaolushu: { titleMax: 20, contentMax: 1000 },
   xiaohongshu_note: { titleMax: 20, contentMax: 1000, tagMax: 10 },
   weibo: { contentMax: 2000, tagMax: 5 },
   jike: { contentMax: 2000, tagMax: 5 },
@@ -32,11 +34,22 @@ const OUTPUT_LIMITS: Record<ShortTextPlatform, { titleMax?: number; contentMax?:
 };
 
 const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
+  wechat_xiaolushu: `
+你是“微信小绿书（公众号图片消息）”运营助手。请把原始内容改写为适合发布的小绿书短图文文案。
+
+要求：
+1) 标题：可选，6-20个汉字（不要出现“标题：”前缀）
+2) 正文：200-900字，纯文本，允许换行；不要出现Markdown语法；不要输出图片URL；避免贴长链接
+3) 不要生成话题/标签
+4) 可以根据配图信息自然地写“第1张图/图里…”等
+
+输出必须是严格 JSON（不要有任何额外文字）：
+{"title":"...","content":"..."}`,
   xiaohongshu_note: `
 你是“小红书图文笔记”运营助手。请把原始内容改写为适合发布的小红书图文笔记文案。
 
 要求：
-1) 标题：1-20个汉字（尽量口语、有场景、有情绪点；不要出现“标题：”前缀）
+1) 标题：6-20个汉字，偏爆款风格；要有场景/情绪/结果感（不要出现“标题：”前缀）
 2) 正文：200-900字，允许换行与emoji；不要出现Markdown语法；避免贴长链接；适当引导互动（如“评论区聊聊/你也遇到过吗”）
 3) 话题：5-10个，返回数组（不要带#号，直接给词）
 4) 可以根据配图信息自然地写“第1张图/图里…”等（但不要输出图片URL）
@@ -86,6 +99,91 @@ const aiOutputSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+async function generateShortTextCover(input: {
+  platform: ShortTextPlatform;
+  title?: string;
+  content: string;
+  images: ExtractedImage[];
+}): Promise<{ coverImage?: string; coverSuggestion?: string }> {
+  if (input.platform !== 'xiaohongshu_note') return {};
+
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return {};
+
+  const suggestion = buildShortTextCoverSuggestion(input);
+  const prompt = buildShortTextCoverPrompt(suggestion, input.title, input.content);
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        'X-Title': 'Ziliu Short Text Cover Generation',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-pro-image-preview',
+        messages: [{ role: 'user', content: prompt }],
+        modalities: ['image', 'text']
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const images = data.choices?.[0]?.message?.images;
+    const imageUrl = images?.[0]?.image_url?.url;
+
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return { coverSuggestion: suggestion };
+    }
+
+    return { coverImage: imageUrl, coverSuggestion: suggestion };
+  } catch (error) {
+    console.error('小红书封面生成失败:', error);
+    return { coverSuggestion: suggestion };
+  }
+}
+
+function buildShortTextCoverSuggestion(input: {
+  title?: string;
+  content: string;
+  images: ExtractedImage[];
+}): string {
+  const cleanTitle = String(input.title || '').trim();
+  const firstLine = input.content.split('\n').find(line => line.trim()) || '';
+  const imageHints = input.images
+    .slice(0, 3)
+    .map((img, index) => `图${index + 1}${img.alt ? `（${img.alt}）` : ''}`)
+    .join('、');
+  const base = cleanTitle || firstLine || '实用图文分享';
+  const imagesText = imageHints ? `；可参考配图：${imageHints}` : '';
+  return `小红书爆款封面，突出“${base}”的主题与结果感${imagesText}`;
+}
+
+function buildShortTextCoverPrompt(suggestion: string, title?: string, content?: string): string {
+  const safeTitle = title || '小红书笔记';
+  const summary = content ? content.slice(0, 120) : '';
+
+  return [
+    `为小红书图文笔记生成高点击率封面图。主题：${safeTitle}`,
+    `封面建议：${suggestion}`,
+    `正文摘要（仅供理解主题）：${summary}`,
+    '',
+    '硬性要求：',
+    '1) 画幅比例 3:4（1080x1440）；',
+    '2) 标题文字 6-12 字，副标题 8-14 字；',
+    '3) 视觉清新、留白足、质感强，避免杂乱；',
+    '4) 不出现人物/人脸/真人；',
+    '5) 文字清晰可读，关键字可高亮。',
+    '',
+    '风格参考：清新自然、质感静物、简洁排版、柔和配色。'
+  ].join('\n');
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -107,6 +205,12 @@ export async function POST(request: NextRequest) {
     });
 
     const normalized = normalizeOutput(platform, generated, resolved.title);
+    const { coverImage, coverSuggestion } = await generateShortTextCover({
+      platform,
+      title: normalized.title || resolved.title,
+      content: normalized.content,
+      images,
+    });
 
     return NextResponse.json({
       success: true,
@@ -118,6 +222,8 @@ export async function POST(request: NextRequest) {
         images,
         imageCount: images.length,
         plainText,
+        coverImage,
+        coverSuggestion,
       },
     });
   } catch (error) {
@@ -198,7 +304,7 @@ ${imagesHint}
         'X-Title': 'Ziliu Short Text Generation',
       },
       body: JSON.stringify({
-        model: 'deepseek/deepseek-chat-v3.1:free',
+        model: 'openai/gpt-5.2-chat',
         messages: [{ role: 'user', content: fullPrompt }],
         max_tokens: 900,
         temperature: 0.8,
@@ -232,7 +338,7 @@ function normalizeOutput(
   const tags = (output.tags || [])
     .map(t => String(t || '').trim())
     .filter(Boolean)
-    .slice(0, limits.tagMax || 999);
+    .slice(0, limits.tagMax || 0);
 
   let content = String(output.content || '').trim();
   if (limits.contentMax && content.length > limits.contentMax) {
@@ -240,8 +346,8 @@ function normalizeOutput(
   }
 
   let title = output.title?.trim();
-  if (platform === 'xiaohongshu_note') {
-    title = title || fallbackTitle || '图文笔记';
+  if (platform === 'xiaohongshu_note' || platform === 'wechat_xiaolushu') {
+    title = title || fallbackTitle || (platform === 'wechat_xiaolushu' ? '图片消息' : '图文笔记');
     const max = limits.titleMax || 20;
     if (title.length > max) title = title.slice(0, max).trim();
   } else {
@@ -249,7 +355,7 @@ function normalizeOutput(
     title = title?.trim() || undefined;
   }
 
-  return { title, content, tags };
+  return { title, content, tags: limits.tagMax ? tags : [] };
 }
 
 function parseJsonBestEffort(raw: string): unknown {
@@ -300,6 +406,15 @@ function fallbackShortText(input: {
   const short = base.length > 600 ? `${base.slice(0, 600).trim()}…` : base;
 
   const commonTags = input.images.length > 0 ? ['配图', '分享'] : ['分享'];
+
+  if (input.platform === 'wechat_xiaolushu') {
+    const t = input.title ? input.title.slice(0, 20) : '图片消息';
+    return {
+      title: t,
+      content: `${short}\n\n欢迎在评论区补充。`,
+      tags: [],
+    };
+  }
 
   if (input.platform === 'xiaohongshu_note') {
     const t = input.title ? input.title.slice(0, 20) : '图文笔记';

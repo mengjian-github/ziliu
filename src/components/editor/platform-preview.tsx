@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Platform, isVideoPlatform, getPlatformType, PLATFORM_CONFIGS } from '@/types/platform-settings';
-import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon } from 'lucide-react';
+import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon, Sparkles, Heart, MessageSquare, Star, User, MoreHorizontal, ChevronLeft, Send, Bookmark } from 'lucide-react';
 import { PublishSettings } from './publish-settings';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { PlatformGuard, StyleGuard } from '@/lib/subscription/components/FeatureGuard';
@@ -22,6 +22,8 @@ type ShortTextGenerated = {
   content: string;
   tags?: string[];
   images?: ExtractedImage[];
+  coverImage?: string;
+  coverSuggestion?: string;
 };
 
 export function PlatformPreview({ title, content, articleId }: PlatformPreviewProps) {
@@ -148,7 +150,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       name: '小绿书',
       icon: '🟢',
       color: 'bg-emerald-600',
-      description: '微信小绿书'
+      description: '微信小绿书（图片消息）'
     },
     {
       id: 'xiaohongshu_note' as Platform,
@@ -272,6 +274,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         content: data.data?.content || '',
         tags: data.data?.tags || [],
         images: data.data?.images || [],
+        coverImage: data.data?.coverImage,
+        coverSuggestion: data.data?.coverSuggestion,
       };
 
       setShortTextCache(prev => ({ ...prev, [selectedPlatform]: generated }));
@@ -493,7 +497,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       const images = extractImagesFromMarkdown(contentToPreview);
       setShortTextImages(images);
       const cached = shortTextCache[platform];
-      setPreviewText((cached?.content || markdownToPlainText(contentToPreview)).trim());
+      setPreviewText((cached?.content || markdownToPlainTextUtil(contentToPreview)).trim());
       return;
     }
 
@@ -527,7 +531,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     } finally {
       setIsConverting(false);
     }
-  }, [finalContent, content, markdownToPlainText, shortTextCache]);
+  }, [finalContent, content, shortTextCache]);
 
   // 自动预览
   useEffect(() => {
@@ -545,18 +549,25 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     // 保存状态
     saveState(platform, selectedStyle, appliedSettings);
 
+    // 如果是短图文平台且内容不为空，检查是否需要自动生成 AI 文案
+    if (getPlatformType(platform) === 'short_text' && content.trim()) {
+      const cached = shortTextCache[platform];
+      if (!cached) {
+        setTimeout(() => {
+          generateShortTextContent();
+        }, 100);
+      }
+    }
+
     // 如果是视频平台且没有articleId，需要先创建草稿
     if (isVideoPlatform(platform) && !articleId) {
-      // 检查是否有足够的内容
       if (!title.trim() && !content.trim()) {
         alert('请先输入标题和内容再预览视频效果');
         return;
       }
 
       try {
-        // 自动创建草稿
         const newArticleId = await createDraftArticle();
-        // 跳转到编辑页面
         router.push(`/editor/${newArticleId}`);
         return;
       } catch (error) {
@@ -565,19 +576,14 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       }
     }
 
-    // 正常预览流程
     handlePreview(platform, selectedStyle);
-  }, [selectedStyle, handlePreview, articleId, title, content, createDraftArticle, router, saveState, appliedSettings]);
+  }, [selectedStyle, handlePreview, articleId, title, content, createDraftArticle, router, saveState, appliedSettings, shortTextCache, generateShortTextContent]);
 
   // 样式切换时立即预览
   const handleStyleChange = useCallback((style: string) => {
     setSelectedStyle(style as any);
-
-    // 保存状态
     saveState(selectedPlatform, style, appliedSettings);
-
     handlePreview(selectedPlatform, style);
-    // 同步保存样式到文章
     if (articleId) {
       fetch(`/api/articles/${articleId}`, {
         method: 'PUT',
@@ -585,114 +591,75 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         body: JSON.stringify({ style })
       }).catch(() => { });
     }
-  }, [selectedPlatform, handlePreview, saveState, appliedSettings]);
+  }, [selectedPlatform, handlePreview, saveState, appliedSettings, articleId]);
 
-  // 获取平台发布URL
   const getPlatformUrl = (platform: Platform) => {
     switch (platform) {
       case 'wechat':
-        return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&createType=0&lang=zh_CN';
-      case 'wechat_xiaolushu':
-        return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&createType=8&lang=zh_CN';
-      case 'zhihu':
-        return 'https://zhuanlan.zhihu.com/write';
-      case 'juejin':
-        return 'https://juejin.cn/editor/drafts/new?v=2';
-      case 'zsxq':
-        return 'https://wx.zsxq.com/';
+      case 'wechat_xiaolushu': return 'https://mp.weixin.qq.com/cgi-bin/home';
+      case 'zhihu': return 'https://zhuanlan.zhihu.com/write';
+      case 'juejin': return 'https://juejin.cn/editor/drafts/new?v=2';
+      case 'zsxq': return 'https://wx.zsxq.com/';
       case 'xiaohongshu_note':
-      case 'xiaohongshu':
-        return 'https://creator.xiaohongshu.com/publish/publish';
-      case 'weibo':
-        return 'https://weibo.com/';
-      case 'jike':
-        return 'https://web.okjike.com/';
-      case 'x':
-        return 'https://x.com/compose/post';
-      case 'video_wechat':
-        return 'https://channels.weixin.qq.com/platform/post/create';
-      case 'douyin':
-        return 'https://creator.douyin.com/creator-micro/content/post/video';
-      case 'bilibili':
-        return 'https://member.bilibili.com/platform/upload/video/frame';
-      case 'youtube':
-        return 'https://studio.youtube.com/';
-      default:
-        return '';
+      case 'xiaohongshu': return 'https://creator.xiaohongshu.com/publish/publish';
+      case 'weibo': return 'https://weibo.com/';
+      case 'jike': return 'https://web.okjike.com/';
+      case 'x': return 'https://x.com/compose/post';
+      case 'video_wechat': return 'https://channels.weixin.qq.com/platform/post/create';
+      case 'douyin': return 'https://creator.douyin.com/creator-micro/content/post/video';
+      case 'bilibili': return 'https://member.bilibili.com/platform/upload/video/frame';
+      case 'youtube': return 'https://studio.youtube.com/';
+      default: return '';
     }
   };
 
-  // 处理发布
   const handlePublish = useCallback(async () => {
-    if (!title.trim() || !content.trim()) {
-      return;
-    }
-
-    // 如果插件未安装，引导用户安装
+    if (!title.trim() || !content.trim()) return;
     if (!isInstalled) {
       router.push('/extension');
       return;
     }
 
     setIsPublishing(true);
-
     try {
       const contentToPublish = finalContent || content;
       const platformType = getPlatformType(selectedPlatform);
       const platformUrl = getPlatformUrl(selectedPlatform);
-
-      // 准备要复制的内容
       let contentToCopy = '';
 
       if (platformType === 'short_text') {
         const cached = shortTextCache[selectedPlatform];
-        const plainBody = (cached?.content || markdownToPlainText(contentToPublish)).trim();
+        const plainBody = (cached?.content || markdownToPlainTextUtil(contentToPublish)).trim();
         const finalTitle = (cached?.title || title).trim();
-
-        // 部分短图文平台存在“标题+正文”的概念，复制时同时给出，方便手动兜底
         if (selectedPlatform === 'xiaohongshu_note') {
           contentToCopy = `${finalTitle}\n\n${plainBody}`.trim();
         } else {
           contentToCopy = plainBody;
         }
       } else {
-        // 长图文平台：保留 Markdown 标题，方便手动粘贴兜底
-        if (title) {
-          contentToCopy += `# ${title}\n\n`;
-        }
+        if (title) contentToCopy += `# ${title}\n\n`;
         contentToCopy += contentToPublish;
       }
 
-      // 将当前文章ID与所选样式告知插件，方便插件拉取对应样式
       try {
         if (typeof window !== 'undefined' && (window as any).chrome?.runtime && articleId) {
           (window as any).chrome.runtime.sendMessage({
             action: 'storeContent',
-            data: {
-              articleId,
-              style: selectedStyle,
-              platform: selectedPlatform
-            }
+            data: { articleId, style: selectedStyle, platform: selectedPlatform }
           }, () => { });
         }
       } catch (e) {
         console.warn('通知插件所选样式失败，不影响发布', e);
       }
 
-      // 复制到剪贴板并打开平台页面
-      try {
-        await navigator.clipboard.writeText(contentToCopy);
-        window.open(platformUrl, '_blank');
-      } catch (error) {
-        console.error('复制失败:', error);
-        window.open(platformUrl, '_blank');
-      }
+      await navigator.clipboard.writeText(contentToCopy);
+      window.open(platformUrl, '_blank');
     } catch (error) {
       console.error('发布失败:', error);
     } finally {
       setIsPublishing(false);
     }
-  }, [title, content, finalContent, selectedPlatform, isInstalled, router, articleId, selectedStyle, markdownToPlainText, shortTextCache]);
+  }, [title, content, finalContent, selectedPlatform, isInstalled, router, articleId, selectedStyle, shortTextCache]);
 
   return (
     <div className="flex flex-col h-full">
@@ -736,8 +703,6 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                       onClick={() => {
                         if (hasAccess) {
                           handlePlatformChange(platform.id);
-                        } else {
-                          // 锁定平台采用tooltip提示，不再弹窗
                         }
                       }}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${selectedPlatform === platform.id
@@ -781,8 +746,6 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                       onClick={() => {
                         if (hasAccess) {
                           handlePlatformChange(platform.id);
-                        } else {
-                          // 锁定平台采用tooltip提示，不再弹窗
                         }
                       }}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${selectedPlatform === platform.id
@@ -826,8 +789,6 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                       onClick={() => {
                         if (hasAccess) {
                           handlePlatformChange(platform.id);
-                        } else {
-                          // 锁定平台采用tooltip提示，不再弹窗
                         }
                       }}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${selectedPlatform === platform.id
@@ -841,15 +802,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     >
                       <span>{platform.icon}</span>
                       <span>{platform.name}</span>
-                      {!hasAccess && platform.id !== 'wechat' && (
-                        <Crown className="h-3 w-3 text-amber-500 ml-1" />
-                      )}
                     </button>
-                    {!hasAccess && (
-                      <div className="ml-1">
-                        <UpgradePrompt scenario="platform-locked" style="tooltip" />
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -893,53 +846,35 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                       雅致杂志（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
                     </option>
                   </select>
-                  {!hasFeature('advanced-styles') && (
-                    <div className="ml-1">
-                      <UpgradePrompt scenario="style-locked" style="tooltip" />
-                    </div>
-                  )}
                 </>
               ) : (
                 <div className="flex items-center gap-3">
-                  <div className="text-sm text-zinc-500">
-                    短图文平台：支持提取配图 + AI 适配文案（生成后将用于复制/发布）
+                  <div className="text-xs text-zinc-500 font-medium">
+                    ✨ AI 爆款方案
                   </div>
                   <button
                     onClick={generateShortTextContent}
-                    disabled={
-                      isGeneratingShortText || !content.trim() || getPlatformType(selectedPlatform) !== 'short_text'
-                    }
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="用AI将正文改写为对应平台的短图文文案"
+                    disabled={isGeneratingShortText || !content.trim()}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 rounded-lg text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isGeneratingShortText ? '生成中...' : 'AI生成文案'}
+                    {isGeneratingShortText ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                    )}
+                    <span>{isGeneratingShortText ? '生成中...' : (shortTextCache[selectedPlatform] ? '重新生成' : 'AI生成文案')}</span>
                   </button>
-                  {shortTextImages.length > 0 && (
-                    <button
-                      onClick={copyShortTextImages}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10"
-                      title="复制所有图片链接（每行一个）"
-                    >
-                      复制图片链接（{shortTextImages.length}）
-                    </button>
-                  )}
                 </div>
               )}
             </div>
 
             <div className="flex items-center space-x-3">
-              {/* 发布设置 */}
               {hasFeature('publish-presets') ? (
                 <PublishSettings
                   platform={selectedPlatform}
                   onApplySettings={(settings) => {
-                    console.log('应用发布设置:', settings);
                     setAppliedSettings(settings);
-
-                    // 保存状态
                     saveState(selectedPlatform, selectedStyle, settings);
-
-                    // 立即重新预览
                     setTimeout(() => {
                       handlePreview(selectedPlatform, selectedStyle);
                     }, 100);
@@ -959,12 +894,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 </div>
               )}
 
-              {/* 去发布按钮 */}
               {isChecking ? (
-                <button
-                  disabled
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed"
-                >
+                <button disabled className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>检测中...</span>
                 </button>
@@ -972,7 +903,6 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 <button
                   onClick={() => router.push('/extension')}
                   className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20"
-                  title="需要先安装插件才能发布"
                 >
                   <Chrome className="h-4 w-4" />
                   <span>安装插件</span>
@@ -986,13 +916,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     ? 'bg-white/5 text-zinc-500 cursor-not-allowed'
                     : 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30'
                     }`}
-                  title={`复制内容并打开${PLATFORM_CONFIGS[selectedPlatform]?.name || selectedPlatform}`}
                 >
-                  {isPublishing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+                  {isPublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                   <span>{isPublishing ? '准备中...' : '去平台发布'}</span>
                   <ExternalLink className="h-3 w-3" />
                 </button>
@@ -1016,30 +941,20 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                   disabled={!content.trim()}
                   className="flex items-center space-x-2 px-3 py-2 border border-white/10 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <Sparkles className="h-4 w-4 text-amber-400" />
                   <span>重新生成</span>
                 </button>
               )}
             </div>
 
             <div className="flex items-center space-x-3">
-              {/* 去发布按钮 */}
               {isChecking ? (
-                <button
-                  disabled
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed"
-                >
+                <button disabled className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>检测中...</span>
                 </button>
               ) : !isInstalled ? (
-                <button
-                  onClick={() => router.push('/extension')}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20"
-                  title="需要先安装插件才能发布"
-                >
+                <button onClick={() => router.push('/extension')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20">
                   <Chrome className="h-4 w-4" />
                   <span>安装插件</span>
                   <ExternalLink className="h-3 w-3" />
@@ -1055,7 +970,6 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     ? 'bg-white/5 text-zinc-500 cursor-not-allowed'
                     : 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30'
                     }`}
-                  title={`去${videoPlatforms.find(p => p.id === selectedPlatform)?.name}发布`}
                 >
                   <ExternalLink className="h-4 w-4" />
                   <span>去{videoPlatforms.find(p => p.id === selectedPlatform)?.name}发布</span>
@@ -1085,100 +999,109 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         )}
       </div>
 
+
       {/* 预览内容 */}
-      <div className="flex-1 overflow-auto flex flex-col">
+      < div className="flex-1 overflow-auto flex flex-col" >
         {/* 长图文平台预览 */}
-        {getPlatformType(selectedPlatform) === 'long_text' && (
-          <>
-            {isConverting || !content ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  {isConverting ? (
-                    <div className="flex items-center justify-center space-x-2 text-zinc-400">
-                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">转换中...</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 text-zinc-500">
-                      <div className="text-3xl">📝</div>
-                      <div className="text-sm">开始输入内容以查看预览</div>
-                    </div>
-                  )}
+        {
+          getPlatformType(selectedPlatform) === 'long_text' && (
+            <>
+              {isConverting || !content ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    {isConverting ? (
+                      <div className="flex items-center justify-center space-x-2 text-zinc-400">
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-sm">转换中...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 text-zinc-500">
+                        <div className="text-3xl">📝</div>
+                        <div className="text-sm">开始输入内容以查看预览</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col p-6">
-                <div className="flex-1">
-                  {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
-                  {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
-                  {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
-                  {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
+              ) : (
+                <div className="flex-1 flex flex-col p-6">
+                  <div className="flex-1">
+                    {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
+                    {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
+                    {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
+                    {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )
+        }
 
         {/* 短图文平台预览 */}
-        {getPlatformType(selectedPlatform) === 'short_text' && (
-          <div className="flex-1 flex flex-col p-6">
-            {!content.trim() ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center space-y-2 text-zinc-500">
-                  <div className="text-3xl">📝</div>
-                  <div className="text-sm">开始输入内容以查看预览</div>
+        {
+          getPlatformType(selectedPlatform) === 'short_text' && (
+            <div className="flex-1 flex flex-col p-6">
+              {!content.trim() ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center space-y-2 text-zinc-500">
+                    <div className="text-3xl">📝</div>
+                    <div className="text-sm">开始输入内容以查看预览</div>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <ShortTextPreview
-                platform={selectedPlatform}
-                title={shortTextCache[selectedPlatform]?.title || title}
-                content={previewText}
-                tags={shortTextCache[selectedPlatform]?.tags || []}
-                images={shortTextImages}
-              />
-            )}
-          </div>
-        )}
+              ) : (
+                <ShortTextPreview
+                  platform={selectedPlatform}
+                  title={shortTextCache[selectedPlatform]?.title || title}
+                  content={previewText}
+                  tags={shortTextCache[selectedPlatform]?.tags || []}
+                  images={shortTextImages}
+                  coverImage={shortTextCache[selectedPlatform]?.coverImage}
+                  coverSuggestion={shortTextCache[selectedPlatform]?.coverSuggestion}
+                />
+              )}
+            </div>
+          )
+        }
 
         {/* 视频平台预览 */}
-        {isVideoPlatform(selectedPlatform) && (
-          <div className="flex-1 flex flex-col p-6">
-            {isGeneratingVideo || !content ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  {isGeneratingVideo ? (
-                    <div className="flex items-center justify-center space-x-2 text-zinc-400">
-                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">生成视频内容中...</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 text-zinc-500">
-                      <div className="text-3xl">🎬</div>
-                      <div className="text-sm">开始输入内容以生成视频素材</div>
-                    </div>
-                  )}
+        {
+          isVideoPlatform(selectedPlatform) && (
+            <div className="flex-1 flex flex-col p-6">
+              {isGeneratingVideo || !content ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    {isGeneratingVideo ? (
+                      <div className="flex items-center justify-center space-x-2 text-zinc-400">
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-sm">生成视频内容中...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 text-zinc-500">
+                        <div className="text-3xl">🎬</div>
+                        <div className="text-sm">开始输入内容以生成视频素材</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : videoMetadata ? (
-              <VideoPreview
-                platform={selectedPlatform}
-                metadata={videoMetadata}
-                title={title}
-                platformInfo={videoPlatforms.find(p => p.id === selectedPlatform)}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center space-y-2 text-zinc-500">
-                  <div className="text-3xl">⚠️</div>
-                  <div className="text-sm">生成视频内容失败，请重试</div>
+              ) : videoMetadata ? (
+                <VideoPreview
+                  platform={selectedPlatform}
+                  metadata={videoMetadata}
+                  title={title}
+                  platformInfo={videoPlatforms.find(p => p.id === selectedPlatform)}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center space-y-2 text-zinc-500">
+                    <div className="text-3xl">⚠️</div>
+                    <div className="text-sm">生成视频内容失败，请重试</div>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+              )}
+            </div>
+          )
+        }
+      </div >
+    </div >
   );
 }
 
@@ -1426,24 +1349,20 @@ function VideoPreview({ platform, metadata, title, platformInfo }: {
 }
 
 // 短图文平台预览（纯文本）
-function ShortTextPreview({ platform, title, content, tags = [], images = [] }: {
+function ShortTextPreview({ platform, title, content, tags = [], images = [], coverImage, coverSuggestion }: {
   platform: Platform;
   title: string;
   content: string;
   tags?: string[];
   images?: ExtractedImage[];
+  coverImage?: string;
+  coverSuggestion?: string;
 }) {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const platformInfo = PLATFORM_CONFIGS[platform];
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (error) {
-      console.error('复制失败:', error);
-    }
-  };
-
   const limits: Partial<Record<Platform, number>> = {
+    wechat_xiaolushu: 1000,
     xiaohongshu_note: 1000,
     weibo: 2000,
     jike: 2000,
@@ -1454,90 +1373,477 @@ function ShortTextPreview({ platform, title, content, tags = [], images = [] }: 
   const charCount = (content || '').length;
   const isOverLimit = typeof max === 'number' && max > 0 && charCount > max;
 
-  return (
-    <div className="max-w-3xl mx-auto w-full">
-      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-5">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{platformInfo.icon}</span>
-            <div>
-              <div className="text-zinc-200 font-medium">{platformInfo.name} 预览</div>
-              <div className="text-xs text-zinc-500 mt-0.5">短图文平台以纯文本为准（实际样式以平台为准）</div>
+  // 渲染不同平台的仿真 UI
+  const renderMockupContent = () => {
+    switch (platform) {
+      case 'wechat_xiaolushu':
+        return (
+          <div className="flex flex-col h-full bg-white text-black font-sans">
+            {/* Header */}
+            <div className="px-4 h-12 flex items-center justify-between border-b border-gray-50 flex-shrink-0">
+              <ChevronLeft className="w-6 h-6 text-gray-800" />
+              <span className="font-bold text-[17px]">详情</span>
+              <MoreHorizontal className="w-6 h-6 text-gray-800" />
             </div>
-          </div>
-          <div className={`text-xs font-medium ${isOverLimit ? 'text-red-400' : 'text-zinc-400'}`}>
-            {max ? `${charCount} / ${max} 字` : `${charCount} 字`}
-          </div>
-        </div>
 
-        {platform === 'xiaohongshu_note' && title?.trim() && (
-          <div className="mb-3">
-            <div className="text-xs text-zinc-500 mb-1">标题</div>
-            <div className="text-sm text-zinc-200 whitespace-pre-wrap">{title.trim()}</div>
-          </div>
-        )}
+            <div className="flex-1 overflow-auto bg-white">
+              {/* Media Area */}
+              <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden flex-shrink-0">
+                {images.length > 0 ? (
+                  <>
+                    <img
+                      src={images[activeImageIndex].url}
+                      className="w-full h-full object-cover transition-opacity duration-300"
+                      alt={`预览图片 ${activeImageIndex + 1}`}
+                    />
+                    {images.length > 1 && (
+                      <>
+                        <div className="absolute inset-y-0 left-0 w-12 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+                            }}
+                            className="w-8 h-8 rounded-full bg-black/20 text-white flex items-center justify-center backdrop-blur-sm"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <div className="absolute inset-y-0 right-0 w-12 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+                            }}
+                            className="w-8 h-8 rounded-full bg-black/20 text-white flex items-center justify-center backdrop-blur-sm"
+                          >
+                            <ChevronLeft className="w-5 h-5 rotate-180" />
+                          </button>
+                        </div>
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-1.5 pointer-events-none">
+                          {images.map((_, i) => (
+                            <div
+                              key={i}
+                              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === activeImageIndex ? 'bg-white scale-110' : 'bg-white/40'
+                                }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+                    <Smartphone className="w-12 h-12 stroke-[1.5]" />
+                    <span className="text-xs">暂无配图</span>
+                  </div>
+                )}
+              </div>
 
-        <div>
-          <div className="text-xs text-zinc-500 mb-1">正文</div>
-          <pre className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">{content}</pre>
-        </div>
-
-        {tags.length > 0 && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-zinc-500">建议话题</div>
-              <button
-                onClick={() => copyToClipboard(tags.map(t => `#${t}`).join(' '))}
-                className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 rounded"
-                title="复制话题到剪贴板"
-              >
-                复制
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {tags.map((tag, index) => (
-                <span key={index} className="px-2 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-zinc-200">
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {images.length > 0 && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-zinc-500">配图（{images.length}）</div>
-              <button
-                onClick={() => copyToClipboard(images.map(img => img.url).join('\n'))}
-                className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 rounded"
-                title="复制图片链接（每行一个）"
-              >
-                复制链接
-              </button>
-            </div>
-            <div className="mt-2 space-y-1">
-              {images.slice(0, 12).map((img, index) => (
-                <div key={`${img.url}-${index}`} className="text-xs text-zinc-300 break-all">
-                  {index + 1}. {img.alt ? `${img.alt} - ` : ''}{img.url}
+              {/* Text Content */}
+              <div className="p-4 space-y-4 pb-20">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-[22px] leading-none mt-0.5 whitespace-nowrap">🌱</span>
+                  <h1 className="text-[19px] font-bold leading-tight tracking-tight text-gray-900">{title || '无标题'}</h1>
                 </div>
-              ))}
-              {images.length > 12 && (
-                <div className="text-xs text-zinc-500">
-                  仅展示前12张，复制链接可获取全部。
+
+                <div className="text-[16.5px] leading-[1.65] whitespace-pre-wrap text-gray-800 tracking-wide font-normal">
+                  {content}
+                </div>
+
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-x-2.5 gap-y-1.5 text-[#576b95] text-[15px] font-medium pt-1">
+                    {tags.map((tag, i) => (
+                      <span key={i} className="hover:opacity-70 cursor-pointer">#{tag}</span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="text-[13px] text-gray-400 pt-2 flex items-center gap-2">
+                  <span>刚刚</span>
+                  <span>·</span>
+                  <span>发布于 字流</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Fixes Info (Xiaolushu Style) */}
+            <div className="px-4 py-3 pb-8 flex items-center gap-3 border-t border-gray-50/50 bg-white/95 backdrop-blur absolute bottom-0 inset-x-0 z-20">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">
+                <User className="w-5 h-5 text-zinc-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-bold text-gray-800 truncate">字流AI创作助手</div>
+              </div>
+
+              <div className="flex items-center gap-5 pr-1">
+                <div className="flex flex-col items-center gap-0.5 cursor-pointer hover:text-red-500 transition-colors">
+                  <Heart className="w-[22px] h-[22px] text-gray-700 hover:text-inherit" />
+                  <span className="text-[10px] scale-90 font-medium text-gray-500">赞</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5 cursor-pointer hover:text-blue-500 transition-colors text-gray-700">
+                  <Send className="w-[22px] h-[22px] text-gray-700 hover:text-inherit" />
+                  <span className="text-[10px] scale-90 font-medium text-gray-500">分享</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5 cursor-pointer hover:text-amber-500 transition-colors text-gray-700">
+                  <Star className="w-[22px] h-[22px] text-gray-700 hover:text-inherit font-bold" />
+                  <span className="text-[10px] scale-90 font-medium text-gray-500">推荐</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5 cursor-pointer hover:text-green-500 transition-colors text-gray-700">
+                  <MessageSquare className="w-[22px] h-[22px] text-gray-700 hover:text-inherit" />
+                  <span className="text-[10px] scale-90 font-medium text-gray-500">留言</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'xiaohongshu_note':
+        return (
+          <div className="flex flex-col h-full bg-white text-black font-sans">
+            {/* Header */}
+            <div className="px-3 h-14 flex items-center justify-between border-b border-gray-50/50 flex-shrink-0">
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                <ChevronLeft className="w-6 h-6 text-gray-800 -ml-1 cursor-pointer" />
+                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">
+                  <User className="w-5 h-5 text-gray-300" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <span className="text-[13.5px] font-bold text-gray-900 truncate">字流创作官</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3.5">
+                <button className="px-3.5 py-1.5 bg-[#ff2442] text-white rounded-full text-[13px] font-bold shadow-sm active:scale-95 transition-transform">关注</button>
+                <Send className="w-6 h-6 text-gray-700 cursor-pointer" />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto bg-white">
+              {/* Media Area (3:4) */}
+              <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden flex-shrink-0">
+                {images.length > 0 ? (
+                  <>
+                    <img
+                      src={images[activeImageIndex].url}
+                      className="w-full h-full object-cover transition-opacity duration-300"
+                      alt={`预览图片 ${activeImageIndex + 1}`}
+                    />
+                    {images.length > 1 && (
+                      <>
+                        <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest border border-white/10">
+                          {activeImageIndex + 1}/{images.length}
+                        </div>
+                        <div className="absolute inset-y-0 left-0 w-10 flex items-center px-1" onClick={() => setActiveImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1))} />
+                        <div className="absolute inset-y-0 right-0 w-10 flex items-center px-1" onClick={() => setActiveImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0))} />
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-200 gap-3">
+                    <Smartphone className="w-14 h-14 stroke-[1]" />
+                    <span className="text-xs text-gray-400">精彩配图加载中</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Dots */}
+              {images.length > 1 && (
+                <div className="flex justify-center space-x-1.5 py-3">
+                  {images.map((_, i) => (
+                    <div key={i} className={`w-1 h-1 rounded-full transition-all duration-300 ${i === activeImageIndex ? 'bg-[#ff2442] scale-125' : 'bg-gray-200'}`} />
+                  ))}
                 </div>
               )}
+
+              {/* Text Area */}
+              <div className="px-4 py-1 space-y-2.5 pb-24">
+                {title && <h1 className="text-[17.5px] font-bold leading-tight text-gray-900 tracking-tight">{title}</h1>}
+                <div className="text-[15.5px] leading-relaxed whitespace-pre-wrap text-gray-800 tracking-normal font-normal overflow-hidden">
+                  {content}
+                </div>
+
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-[#3b669b] text-[15px] pt-1">
+                    {tags.map((tag, i) => (
+                      <span key={i} className="hover:bg-blue-50/50 cursor-pointer">#{tag}</span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="text-[12.5px] text-gray-400 py-4 flex flex-col gap-1">
+                  <span>2024-05-20 字流发布</span>
+                  <div className="w-full h-px bg-gray-50 mt-2" />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Bar */}
+            <div className="px-3.5 py-3 pb-8 flex items-center justify-between border-t border-gray-50 bg-white/95 backdrop-blur absolute bottom-0 inset-x-0 z-20">
+              <div className="flex-1 mr-4 bg-gray-100 rounded-full px-4 py-2 text-[14px] text-gray-400 flex items-center gap-2 cursor-text active:bg-gray-200 transition-colors">
+                <Palette className="w-4 h-4 text-gray-400" />
+                说点什么...
+              </div>
+              <div className="flex items-center gap-5 text-gray-600">
+                <div className="flex flex-col items-center gap-0 cursor-pointer active:scale-90 transition-transform">
+                  <Heart className="w-[23px] h-[23px] text-gray-700" />
+                  <span className="text-[10px] pt-0.5 font-bold">1.2w</span>
+                </div>
+                <div className="flex flex-col items-center gap-0 cursor-pointer active:scale-90 transition-transform">
+                  <Bookmark className="w-[23px] h-[23px] text-gray-700" />
+                  <span className="text-[10px] pt-0.5 font-bold">3.4w</span>
+                </div>
+                <div className="flex flex-col items-center gap-0 cursor-pointer active:scale-90 transition-transform">
+                  <MessageSquare className="w-[23px] h-[23px] text-gray-700" />
+                  <span className="text-[10px] pt-0.5 font-bold">567</span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        );
 
-        {isOverLimit && (
-          <div className="mt-4 text-xs text-red-400">
-            当前内容可能超出平台字数限制；建议精简或拆分为多条。
+      case 'weibo':
+      case 'jike':
+        const isWeibo = platform === 'weibo';
+        return (
+          <div className={`flex flex-col h-full ${isWeibo ? 'bg-[#f2f2f2]' : 'bg-white'} text-black font-sans px-3 pt-2`}>
+            {/* User Header */}
+            <div className="flex items-center gap-3 mb-3 px-1">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-100 to-gray-200 border border-gray-100 flex items-center justify-center flex-shrink-0">
+                <User className="w-6 h-6 text-gray-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className={`text-[15px] font-bold ${isWeibo ? 'text-orange-500' : 'text-gray-900'} truncate`}>
+                  {isWeibo ? '字流官方微博' : '即刻创作者-字流'}
+                </div>
+                <div className="text-[11.5px] text-gray-400 flex items-center gap-1.5">
+                  <span>刚刚</span>
+                  <span>·</span>
+                  <span>来自 字流创作平台</span>
+                </div>
+              </div>
+              <MoreHorizontal className="w-5 h-5 text-gray-400" />
+            </div>
+
+            <div className="flex-1 overflow-auto bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] mb-4">
+              <div className="p-4 space-y-4">
+                <div className="text-[16px] leading-[1.6] whitespace-pre-wrap text-gray-800">
+                  {content}
+                </div>
+
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 text-[#4c8dc3] text-[15px]">
+                    {tags.map((tag, i) => (
+                      <span key={i}>#{tag}#</span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Weibo Grid / Jike List */}
+                {images.length > 0 && (
+                  <div className={`grid ${images.length === 1 ? 'grid-cols-1' : images.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 pt-1`}>
+                    {images.slice(0, 9).map((img, i) => (
+                      <div key={i} className={`relative rounded-md overflow-hidden bg-gray-50 ${images.length === 1 ? 'aspect-video' : 'aspect-square'}`}>
+                        <img src={img.url} className="w-full h-full object-cover" alt="微博图片" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Interaction Bar */}
+              <div className="flex items-center justify-between border-t border-gray-50/50 h-11 px-6">
+                <div className="flex items-center gap-1.5 text-gray-400">
+                  <Send className="w-5 h-5" />
+                  <span className="text-xs font-medium">分享</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-gray-400">
+                  <MessageSquare className="w-5 h-5" />
+                  <span className="text-xs font-medium">评论</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-gray-400">
+                  <Heart className="w-5 h-5" />
+                  <span className="text-xs font-medium">点赞</span>
+                </div>
+              </div>
+            </div>
           </div>
+        );
+
+      case 'x':
+        return (
+          <div className="flex flex-col h-full bg-black text-white font-sans px-4 pt-3">
+            {/* X Header */}
+            <div className="flex items-start gap-3 mb-2">
+              <div className="w-11 h-11 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700/50 flex-shrink-0">
+                <span className="font-bold text-lg">𝕏</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="font-bold text-[15.5px] truncate">字流 | Ziliu.AI</span>
+                  <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 text-white fill-current"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                  </div>
+                </div>
+                <div className="text-[14.5px] text-zinc-500 min-w-0 truncate">@ZiliuAI · 1m</div>
+              </div>
+              <MoreHorizontal className="w-5 h-5 text-zinc-500" />
+            </div>
+
+            <div className="flex-1 overflow-auto bg-black">
+              <div className="space-y-4">
+                <div className="text-[16px] leading-[1.4] whitespace-pre-wrap text-zinc-100 tracking-normal">
+                  {content}
+                  <div className="text-primary mt-2">
+                    {tags.map(tag => `#${tag} `)}
+                  </div>
+                </div>
+
+                {/* X Image Layout */}
+                {images.length > 0 && (
+                  <div className={`rounded-2xl border border-zinc-800 overflow-hidden grid ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-[2px]`}>
+                    {images.slice(0, 4).map((img, i) => (
+                      <div key={i} className={`bg-zinc-900 ${images.length === 1 ? 'max-h-[512px]' : images.length === 3 && i === 0 ? 'row-span-2 aspect-[9/16]' : 'aspect-square'}`}>
+                        <img src={img.url} className="w-full h-full object-cover" alt="X Post" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="text-[14.5px] text-zinc-500 flex items-center gap-1.5 py-1">
+                  <span>10:30 PM · May 20, 2024</span>
+                  <span>·</span>
+                  <span className="text-white font-bold">12.5K</span>
+                  <span>Views</span>
+                </div>
+
+                <div className="border-y border-zinc-800 flex items-center justify-between h-12 px-2 text-zinc-500">
+                  <MessageSquare className="w-[19px] h-[19px] hover:text-primary transition-colors cursor-pointer" />
+                  <div className="flex items-center gap-1.5 group cursor-pointer">
+                    <div className="p-2 group-hover:bg-green-500/10 rounded-full transition-colors">
+                      <svg viewBox="0 0 24 24" className="w-[19px] h-[19px] fill-current group-hover:text-green-500"><path d="M4.5 3.88l4.4 9.29L3 21h18l-5.9-7.83 4.4-9.29H4.5zm2.85 2h7.3l-3.65 7.71-3.65-7.71z" /></svg>
+                    </div>
+                    <span className="text-xs group-hover:text-green-500 transition-colors">128</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 group cursor-pointer">
+                    <div className="p-2 group-hover:bg-pink-500/10 rounded-full transition-colors">
+                      <Heart className="w-[19px] h-[19px] group-hover:text-pink-500 transition-colors" />
+                    </div>
+                    <span className="text-xs group-hover:text-pink-500 transition-colors">2K</span>
+                  </div>
+                  <Bookmark className="w-[19px] h-[19px] hover:text-primary transition-colors cursor-pointer" />
+                  <Share2 className="w-[19px] h-[19px] hover:text-primary transition-colors cursor-pointer" />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        // 后备基础预览
+        return (
+          <div className="p-6 bg-white text-black h-full overflow-auto">
+            <h1 className="text-xl font-bold mb-4">{title}</h1>
+            <div className="whitespace-pre-wrap mb-4">{content}</div>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {tags.map((tag, i) => <span key={i} className="text-blue-500">#{tag}</span>)}
+            </div>
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {images.map((img, i) => <img key={i} src={img.url} className="rounded-lg shadow-sm" alt="Preview img" />)}
+              </div>
+            )}
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-8 py-4">
+      {/* 仿真手机框架 */}
+      <div className="relative group">
+        <div className="w-[390px] h-[844px] bg-[#1a1a1a] rounded-[55px] p-3 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5),0_30px_60px_-30px_rgba(0,0,0,0.3)] ring-1 ring-white/10 ring-inset relative">
+          {/* 外部物理按钮 */}
+          <div className="absolute -left-1.5 top-28 w-1 h-12 bg-zinc-800 rounded-l-md border-r border-black/20" />
+          <div className="absolute -left-1.5 top-44 w-1 h-16 bg-zinc-800 rounded-l-md border-r border-black/20" />
+          <div className="absolute -left-1.5 top-64 w-1 h-16 bg-zinc-800 rounded-l-md border-r border-black/20" />
+          <div className="absolute -right-1.5 top-44 w-1 h-24 bg-zinc-800 rounded-r-md border-l border-black/20" />
+
+          {/* 屏幕内框 */}
+          <div className="w-full h-full rounded-[45px] overflow-hidden bg-white relative flex flex-col shadow-inner">
+            {/* 灵动岛 */}
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-[100] flex items-center justify-between px-4 ring-1 ring-white/10">
+              <div className="w-2 h-2 rounded-full bg-[#1c1c1e] shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500/80 animate-pulse" />
+                <div className="w-1 h-1 rounded-full bg-white/20" />
+              </div>
+            </div>
+
+            {/* 状态栏 */}
+            <div className={`flex-shrink-0 h-10 flex items-center justify-between px-8 pt-2 relative z-[90] ${platform === 'x' ? 'text-white' : 'text-black'}`}>
+              <div className="text-[14px] font-bold">9:41</div>
+              <div className="flex items-center gap-1.5 h-3">
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z" /></svg>
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M2 22h20V2z" /></svg>
+                <div className="w-6 h-3 border border-current rounded-sm relative px-0.5 flex items-center">
+                  <div className="h-1.5 w-3 bg-current rounded-sm" />
+                </div>
+              </div>
+            </div>
+
+            {/* 各平台独特 UI 内容 */}
+            <div className="flex-1 overflow-hidden relative">
+              {renderMockupContent()}
+            </div>
+
+            {/* 底部指示条 */}
+            <div className={`h-6 flex-shrink-0 flex items-center justify-center relative z-[90] ${platform === 'x' ? 'bg-black' : 'bg-white'}`}>
+              <div className={`w-36 h-1 rounded-full ${platform === 'x' ? 'bg-white/30' : 'bg-black/10'}`} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 底部信息标签 */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="bg-zinc-800/80 backdrop-blur-xl border border-white/5 py-2 px-5 rounded-2xl shadow-2xl flex items-center gap-3">
+          <div className={`w-3 h-3 rounded-full animate-pulse ${isOverLimit ? 'bg-red-500' : 'bg-green-500'}`} />
+          <span className="text-zinc-200 text-sm font-medium">
+            iPhone 14 Pro 预览 · {platformInfo.name}
+          </span>
+          <span className="text-zinc-500">|</span>
+          <span className={`text-sm font-mono ${isOverLimit ? 'text-red-400' : 'text-zinc-400'}`}>
+            {max ? `${charCount}/${max}` : charCount} 字
+          </span>
+        </div>
+        {isOverLimit && (
+          <p className="text-xs text-red-500/80 font-medium">⚠️ 注意：内容超过平台限制</p>
         )}
       </div>
     </div>
+  );
+}
+
+function Share2(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
   );
 }
 

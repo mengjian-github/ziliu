@@ -1,10 +1,11 @@
 // 平台特定的发布设置类型定义
 
 // 长图文平台（文章/长文）
-export type LongTextPlatform = 'wechat' | 'wechat_xiaolushu' | 'zhihu' | 'juejin' | 'zsxq';
+export type LongTextPlatform = 'wechat' | 'zhihu' | 'juejin' | 'zsxq';
 
 // 短图文平台（短文案/配图）
 export type ShortTextPlatform =
+  | 'wechat_xiaolushu'
   | 'xiaohongshu_note'
   | 'weibo'
   | 'jike'
@@ -140,7 +141,7 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformInfo> = {
     icon: '🟢',
     color: 'bg-emerald-600',
     description: '微信小绿书发布（与公众号同编辑器）',
-    supportedFeatures: ['富文本填充', '图片处理', '样式转换（同公众号）']
+    supportedFeatures: ['标题（可选）', '短图文正文', '配图上传']
   },
   zhihu: {
     id: 'zhihu',
@@ -247,11 +248,11 @@ export function isVideoPlatform(platform: Platform): platform is VideoPlatform {
 }
 
 export function isLongTextPlatform(platform: Platform): platform is LongTextPlatform {
-  return ['wechat', 'wechat_xiaolushu', 'zhihu', 'juejin', 'zsxq'].includes(platform as LongTextPlatform);
+  return ['wechat', 'zhihu', 'juejin', 'zsxq'].includes(platform as LongTextPlatform);
 }
 
 export function isShortTextPlatform(platform: Platform): platform is ShortTextPlatform {
-  return ['xiaohongshu_note', 'weibo', 'jike', 'x'].includes(platform as ShortTextPlatform);
+  return ['wechat_xiaolushu', 'xiaohongshu_note', 'weibo', 'jike', 'x'].includes(platform as ShortTextPlatform);
 }
 
 export function isTextPlatform(platform: Platform): platform is TextPlatform {
