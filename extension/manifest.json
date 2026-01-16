@@ -34,7 +34,8 @@
     "https://ziliu.online/*",
     "https://www.ziliu.online/*",
     "http://localhost:*/*",
-    "https://localhost:*/*"
+    "https://localhost:*/*",
+    "<all_urls>"
   ],
   "content_scripts": [
     {
@@ -57,6 +58,7 @@
         "plugins/config.js",
         "plugins/base-platform.js",
         "plugins/platforms/wechat.js",
+        "plugins/platforms/wechat-xiaolushu.js",
         "ui/panel.js",
         "ui/features.js",
         "ui/subscription-status.js",

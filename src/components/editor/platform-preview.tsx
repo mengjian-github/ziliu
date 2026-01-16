@@ -246,9 +246,9 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   }, []);
 
   // 生成短图文平台文案（AI）
-  const generateShortTextContent = useCallback(async () => {
-    if (getPlatformType(selectedPlatform) !== 'short_text') return;
-    if (!content.trim()) return;
+  const generateShortTextContent = useCallback(async (): Promise<ShortTextGenerated | null> => {
+    if (getPlatformType(selectedPlatform) !== 'short_text') return null;
+    if (!content.trim()) return null;
 
     setIsGeneratingShortText(true);
     try {
@@ -266,9 +266,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       if (!data?.success) {
         console.error('短图文生成失败:', data?.error);
         alert(data?.error || '生成失败，请重试');
-        return;
+        return null;
       }
-
       const generated: ShortTextGenerated = {
         title: data.data?.title,
         content: data.data?.content || '',
@@ -281,9 +280,25 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       setShortTextCache(prev => ({ ...prev, [selectedPlatform]: generated }));
       setPreviewText(generated.content || '');
       setShortTextImages(generated.images || []);
+
+      // 将生成的内容保存到后端，供插件调用
+      if (articleId) {
+        fetch('/api/short-text/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            articleId,
+            platform: selectedPlatform,
+            ...generated
+          })
+        }).catch(err => console.warn('保存预览内容失败', err));
+      }
+
+      return generated;
     } catch (error) {
       console.error('短图文生成出错:', error);
       alert('生成失败，请重试');
+      return null;
     } finally {
       setIsGeneratingShortText(false);
     }
@@ -595,8 +610,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
   const getPlatformUrl = (platform: Platform) => {
     switch (platform) {
-      case 'wechat':
-      case 'wechat_xiaolushu': return 'https://mp.weixin.qq.com/cgi-bin/home';
+      case 'wechat': return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&createType=0';
+      case 'wechat_xiaolushu': return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&createType=8';
       case 'zhihu': return 'https://zhuanlan.zhihu.com/write';
       case 'juejin': return 'https://juejin.cn/editor/drafts/new?v=2';
       case 'zsxq': return 'https://wx.zsxq.com/';
@@ -626,11 +641,18 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       const platformType = getPlatformType(selectedPlatform);
       const platformUrl = getPlatformUrl(selectedPlatform);
       let contentToCopy = '';
+      let resolvedShortText: ShortTextGenerated | null = null;
 
       if (platformType === 'short_text') {
         const cached = shortTextCache[selectedPlatform];
-        const plainBody = (cached?.content || markdownToPlainTextUtil(contentToPublish)).trim();
-        const finalTitle = (cached?.title || title).trim();
+        if (cached) {
+          resolvedShortText = cached;
+        } else {
+          resolvedShortText = await generateShortTextContent();
+        }
+
+        const plainBody = (resolvedShortText?.content || markdownToPlainTextUtil(contentToPublish)).trim();
+        const finalTitle = (resolvedShortText?.title || title).trim();
         if (selectedPlatform === 'xiaohongshu_note') {
           contentToCopy = `${finalTitle}\n\n${plainBody}`.trim();
         } else {
@@ -643,9 +665,29 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
       try {
         if (typeof window !== 'undefined' && (window as any).chrome?.runtime && articleId) {
+          // 如果是短图文平台，尝试传递已生成的缓存内容
+          let shortTextData = {};
+          if (platformType === 'short_text') {
+            const cached = resolvedShortText || shortTextCache[selectedPlatform];
+            if (cached) {
+              shortTextData = {
+                title: cached?.title,
+                content: cached?.content,
+                tags: cached?.tags,
+                images: cached?.images
+              };
+            }
+          }
+
           (window as any).chrome.runtime.sendMessage({
             action: 'storeContent',
-            data: { articleId, style: selectedStyle, platform: selectedPlatform }
+            data: {
+              articleId,
+              style: selectedStyle,
+              platform: selectedPlatform,
+              // 透传生成的短图文数据
+              generatedContent: shortTextData
+            }
           }, () => { });
         }
       } catch (e) {
@@ -659,7 +701,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     } finally {
       setIsPublishing(false);
     }
-  }, [title, content, finalContent, selectedPlatform, isInstalled, router, articleId, selectedStyle, shortTextCache]);
+  }, [title, content, finalContent, selectedPlatform, isInstalled, router, articleId, selectedStyle, shortTextCache, generateShortTextContent]);
 
   return (
     <div className="flex flex-col h-full">

@@ -8,7 +8,7 @@ class ZiliuApp {
     this.currentPlatform = null;
     this.state = new Map();
     this.config = null;
-    
+
     // 预设相关状态
     this.presets = [];
     this.selectedPreset = null;
@@ -28,19 +28,19 @@ class ZiliuApp {
     try {
       // 1. 加载配置
       await this.loadConfig();
-      
+
       // 2. 初始化核心服务
       await this.initCoreServices();
-      
+
       // 2.1. 初始化订阅服务
       await this.initSubscriptionService();
-      
+
       // 3. 检测并加载当前平台插件
       await this.detectAndLoadPlatform();
-      
+
       // 4. 初始化UI组件
       await this.initUI();
-      
+
       // 5. 检查登录状态
       await this.checkAuth();
 
@@ -49,8 +49,8 @@ class ZiliuApp {
 
       this.isInitialized = true;
       console.log('✅ 字流助手初始化完成');
-      
-      ZiliuEventBus.emit('app:ready', { 
+
+      ZiliuEventBus.emit('app:ready', {
         platform: this.currentPlatform?.id,
         timestamp: Date.now()
       });
@@ -67,7 +67,7 @@ class ZiliuApp {
    */
   async loadConfig() {
     console.log('📄 加载插件配置...');
-    
+
     if (!window.ZiliuPluginConfig) {
       throw new Error('插件配置未找到');
     }
@@ -81,11 +81,11 @@ class ZiliuApp {
    */
   async initCoreServices() {
     console.log('🔧 初始化核心服务...');
-    
+
     // 确保所有核心服务都已加载
     const requiredServices = [
       'ZiliuEventBus',
-      'ZiliuPlatformRegistry', 
+      'ZiliuPlatformRegistry',
       'ZiliuPluginManager'
     ];
 
@@ -104,7 +104,7 @@ class ZiliuApp {
   async initSubscriptionService() {
     try {
       console.log('💎 初始化订阅服务...');
-      
+
       // 确保订阅服务已加载
       if (!window.ZiliuSubscriptionService) {
         console.warn('⚠️ 订阅服务未找到，跳过初始化');
@@ -114,16 +114,16 @@ class ZiliuApp {
       // 使用超时机制初始化订阅服务，防止阻塞应用启动
       await Promise.race([
         window.ZiliuSubscriptionService.init(),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('订阅服务初始化超时')), 15000)
         )
       ]);
-      
+
       console.log('✅ 订阅服务初始化完成');
     } catch (error) {
       console.error('❌ 订阅服务初始化失败:', error.message);
       console.log('🔄 订阅服务将在后台继续尝试初始化');
-      
+
       // 后台异步重试，不阻塞应用启动
       setTimeout(async () => {
         try {
@@ -149,7 +149,7 @@ class ZiliuApp {
 
       // 获取匹配的平台配置
       const matchedPlatforms = this.config.getPluginsForUrl(currentUrl);
-      
+
       if (matchedPlatforms.length === 0) {
         console.log('⚠️ 当前页面不匹配任何平台，跳过平台初始化');
         return;
@@ -195,32 +195,33 @@ class ZiliuApp {
 
       // 回退：按优先级最高的平台
       if (!platformConfig) {
+        console.log('🔍 所有匹配的平台:', matchedPlatforms.map(p => `${p.id}(${p.priority})`));
         platformConfig = matchedPlatforms.slice().sort((a, b) => b.priority - a.priority)[0];
       }
-      console.log('🎯 匹配到平台:', platformConfig.displayName);
+      console.log('🎯 匹配到平台:', platformConfig.displayName, `(ID: ${platformConfig.id})`);
 
       // 动态加载平台插件
       console.log('📦 开始加载平台插件...');
       await this.loadPlatformPlugin(platformConfig);
       this.currentPlatform = platformConfig;
-      
+
       console.log('✅ 平台插件加载完成:', platformConfig.displayName);
-      
+
       // 检查平台权限状态
       console.log('🔐 检查平台权限...');
       const hasAccess = await this.checkPlatformPermissions(platformConfig);
-      
+
       // 如果没有权限，不加载预设和其他功能
       if (!hasAccess) {
         console.log('🔒 平台权限不足，跳过功能初始化');
         return;
       }
-      
+
       // 重新加载对应平台的预设
       console.log('📋 重新加载平台预设...');
       await this.reloadPresetsForPlatform();
       console.log('✅ 平台预设加载完成');
-      
+
     } catch (error) {
       console.error('❌ 平台插件加载失败:', error.message);
       // 平台加载失败不应该阻止应用启动，但要确保继续后续流程
@@ -233,7 +234,7 @@ class ZiliuApp {
    */
   async loadPlatformPlugin(config) {
     const { id } = config;
-    
+
     // 首先检查是否已经有专用插件注册
     const existingPlatform = ZiliuPlatformRegistry.get(id);
     if (existingPlatform) {
@@ -244,15 +245,15 @@ class ZiliuApp {
       }
       return instance;
     }
-    
+
     // 如果没有专用插件，创建通用的动态插件
     console.log(`📝 为 ${config.displayName} 创建通用插件`);
     const PlatformClass = this.createPlatformClass(config);
-    
+
     // 创建实例并注册到平台注册中心
     const instance = new PlatformClass();
     ZiliuPlatformRegistry.register(instance);
-    
+
     // 初始化实例
     if (instance && typeof instance.init === 'function') {
       await instance.init();
@@ -315,7 +316,7 @@ class ZiliuApp {
         return new Promise((resolve) => {
           const checkEditor = () => {
             const elements = this.findEditorElements(false); // 不使用缓存
-            
+
             if (elements.isEditor) {
               console.log(`✅ ${config.displayName}编辑器就绪`);
               resolve(elements);
@@ -345,7 +346,7 @@ class ZiliuApp {
   async checkPlatformPermissions(platformConfig) {
     try {
       console.log('🔐 检查平台权限状态...');
-      
+
       // 检查平台是否需要权限验证
       if (!platformConfig.requiredPlan) {
         console.log('✅ 当前平台无权限限制');
@@ -375,7 +376,7 @@ class ZiliuApp {
    */
   async initUI() {
     console.log('🎨 初始化UI组件...');
-    
+
     try {
       // 确保UI面板类存在
       if (window.ZiliuPanel) {
@@ -392,7 +393,7 @@ class ZiliuApp {
       } else {
         console.warn('⚠️ ZiliuFeatures 未找到，跳过功能初始化');
       }
-      
+
       ZiliuEventBus.emit('app:uiReady');
       console.log('✅ UI组件初始化完成');
     } catch (error) {
@@ -406,11 +407,11 @@ class ZiliuApp {
    */
   async checkAuth() {
     console.log('🔐 检查登录状态...');
-    
+
     // 新架构暂时简化认证流程
     // 如果需要认证功能，可以通过事件系统集成
     console.log('✅ 认证检查完成（简化版）');
-    
+
     ZiliuEventBus.emit('app:authReady');
   }
 
@@ -419,61 +420,61 @@ class ZiliuApp {
    */
   async loadPresets() {
     console.log('📋 加载预设列表...');
-    
+
     // 如果还没有检测到平台，先加载通用预设
     const platformId = this.currentPlatform?.id || 'all';
-    
+
     try {
       // 使用新的ApiService获取预设
       const response = await ZiliuApiService.presets.list();
-      
+
       if (response.success && Array.isArray(response.data)) {
         // 过滤出适用于当前平台的预设
         const platformPresets = response.data.filter(preset => {
           // 如果预设没有指定平台，或者指定为'all'，则适用于所有平台
           if (!preset.platform || preset.platform === 'all') return true;
-          
+
           // 如果预设指定了具体平台，检查是否匹配当前平台
           if (Array.isArray(preset.platform)) {
             return preset.platform.includes(platformId);
           }
-          
+
           return preset.platform === platformId;
         });
-        
+
         this.presets = platformPresets;
-        
+
         // 选择默认预设：优先选择当前平台的默认预设，然后是通用默认预设，最后是第一个
         this.selectedPreset = this.presets.find(p => p.isDefault && (p.platform === platformId || !p.platform)) ||
-                             this.presets.find(p => p.isDefault) ||
-                             this.presets[0] ||
-                             null;
-        
+          this.presets.find(p => p.isDefault) ||
+          this.presets[0] ||
+          null;
+
         console.log(`✅ 预设加载完成: ${this.presets.length}个预设 (平台: ${platformId})`);
         console.log('🎯 选中默认预设:', this.selectedPreset?.name || '无');
-        
+
         // 通知UI更新
-        ZiliuEventBus.emit('presets:loaded', { 
-          presets: this.presets, 
+        ZiliuEventBus.emit('presets:loaded', {
+          presets: this.presets,
           selectedPreset: this.selectedPreset,
           platform: platformId
         });
-        
+
       } else {
         console.warn('⚠️ 预设数据格式异常:', response);
         this.presets = [];
         this.selectedPreset = null;
       }
-      
+
     } catch (error) {
       console.error('❌ 预设加载失败:', error);
       this.presets = [];
       this.selectedPreset = null;
-      
-      ZiliuEventBus.emit('presets:loaded', { 
-        presets: this.presets, 
+
+      ZiliuEventBus.emit('presets:loaded', {
+        presets: this.presets,
         selectedPreset: this.selectedPreset,
-        platform: platformId 
+        platform: platformId
       });
     }
   }
@@ -500,7 +501,7 @@ class ZiliuApp {
       ZiliuEventBus.emit('presets:changed', { selectedPreset: null });
       return;
     }
-    
+
     const preset = this.presets.find(p => p.id === presetId);
     if (preset) {
       this.selectedPreset = preset;
@@ -558,20 +559,20 @@ class ZiliuApp {
    */
   async destroy() {
     console.log('🗑️ 销毁字流助手...');
-    
+
     try {
       // 清理平台插件
       ZiliuPlatformRegistry.clear();
-      
+
       // 清理状态
       this.state.clear();
-      
+
       // 清理事件
       ZiliuEventBus.clear();
-      
+
       this.isInitialized = false;
       console.log('✅ 字流助手已销毁');
-      
+
     } catch (error) {
       console.error('销毁过程中出错:', error);
     }
@@ -582,7 +583,7 @@ class ZiliuApp {
    */
   async handleMessage(message) {
     const { action, data } = message;
-    
+
     switch (action) {
       case 'fillContent':
         return this.handleFillContent(data);
@@ -606,18 +607,18 @@ class ZiliuApp {
 
       // 使用内容处理服务处理数据
       const contentService = window.ZiliuContentService;
-      const fillData = contentService 
+      const fillData = contentService
         ? await contentService.processContentData(data, this.currentPlatform, this.getSelectedPreset())
         : data;
 
       console.log('📝 开始填充内容到编辑器');
       console.log('🔍 当前平台:', this.currentPlatform?.displayName);
-      
+
       const result = await platform.fillContent(fillData);
-      
+
       console.log('✅ 内容填充成功');
       return { success: true, result };
-      
+
     } catch (error) {
       console.error('❌ 内容填充失败:', error);
       return { success: false, error: error.message };

@@ -120,6 +120,25 @@ export const videoContents = sqliteTable('video_contents', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// 短图文内容元数据表
+export const shortTextContents = sqliteTable('short_text_contents', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  articleId: text('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: text('platform').notNull(), // wechat_xiaolushu, xiaohongshu_note, weibo, jike, x
+
+  // 短图文元数据
+  title: text('title'),
+  content: text('content'),
+  tags: text('tags'), // JSON数组，存储标签
+  images: text('images'), // JSON数组，存储图片数据
+  coverImage: text('cover_image'), // 封面图片
+  coverSuggestion: text('cover_suggestion'), // 封面建议
+
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -135,3 +154,5 @@ export type ImageUsageStat = typeof imageUsageStats.$inferSelect;
 export type NewImageUsageStat = typeof imageUsageStats.$inferInsert;
 export type VideoContent = typeof videoContents.$inferSelect;
 export type NewVideoContent = typeof videoContents.$inferInsert;
+export type ShortTextContent = typeof shortTextContents.$inferSelect;
+export type NewShortTextContent = typeof shortTextContents.$inferInsert;

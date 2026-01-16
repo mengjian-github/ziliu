@@ -25,7 +25,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
     // 查找标题输入框
     elements.elements.title = this.findElement('#title');
-    
+
     // 查找作者输入框
     elements.elements.author = this.findElement('#author');
 
@@ -35,7 +35,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     // 查找摘要输入框
     elements.elements.digest = this.findElementFromSelectors([
       'textarea[name="digest"]',
-      '#js_description', 
+      '#js_description',
       'textarea[placeholder*="选填"]'
     ]);
 
@@ -71,7 +71,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   findContentEditor() {
     console.log('🔍 开始查找微信内容编辑器...');
-    
+
     // 直接调试：列出所有contenteditable元素
     const allContentEditables = document.querySelectorAll('[contenteditable="true"]');
     console.log('🔍 页面上所有contenteditable元素:', Array.from(allContentEditables).map(el => ({
@@ -80,31 +80,31 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       classes: el.className || 'no-class',
       innerHTML: el.innerHTML?.substring(0, 50) + '...'
     })));
-    
+
     // 1. 优先查找.ProseMirror
     let element = document.querySelector('.ProseMirror');
     if (element) {
       console.log('✅ 找到 .ProseMirror 编辑器');
       return element;
     }
-    
+
     // 2. 查找.rich_media_content .ProseMirror
     element = document.querySelector('.rich_media_content .ProseMirror');
     if (element) {
       console.log('✅ 找到 .rich_media_content .ProseMirror 编辑器');
       return element;
     }
-    
+
     // 3. 手动筛选contenteditable元素，排除不需要的
     for (const el of allContentEditables) {
       // 排除原创声明等元素
       if (el.classList.contains('editor_content_placeholder') ||
-          el.classList.contains('original_primary_tips_input') ||
-          el.classList.contains('js_reprint_recommend_content')) {
+        el.classList.contains('original_primary_tips_input') ||
+        el.classList.contains('js_reprint_recommend_content')) {
         console.log('🚫 跳过无关元素:', el.className);
         continue;
       }
-      
+
       // 如果是一个合适的编辑器元素
       if (el.innerHTML && el.innerHTML.trim().length < 1000) { // 空编辑器或少量占位内容
         console.log('✅ 找到候选编辑器元素:', {
@@ -122,7 +122,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       console.log('✅ 找到UEditor编辑器');
       return element;
     }
-    
+
     console.log('❌ 未找到任何有效的编辑器');
     return null;
   }
@@ -132,7 +132,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   getContentEditorType(contentElement) {
     if (!contentElement) return 'unknown';
-    
+
     if (contentElement.classList.contains('ProseMirror')) {
       return 'ProseMirror';
     } else if (contentElement.id === 'ueditor_0') {
@@ -140,7 +140,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     } else if (contentElement.contentEditable === 'true') {
       return 'ContentEditable';
     }
-    
+
     return 'unknown';
   }
 
@@ -149,7 +149,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   getContentElementInfo(contentElement) {
     if (!contentElement) return 'null';
-    
+
     return {
       tag: contentElement.tagName,
       id: contentElement.id || 'no-id',
@@ -212,13 +212,13 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       switch (editorType) {
         case 'ProseMirror':
           return await this.fillProseMirrorEditor(contentElement, cleanContent);
-        
+
         case 'UEditor':
           return await this.fillUEditor(contentElement, cleanContent, data);
-        
+
         case 'ContentEditable':
           return await this.fillContentEditableEditor(contentElement, cleanContent);
-        
+
         default:
           console.warn('未知的编辑器类型，使用默认方法');
           return await super.fillContentEditor(contentElement, cleanContent, data);
@@ -241,28 +241,28 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       focused: document.activeElement === element,
       originalContent: element.innerHTML?.substring(0, 100) + '...'
     });
-    
+
     element.focus();
-    
+
     // 清空现有内容
     console.log('🧹 清空现有内容');
     element.innerHTML = '';
-    
+
     // 设置新内容
     console.log('📄 设置新内容 (长度:', content.length, ')');
     element.innerHTML = content;
-    
+
     // 验证内容是否设置成功
     console.log('✅ 验证内容设置结果:', {
       newLength: element.innerHTML?.length,
       preview: element.innerHTML?.substring(0, 100) + '...'
     });
-    
+
     // 触发ProseMirror的更新事件
     console.log('🔥 触发更新事件');
     const inputEvent = new Event('input', { bubbles: true });
     element.dispatchEvent(inputEvent);
-    
+
     // 额外的更新事件
     const changeEvent = new Event('DOMSubtreeModified', { bubbles: true });
     element.dispatchEvent(changeEvent);
@@ -279,15 +279,15 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   async fillUEditor(element, content, data) {
     console.log('📝 填充UEditor编辑器');
-    
+
     // 检查是否有iframe访问权限
     const elements = this.findEditorElements();
     const editorBody = elements.elements.editorBody;
-    
+
     if (editorBody) {
       // 直接操作iframe内的body
       editorBody.innerHTML = content;
-      
+
       // 触发UEditor的更新
       if (window.UE && window.UE.getEditor) {
         try {
@@ -313,10 +313,10 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   async fillContentEditableEditor(element, content) {
     console.log('📝 填充ContentEditable编辑器');
-    
+
     element.focus();
     element.innerHTML = content;
-    
+
     // 触发各种可能的事件
     const events = ['input', 'change', 'blur', 'DOMSubtreeModified'];
     for (const eventType of events) {
@@ -337,7 +337,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   async postFillProcess(elements, data, results) {
     console.log('🔧 微信平台后处理...');
-    
+
     // 如果填充了摘要，确保摘要显示区域可见
     if (results.digest?.success && elements.digest) {
       try {
@@ -368,16 +368,16 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
   validateEditorElements(elements) {
     // 微信编辑器必须有标题和内容编辑器
     const hasRequired = !!(elements.title && elements.content);
-    
+
     // 额外检查：确保内容编辑器是可编辑的
     if (elements.content) {
-      const isEditable = elements.content.contentEditable === 'true' || 
-                        elements.content.id === 'ueditor_0' ||
-                        elements.content.classList.contains('ProseMirror');
-      
+      const isEditable = elements.content.contentEditable === 'true' ||
+        elements.content.id === 'ueditor_0' ||
+        elements.content.classList.contains('ProseMirror');
+
       return hasRequired && isEditable;
     }
-    
+
     return hasRequired;
   }
 
@@ -391,7 +391,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       // 使用新的ApiService来调用转换接口
       const data = await window.ZiliuApiService.content.convert(
         markdown,
-        'wechat', 
+        'wechat',
         style
       );
 
@@ -661,7 +661,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
           if (cdnUrl) {
             img.src = cdnUrl;
             img.setAttribute('src', cdnUrl);
-            
+
             // 更新进度显示
             this.updateUploadProgress(overlay, index, images.length, '上传成功');
             console.log(`✅ 图片 ${index + 1} 转换成功: ${cdnUrl}`);
@@ -688,7 +688,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       // 显示最终统计
       const stats = this.getUploadStats();
       console.log('📊 图片上传最终统计:', stats);
-      
+
       this.showUploadCompletionMessage(overlay, successResults.length, images.length, failedResults);
 
       // 延迟隐藏进度UI
@@ -712,18 +712,18 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     return {
       // 并发控制
       MAX_CONCURRENT_UPLOADS: 3,
-      
+
       // 重试配置
       MAX_RETRY_ATTEMPTS: 3,
       BASE_DELAY: 1000, // 1秒基础延迟
       MAX_DELAY: 10000, // 最大延迟10秒
-      
+
       // 请求频率限制
       MIN_REQUEST_INTERVAL: 500, // 最小请求间隔500ms
-      
+
       // 上传队列配置
       QUEUE_TIMEOUT: 120000, // 队列超时2分钟
-      
+
       // 错误码配置
       RETRY_ERROR_CODES: [-1, 400001, 400002, 429, 503],
       FATAL_ERROR_CODES: [401, 403, 404]
@@ -735,7 +735,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     const defaultConfig = WeChatPlatformPlugin.metadata;
     const mergedConfig = { ...defaultConfig, ...config };
     super(mergedConfig);
-    
+
     // 上传状态管理
     this.uploadState = {
       activeUploads: 0,
@@ -754,7 +754,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   async uploadImageWithQueue(imageUrl) {
     const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-    
+
     return new Promise((resolve, reject) => {
       // 检查是否已经上传过相同图片
       if (this.uploadState.uploadHistory.has(imageUrl)) {
@@ -776,9 +776,9 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
       this.uploadState.uploadQueue.push(uploadTask);
       this.uploadState.totalUploads++;
-      
+
       console.log(`📋 图片加入上传队列: ${uploadId}, 队列长度: ${this.uploadState.uploadQueue.length}`);
-      
+
       // 启动队列处理
       this.processUploadQueue();
     });
@@ -790,13 +790,13 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
   async processUploadQueue() {
     // 检查是否可以启动新的上传
     if (this.uploadState.activeUploads >= WeChatPlatformPlugin.UPLOAD_CONFIG.MAX_CONCURRENT_UPLOADS ||
-        this.uploadState.uploadQueue.length === 0) {
+      this.uploadState.uploadQueue.length === 0) {
       return;
     }
 
     // 获取下一个上传任务
     const uploadTask = this.uploadState.uploadQueue.shift();
-    
+
     // 检查任务是否超时
     const now = Date.now();
     if (now - uploadTask.addedAt > WeChatPlatformPlugin.UPLOAD_CONFIG.QUEUE_TIMEOUT) {
@@ -808,12 +808,12 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
     // 执行上传
     this.uploadState.activeUploads++;
-    
+
     try {
       console.log(`🚀 开始上传图片: ${uploadTask.id} (活跃: ${this.uploadState.activeUploads})`);
-      
+
       const result = await this.uploadImageWithRetry(uploadTask);
-      
+
       if (result) {
         // 缓存成功的上传结果
         this.uploadState.uploadHistory.set(uploadTask.imageUrl, result);
@@ -825,7 +825,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
         uploadTask.reject(new Error('上传失败'));
         console.error(`❌ 上传失败: ${uploadTask.id}`);
       }
-      
+
     } catch (error) {
       this.uploadState.failedUploads++;
       uploadTask.reject(error);
@@ -833,7 +833,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     } finally {
       this.uploadState.activeUploads--;
       console.log(`📊 上传完成统计: 活跃:${this.uploadState.activeUploads}, 成功:${this.uploadState.successUploads}, 失败:${this.uploadState.failedUploads}`);
-      
+
       // 继续处理队列中的下一个任务
       setTimeout(() => this.processUploadQueue(), 100);
     }
@@ -852,19 +852,19 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
         await this.enforceRateLimit();
 
         console.log(`🔄 上传尝试 ${attempt + 1}/${config.MAX_RETRY_ATTEMPTS + 1}: ${uploadTask.imageUrl}`);
-        
+
         const result = await this.uploadImageToCDN(uploadTask.imageUrl);
-        
+
         if (result) {
           if (attempt > 0) {
             console.log(`✅ 重试成功: ${uploadTask.id}, 尝试次数: ${attempt + 1}`);
           }
           return result;
         }
-        
+
         // 如果返回null但没有抛出异常，视为上传失败
         lastError = new Error('上传返回空结果');
-        
+
       } catch (error) {
         lastError = error;
         console.warn(`⚠️ 上传尝试 ${attempt + 1} 失败:`, error.message);
@@ -912,12 +912,12 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     const config = WeChatPlatformPlugin.UPLOAD_CONFIG;
     const baseDelay = config.BASE_DELAY;
     const maxDelay = config.MAX_DELAY;
-    
+
     // 指数退避: delay = baseDelay * (2^attempt) + 随机抖动
     const exponentialDelay = baseDelay * Math.pow(2, attempt);
     const jitter = Math.random() * baseDelay; // 添加随机抖动避免惊群效应
     const finalDelay = Math.min(exponentialDelay + jitter, maxDelay);
-    
+
     return Math.round(finalDelay);
   }
 
@@ -926,21 +926,21 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   isFatalError(error) {
     const config = WeChatPlatformPlugin.UPLOAD_CONFIG;
-    
+
     // 检查错误码
     if (error.code && config.FATAL_ERROR_CODES.includes(error.code)) {
       return true;
     }
-    
+
     // 检查HTTP状态码
     if (error.status && config.FATAL_ERROR_CODES.includes(error.status)) {
       return true;
     }
-    
+
     // 检查错误信息中的关键字
     const fatalKeywords = ['token无效', '权限不足', '账号异常', '接口不存在'];
     const errorMessage = error.message?.toLowerCase() || '';
-    
+
     return fatalKeywords.some(keyword => errorMessage.includes(keyword.toLowerCase()));
   }
 
@@ -955,7 +955,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       active: this.uploadState.activeUploads,
       queued: this.uploadState.uploadQueue.length,
       cached: this.uploadState.uploadHistory.size,
-      successRate: this.uploadState.totalUploads > 0 ? 
+      successRate: this.uploadState.totalUploads > 0 ?
         (this.uploadState.successUploads / this.uploadState.totalUploads * 100).toFixed(2) + '%' : '0%'
     };
   }
@@ -965,7 +965,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   async uploadImageToCDN(imageUrl) {
     const startTime = Date.now();
-    
+
     try {
       console.log('📡 调用微信uploadimg2cdn接口:', imageUrl);
 
@@ -1001,7 +1001,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
         xhr.onload = () => {
           clearTimeout(timeoutId);
-          
+
           if (xhr.status === 200) {
             try {
               const result = JSON.parse(xhr.responseText);
@@ -1019,7 +1019,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
             } else if (xhr.status === 401 || xhr.status === 403) {
               errorMsg = '认证失败或权限不足';
             }
-            
+
             const error = new Error(errorMsg);
             error.status = xhr.status;
             reject(error);
@@ -1052,7 +1052,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
         if (response.errmsg) {
           errorMsg += `: ${response.errmsg}`;
         }
-        
+
         const error = new Error(errorMsg);
         error.code = response.errcode;
         throw error;
@@ -1366,23 +1366,23 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     if (!overlay) return;
 
     const progress = Math.round(((current + 1) / total) * 100);
-    
+
     if (overlay._progressBar) {
       overlay._progressBar.style.width = `${progress}%`;
     }
-    
+
     if (overlay._progressText) {
       overlay._progressText.textContent = `${progress}%`;
     }
-    
+
     if (overlay._text) {
       overlay._text.textContent = `正在处理第 ${current + 1} 张图片（共 ${total} 张）`;
     }
-    
+
     if (overlay._detailText && status) {
       overlay._detailText.textContent = status;
     }
-    
+
     // 获取实时统计信息
     const stats = this.getUploadStats();
     if (overlay._detailText && stats) {
@@ -1447,12 +1447,12 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   hideUploadProgressOverlay(overlay) {
     if (!overlay) return;
-    
+
     try {
       // 添加淡出动画
       overlay.style.transition = 'opacity 0.3s ease-out';
       overlay.style.opacity = '0';
-      
+
       setTimeout(() => {
         if (overlay.parentElement) {
           overlay.parentElement.removeChild(overlay);
@@ -1467,7 +1467,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
 // 配置驱动的自动注册（支持多个微信编辑器变体，例如：公众号长文 / 小绿书）
 if (window.ZiliuPlatformRegistry && window.ZiliuPluginConfig) {
-  const wechatLikeIds = ['wechat', 'wechat_xiaolushu'];
+  const wechatLikeIds = ['wechat'];
   const platformConfigs = (window.ZiliuPluginConfig.platforms || [])
     .filter(p => wechatLikeIds.includes(p.id) && p.enabled);
 
@@ -1487,6 +1487,12 @@ if (window.ZiliuPlatformRegistry && window.ZiliuPluginConfig) {
 
   platformConfigs.forEach((config) => {
     if (!matchesUrl(config.urlPatterns)) return;
+
+    // 如果是小绿书模式 (createType=8)，则不由此插件处理
+    if (config.id === 'wechat' && /(createType=8|type=77)/i.test(window.location.href)) {
+      console.log('⏭️ 检测到小绿书模式，跳过微信长文插件注册');
+      return;
+    }
 
     // 避免重复注册
     if (window.ZiliuPlatformRegistry.get(config.id)) return;

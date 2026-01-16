@@ -389,22 +389,24 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
               </div>
 
               {/* 平台特定字段 */}
-              {platform === 'wechat' && (
+              {(platform === 'wechat' || platform === 'wechat_xiaolushu') && (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">
-                      作者名称
-                    </label>
-                    <Input
-                      value={editingSettings?.authorName || ''}
-                      onChange={(e) => {
-                        const newSettings = editingSettings ? { ...editingSettings, authorName: e.target.value } : null;
-                        setEditingSettings(newSettings);
-                        saveEditingContent(newSettings);
-                      }}
-                      placeholder="输入作者名称"
-                    />
-                  </div>
+                  {platform === 'wechat' && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-zinc-400 mb-1">
+                        作者名称
+                      </label>
+                      <Input
+                        value={editingSettings?.authorName || ''}
+                        onChange={(e) => {
+                          const newSettings = editingSettings ? { ...editingSettings, authorName: e.target.value } : null;
+                          setEditingSettings(newSettings);
+                          saveEditingContent(newSettings);
+                        }}
+                        placeholder="输入作者名称"
+                      />
+                    </div>
+                  )}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-sm font-medium text-gray-700">

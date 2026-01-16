@@ -76,7 +76,7 @@ class UtilsService {
    */
   throttle(func, wait) {
     let inThrottle;
-    return function(...args) {
+    return function (...args) {
       if (!inThrottle) {
         func.apply(this, args);
         inThrottle = true;
@@ -190,13 +190,13 @@ class UtilsService {
     }
 
     overlay.appendChild(spinner);
-    
+
     // 确保父元素有相对定位
     const originalPosition = element.style.position;
     if (!originalPosition || originalPosition === 'static') {
       element.style.position = 'relative';
     }
-    
+
     element.appendChild(overlay);
     return overlay;
   }
@@ -243,22 +243,106 @@ class UtilsService {
     try {
       // 清空现有内容
       editor.innerHTML = '';
-      
+
       // 设置新内容
       editor.innerHTML = content;
-      
+
       // 触发变化事件
       const event = new Event('input', { bubbles: true });
       editor.dispatchEvent(event);
-      
+
       // 等待内容渲染
       await this.delay(100);
-      
+
       return true;
     } catch (error) {
       console.error('设置富文本内容失败:', error);
       throw error;
     }
+  }
+
+  /**
+   * 获取图片Blob数据 (支持跨域)
+   */
+  async fetchImageBlob(url) {
+    if (!url) {
+      console.warn('🖼️ fetchImageBlob: URL为空');
+      return null;
+    }
+
+    console.log('🖼️ fetchImageBlob 开始获取:', url.substring(0, 80) + '...');
+
+    // 如果是base64，直接解析
+    if (url.startsWith('data:')) {
+      try {
+        console.log('🖼️ 检测到 Base64 图片，直接解析');
+        const response = await fetch(url);
+        const blob = await response.blob();
+        console.log('✅ Base64 图片解析成功, size:', blob.size);
+        return blob;
+      } catch (e) {
+        console.error('❌ Base64图片解析失败:', e);
+        return null;
+      }
+    }
+
+    // 尝试通过后台脚本请求（绕过CORS）
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        console.log('🖼️ 通过 background.js 请求图片...');
+
+        chrome.runtime.sendMessage({
+          action: 'fetchBlob',
+          data: { url }
+        }, async (response) => {
+          // 检查 lastError
+          if (chrome.runtime.lastError) {
+            console.error('❌ chrome.runtime.lastError:', chrome.runtime.lastError.message);
+          }
+
+          console.log('🖼️ background 响应:', response ? { success: response.success, hasData: !!response.data } : 'null');
+
+          if (!response || !response.success || !response.data) {
+            console.warn('⚠️ background 请求失败，尝试直接 fetch...');
+            // 背景请求失败，尝试前端直接请求
+            try {
+              const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+              const blob = await res.blob();
+              console.log('✅ 直接 fetch 成功, size:', blob.size);
+              resolve(blob);
+            } catch (e) {
+              console.error('❌ 直接 fetch 也失败:', e.message);
+              resolve(null);
+            }
+          } else {
+            // 背景请求成功，response.data 是 base64 data URL
+            console.log('✅ background 返回数据，正在解析...');
+            try {
+              const res = await fetch(response.data);
+              const blob = await res.blob();
+              console.log('✅ 图片获取成功, size:', blob.size);
+              resolve(blob);
+            } catch (e) {
+              console.error('❌ 解析 background 返回数据失败:', e);
+              resolve(null);
+            }
+          }
+        });
+      } else {
+        console.warn('⚠️ chrome.runtime 不可用，直接 fetch...');
+        // 环境不支持，直接尝试请求
+        fetch(url, { mode: 'cors', credentials: 'omit' })
+          .then(res => res.blob())
+          .then(blob => {
+            console.log('✅ 直接 fetch 成功, size:', blob.size);
+            resolve(blob);
+          })
+          .catch(e => {
+            console.error('❌ 直接 fetch 失败:', e);
+            resolve(null);
+          });
+      }
+    });
   }
 
   /**
@@ -269,9 +353,9 @@ class UtilsService {
 
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
-    
+
     const images = tempDiv.querySelectorAll('img');
-    
+
     for (const img of images) {
       const src = img.getAttribute('src');
       if (src && this.isExternalImage(src)) {
@@ -284,7 +368,7 @@ class UtilsService {
         }
       }
     }
-    
+
     return tempDiv.innerHTML;
   }
 
@@ -293,8 +377,8 @@ class UtilsService {
    */
   isExternalImage(src) {
     if (!src) return false;
-    return src.startsWith('http') && 
-           !this.isPlatformCdnUrl(src);
+    return src.startsWith('http') &&
+      !this.isPlatformCdnUrl(src);
   }
 
   /**
@@ -302,12 +386,12 @@ class UtilsService {
    */
   isPlatformCdnUrl(src) {
     if (!src) return false;
-    
+
     // 微信公众号相关CDN
     if (src.includes('mp.weixin.qq.com') || src.includes('mmbiz.qpic.cn')) {
       return true;
     }
-    
+
     // 其他平台的CDN可以在这里添加
     return false;
   }
@@ -347,7 +431,7 @@ class UtilsService {
       // 触发微信编辑器的自动保存机制
       const event = new Event('input', { bubbles: true });
       element.dispatchEvent(event);
-      
+
       // 模拟键盘事件
       const keyEvent = new KeyboardEvent('keyup', { bubbles: true });
       element.dispatchEvent(keyEvent);
@@ -393,10 +477,10 @@ class UtilsService {
       const platform = window.ZiliuPlatformManager.findPlatformByUrl(window.location.href);
       return platform?.id === 'wechat' && document.querySelector('#js_editor');
     }
-    
+
     // 兜底检查
-    return window.location.href.includes('mp.weixin.qq.com') && 
-           document.querySelector('#js_editor');
+    return window.location.href.includes('mp.weixin.qq.com') &&
+      document.querySelector('#js_editor');
   }
 
   /**

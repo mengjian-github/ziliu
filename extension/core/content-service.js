@@ -91,16 +91,25 @@ class ZiliuContentService {
           contentForFill = originalMarkdown || sourceContent || '';
           contentForFill = this.applyPresetToContent(contentForFill, preset, 'markdown');
         } else if (platformContentType === 'text') {
-          // 短图文平台：优先从服务端获取 AI 改写后的文案（并返回图片列表）
+          // 短图文平台：
+          // 1. 优先尝试从后端获取已保存的短图文内容（对应预览时的结果）
+          // 2. 如果没有保存的内容，则调用生成接口（适用于直接填充场景）
           const markdown = originalMarkdown || sourceContent || '';
 
-          try {
-            if (platformId) {
-              shortData = await this.getShortTextContent(data.articleId, platformId);
+          // 核心优化点：优先使用传入的生成内容 (Preview -> Publish flow)
+          if (data.generatedContent && Object.keys(data.generatedContent).length > 0) {
+            console.log('✅ 复用网页端传递的预览内容');
+            shortData = data.generatedContent;
+          } else {
+            // 尝试从后端获取已保存的内容
+            try {
+              if (platformId) {
+                shortData = await this.getShortTextContent(data.articleId, platformId);
+              }
+            } catch (error) {
+              console.warn('获取短图文内容失败:', error);
+              shortData = null;
             }
-          } catch (error) {
-            console.warn('获取短图文AI内容失败，将使用纯文本回退:', error);
-            shortData = null;
           }
 
           const baseText = shortData?.content ? shortData.content : this.markdownToPlainText(markdown);
@@ -241,6 +250,28 @@ class ZiliuContentService {
   }
 
   /**
+   * 通用API请求助手
+   */
+  async apiRequest(method, endpoint, body = null) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        action: 'apiRequest',
+        data: {
+          method,
+          endpoint,
+          body
+        }
+      }, (resp) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(resp);
+        }
+      });
+    });
+  }
+
+  /**
    * 获取短图文平台的 AI 改写后内容 + 图片列表
    * 通过 background script 代理请求（避免CORS/cookie问题）
    */
@@ -248,25 +279,14 @@ class ZiliuContentService {
     try {
       console.log('🧩 获取短图文平台内容:', { articleId, platform });
 
-      const response = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({
-          action: 'apiRequest',
-          data: {
-            method: 'POST',
-            endpoint: '/api/short-text/generate',
-            body: {
-              articleId,
-              platform
-            }
-          }
-        }, (resp) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve(resp);
-          }
-        });
-      });
+      // 1. 尝试获取已保存的内容
+      let response = await this.apiRequest('GET', `/api/short-text/content?articleId=${articleId}&platform=${platform}`);
+
+      if (!response.success && response.error === '未找到内容') {
+        // 2. 如果未找到，则尝试生成 (Legacy fallback)
+        console.log('⚠️ 未找到已保存内容，尝试实时生成...');
+        response = await this.apiRequest('POST', '/api/short-text/generate', { articleId, platform });
+      }
 
       if (!response || !response.success) {
         throw new Error(response?.error || '获取短图文内容失败');
@@ -281,6 +301,8 @@ class ZiliuContentService {
       };
     } catch (error) {
       console.error('❌ 获取短图文内容失败:', error);
+      // 尝试打印更详细的错误堆栈，帮助排查 API 问题
+      if (error && error.message) console.error('Error details:', error.message);
       return {
         title: '',
         content: '',

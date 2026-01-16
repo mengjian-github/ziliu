@@ -36,15 +36,16 @@ const OUTPUT_LIMITS: Record<ShortTextPlatform, { titleMax?: number; contentMax?:
 const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
   wechat_xiaolushu: `
 你是“微信小绿书（公众号图片消息）”运营助手。请把原始内容改写为适合发布的小绿书短图文文案。
+风格要求：类似小红书，轻松、分享感强、多用Emoji。
 
 要求：
 1) 标题：可选，6-20个汉字（不要出现“标题：”前缀）
 2) 正文：200-900字，纯文本，允许换行；不要出现Markdown语法；不要输出图片URL；避免贴长链接
-3) 不要生成话题/标签
+3) 话题/标签：3-5个，返回数组（不要带#号，直接给词）
 4) 可以根据配图信息自然地写“第1张图/图里…”等
 
 输出必须是严格 JSON（不要有任何额外文字）：
-{"title":"...","content":"..."}`,
+{"title":"...","content":"...","tags":["..."]}`,
   xiaohongshu_note: `
 你是“小红书图文笔记”运营助手。请把原始内容改写为适合发布的小红书图文笔记文案。
 

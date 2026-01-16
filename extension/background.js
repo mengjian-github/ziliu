@@ -142,7 +142,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     fetchBlob: async ({ url }) => {
       try {
         console.log('🖼️ Background fetching image:', url);
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          method: 'GET',
+          credentials: 'omit', // 关键：避免带上微信的 cookie 去请求飞书图片
+          mode: 'cors'
+        });
         const blob = await response.blob();
 
         // Convert blob to base64

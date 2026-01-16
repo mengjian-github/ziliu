@@ -11,6 +11,10 @@ window.ZiliuPluginConfig = {
       displayName: '微信公众号',
       enabled: true,
       urlPatterns: [
+        'https://mp.weixin.qq.com/cgi-bin/appmsg?*createType=0*',
+        'http://mp.weixin.qq.com/cgi-bin/appmsg?*createType=0*',
+        'https://mp.weixin.qq.com/cgi-bin/appmsg?*action=edit*',
+        'http://mp.weixin.qq.com/cgi-bin/appmsg?*action=edit*',
         'https://mp.weixin.qq.com/*',
         'http://mp.weixin.qq.com/*'
       ],
@@ -40,7 +44,9 @@ window.ZiliuPluginConfig = {
       // 小绿书与长文同域名，靠 URL 参数区分：createType=8
       urlPatterns: [
         'https://mp.weixin.qq.com/cgi-bin/appmsg*createType=8*',
-        'http://mp.weixin.qq.com/cgi-bin/appmsg*createType=8*'
+        'http://mp.weixin.qq.com/cgi-bin/appmsg*createType=8*',
+        'https://mp.weixin.qq.com/cgi-bin/appmsg*createtype=8*',
+        'http://mp.weixin.qq.com/cgi-bin/appmsg*createtype=8*'
       ],
       editorUrl: 'https://mp.weixin.qq.com/',
       // 微信编辑器由专用插件处理，这里的 selectors 仅用于展示/兜底
@@ -49,15 +55,15 @@ window.ZiliuPluginConfig = {
         content: '.ProseMirror, .rich_media_content .ProseMirror, [contenteditable="true"]:not(.editor_content_placeholder)'
       },
       // 小绿书通常不需要作者/摘要，先保持最小字段
-      features: ['title', 'content', 'richText'],
-      // 同微信编辑器：仍然使用 HTML 转换和富文本填充
-      contentType: 'html',
+      features: ['title', 'content', 'tags', 'images'],
+      // 小绿书使用短图文处理逻辑
+      contentType: 'text',
       specialHandling: {
         initDelay: 500,
         noCopyButton: true
       },
       // 高于 wechat，让 createType=8 优先匹配
-      priority: 11
+      priority: 20
     },
     {
       id: 'zhihu',
@@ -91,7 +97,7 @@ window.ZiliuPluginConfig = {
           },
           copyButton: {
             text: '复制正文',
-            tooltip: '复制文章正文内容'  
+            tooltip: '复制文章正文内容'
           }
         },
         fillMode: 'titleOnly'  // 知乎只填充标题
@@ -128,7 +134,7 @@ window.ZiliuPluginConfig = {
           },
           copyButton: {
             text: '复制正文',
-            tooltip: '复制文章正文内容'  
+            tooltip: '复制文章正文内容'
           }
         },
         fillMode: 'titleOnly'  // 掘金只填充标题
@@ -137,7 +143,7 @@ window.ZiliuPluginConfig = {
     },
     {
       id: 'zsxq',
-      name: '知识星球平台插件', 
+      name: '知识星球平台插件',
       displayName: '知识星球',
       enabled: true,
       requiredPlan: 'pro', // 需要专业版
@@ -690,7 +696,7 @@ window.ZiliuPluginConfig = {
       dependencies: []
     },
     {
-      id: 'preset-service', 
+      id: 'preset-service',
       name: '预设服务',
       enabled: true,
       dependencies: []
@@ -713,7 +719,7 @@ window.ZiliuPluginConfig = {
     },
     {
       id: 'button-generator',
-      name: '按钮生成器', 
+      name: '按钮生成器',
       enabled: true,
       dependencies: []
     }
@@ -723,13 +729,13 @@ window.ZiliuPluginConfig = {
   settings: {
     // 自动注入设置
     autoInject: true,
-    
+
     // 调试模式
     debug: false,
-    
+
     // 加载超时时间
     loadTimeout: 10000,
-    
+
     // 平台检测延迟
     platformDetectionDelay: 1000
   }
@@ -738,10 +744,10 @@ window.ZiliuPluginConfig = {
 /**
  * 根据当前URL获取应该加载的平台插件
  */
-window.ZiliuPluginConfig.getPluginsForUrl = function(url) {
+window.ZiliuPluginConfig.getPluginsForUrl = function (url) {
   return this.platforms.filter(platform => {
     if (!platform.enabled) return false;
-    
+
     return platform.urlPatterns.some(pattern => {
       try {
         const escapedPattern = pattern
