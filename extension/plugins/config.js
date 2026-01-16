@@ -205,11 +205,11 @@ window.ZiliuPluginConfig = {
         // 视频平台按钮定制
         buttonConfig: {
           fillButton: {
-            text: '📹 填充视频内容',
+            text: '📹 填充视频',
             tooltip: '填充视频标题、描述和标签到视频号编辑器'
           },
           copyButton: {
-            text: '📋 复制视频文案',
+            text: '📋 复制文案',
             tooltip: '复制适合视频号的文案内容'
           }
         },
@@ -244,11 +244,11 @@ window.ZiliuPluginConfig = {
         retryDelay: 3000,
         buttonConfig: {
           fillButton: {
-            text: '🎵 填充抖音内容',
+            text: '🎵 填充抖音',
             tooltip: '填充视频标题、描述和话题到抖音编辑器'
           },
           copyButton: {
-            text: '📋 复制视频文案',
+            text: '📋 复制文案',
             tooltip: '复制适合抖音的短视频文案'
           }
         },
@@ -285,11 +285,11 @@ window.ZiliuPluginConfig = {
         retryDelay: 2000,
         buttonConfig: {
           fillButton: {
-            text: '📺 智能填充B站',
+            text: '📺 填充B站',
             tooltip: '智能填充标题、简介，特别是智能标签匹配功能'
           },
           copyButton: {
-            text: '📋 复制视频文案',
+            text: '📋 复制文案',
             tooltip: '复制适合B站的视频内容'
           }
         },
@@ -329,11 +329,11 @@ window.ZiliuPluginConfig = {
         retryDelay: 2000,
         buttonConfig: {
           fillButton: {
-            text: '📕 填充小红书视频',
+            text: '📕 填充小红书',
             tooltip: '填充视频标题、描述与话题标签到小红书编辑器'
           },
           copyButton: {
-            text: '📋 复制视频文案',
+            text: '📋 复制文案',
             tooltip: '复制适合小红书视频的文案'
           }
         },
@@ -373,11 +373,11 @@ window.ZiliuPluginConfig = {
         retryDelay: 2000,
         buttonConfig: {
           fillButton: {
-            text: '📕 填充小红书图文',
+            text: '📕 填充小红书',
             tooltip: '填充标题、正文与话题标签到小红书图文编辑器'
           },
           copyButton: {
-            text: '📋 复制笔记内容',
+            text: '📋 复制文案',
             tooltip: '复制适合小红书图文的笔记内容'
           }
         },

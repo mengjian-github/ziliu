@@ -5,8 +5,25 @@
 class XiaohongshuPlugin extends BasePlatformPlugin {
   constructor(config) {
     super(config);
-    this.platformType = 'video'; // 主要支持视频，也支持图文
-    console.log('📖 小红书插件初始化完成');
+    // 默认支持视频，会自动根据页面 tab 切换
+    this.platformType = config.id === 'xiaohongshu_note' ? 'note' : 'video';
+    console.log(`📖 小红书插件初始化完成: ${this.platformType}`);
+  }
+
+  /**
+   * 判断当前是否在图文 tab
+   */
+  isNoteTab() {
+    const tabs = document.querySelectorAll('.tab-item');
+    for (const tab of tabs) {
+      if (tab.classList.contains('active') && tab.textContent.includes('图文')) {
+        return true;
+      }
+    }
+    // 兜底：检查上传区域的文字
+    const uploadArea = document.querySelector('.upload-container');
+    if (uploadArea && uploadArea.textContent.includes('图片')) return true;
+    return this.config.id === 'xiaohongshu_note';
   }
 
   /**
@@ -25,11 +42,13 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
   getSelectors() {
     return {
       title: [
+        'input.d-text',
         'input[placeholder*="填写标题"]',
         'input[placeholder*="标题"]',
         'textbox[placeholder*="标题"]'
       ],
       content: [
+        '.tiptap.ProseMirror',
         'div[contenteditable="true"]',
         'textarea[placeholder*="正文"]',
         'textbox[placeholder*="描述"]'
@@ -183,24 +202,37 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
     });
 
     try {
+      // 优先级：如果是图文 tab，先处理图片上传
+      const isNote = this.isNoteTab();
+      console.log('📖 小红书发布类型检测:', isNote ? '图文笔记' : '视频');
+
+      // 1. 如果有图片且是图文模式，先上传图片（因为上传图片后才会显示标题和正文框）
+      if (isNote && data.images && data.images.length > 0) {
+        console.log('🖼️ 检测到图片列表，开始上传图片...');
+        await this.fillXhsImages(data.images, data.coverImage);
+        // 上传后给页面一点反应时间
+        await this.sleep(3000);
+      }
+
+      // 重新查找元素（可能刚才上传图片后才出现）
       const elements = this.findElements();
       let fillCount = 0;
       const results = {};
 
-      // 直接使用AI转换后的视频数据，如果没有则回退到原始数据
-      const videoTitle = data.videoTitle || data.title;
-      const videoDescription = data.videoDescription || data.content;
+      // 直接使用AI转换后的视频/图文数据，如果没有则回退到原始数据
+      const title = data.title || data.videoTitle;
+      const description = data.content || data.videoDescription;
       const tags = data.tags || [];
 
-      console.log('📖 使用的视频数据:', {
-        videoTitle,
-        videoDescription: videoDescription?.substring(0, 100) + '...',
+      console.log('📖 准备填充的内容数据:', {
+        title,
+        description: description?.substring(0, 100) + '...',
         tags: typeof tags === 'string' ? JSON.parse(tags) : tags
       });
 
       // 填充标题 - 小红书标题限制20字
-      if (elements.title && videoTitle) {
-        let processedTitle = videoTitle.toString();
+      if (elements.title && title) {
+        let processedTitle = title.toString();
         if (processedTitle.length > 20) {
           processedTitle = processedTitle.substring(0, 20);
           console.log('⚠️ 标题超长，已截取到20字符');
@@ -214,8 +246,8 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       }
 
       // 填充内容 - 小红书内容限制1000字
-      if (elements.content && videoDescription) {
-        let processedContent = videoDescription.toString();
+      if (elements.content && description) {
+        let processedContent = description.toString();
         if (processedContent.length > 1000) {
           processedContent = processedContent.substring(0, 1000);
           console.log('⚠️ 内容超长，已截取到1000字符');
@@ -250,14 +282,14 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
         }
       }
 
-      // 填充封面
-      if (data.coverImage) {
+      // 填充封面 (仅限视频模式，图文模式封面由图片顺序决定)
+      if (!isNote && data.coverImage) {
         results.cover = await this.fillCover(elements, data.coverImage);
         if (results.cover.success) {
           fillCount++;
-          console.log('✅ 小红书封面填充完成');
+          console.log('✅ 小红书视频封面填充完成');
         } else {
-          console.warn('⚠️ 小红书封面填充失败:', results.cover.error);
+          console.warn('⚠️ 小红书视频封面填充失败:', results.cover.error);
         }
       }
 
@@ -271,6 +303,65 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
     } catch (error) {
       console.error('❌ 小红书内容填充失败:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 填充图文笔记的图片列表
+   */
+  async fillXhsImages(images, coverImage) {
+    try {
+      console.log('🖼️ 开始上传图片列表:', images.length);
+
+      const fileInput = document.querySelector('input.upload-input') ||
+        document.querySelector('input[type="file"][accept*="image"]');
+
+      if (!fileInput) {
+        throw new Error('未找到图片上传输入框');
+      }
+
+      // 组合图片：如果专门有封面图，放在第一位
+      const allImageUrls = [];
+      if (coverImage) {
+        allImageUrls.push(coverImage);
+      }
+
+      images.forEach(img => {
+        const url = typeof img === 'string' ? img : img.url;
+        if (url && url !== coverImage) {
+          allImageUrls.push(url);
+        }
+      });
+
+      console.log('🖼️ 最终待上传图片序列:', allImageUrls.length);
+
+      const dataTransfer = new DataTransfer();
+
+      // 串行获取所有图片 Blob
+      for (let i = 0; i < allImageUrls.length; i++) {
+        try {
+          const url = allImageUrls[i];
+          console.log(`⏳ 获取第 ${i + 1} 张图片:`, url.substring(0, 50));
+          const blob = await this.fetchImageBlob(url);
+          const fileName = `image_${i}.png`;
+          const file = new File([blob], fileName, { type: 'image/png' });
+          dataTransfer.items.add(file);
+        } catch (e) {
+          console.warn(`⚠️ 图片获取失败 (${i}):`, e);
+        }
+      }
+
+      if (dataTransfer.items.length > 0) {
+        fileInput.files = dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        console.log(`✅ 已触发 ${dataTransfer.items.length} 张图片的上传`);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('❌ 上传图片失败:', error);
+      return false;
     }
   }
 
@@ -449,7 +540,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
    */
   async fillTags(elements, tagsArray) {
     try {
-      console.log('🏷️ 开始智能填充小红书话题标签:', tagsArray);
+      console.log('🏷️ [DEBUG] 开始智能填充小红书话题标签:', tagsArray);
 
       let addedTags = 0;
       const maxTags = 10; // 小红书话题限制
@@ -466,6 +557,8 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
           tagText = `#${tagText}`;
         }
 
+        console.log(`🏷️ [DEBUG] 处理标签: ${tagText}`);
+
         // 尝试在推荐标签中找到匹配的话题
         const matchedRecommendTag = await this.findAndClickRecommendTag(recommendTags, tagText);
 
@@ -477,13 +570,18 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
         } else {
           // 如果推荐标签中没有，尝试手动添加到内容中
           if (elements.content) {
+            console.log(`⌨️ [DEBUG] 尝试手动输入标签: ${tagText}`);
             const manualAdded = await this.addTagToContent(elements.content, tagText);
             if (manualAdded) {
               addedTagTexts.push(tagText);
               addedTags++;
               console.log(`✅ 通过内容区添加: ${tagText}`);
               await this.sleep(300);
+            } else {
+              console.warn(`❌ 手动输入标签失败: ${tagText}`);
             }
+          } else {
+            console.warn('⚠️ 未找到内容编辑器元素，无法填入手动标签');
           }
         }
 
@@ -496,7 +594,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       return {
         success: addedTags > 0,
         addedCount: addedTags,
-        addedTags: addedTagTexts,
+        addedTagTexts: addedTagTexts,
         value: addedTagTexts.join(' ')
       };
 
@@ -556,19 +654,63 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       contentElement.focus();
       await this.sleep(100);
 
-      // 获取当前内容
-      const currentContent = contentElement.textContent || contentElement.value || '';
-
-      // 在内容末尾添加话题
-      const newContent = currentContent ? `${currentContent} ${tagText}` : tagText;
-
       if (contentElement.contentEditable === 'true') {
-        // 对于可编辑div
-        contentElement.textContent = newContent;
+        // 对于 Tiptap/ProseMirror 编辑器，必须使用 execCommand 或 paste 事件
+        // 1. 移动光标到末尾 (Tiptap 通常需要先聚焦)
+        contentElement.focus();
+
+        // 尝试将光标移到最后
+        try {
+          const range = document.createRange();
+          range.selectNodeContents(contentElement);
+          range.collapse(false); // false = 到末尾
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } catch (e) {
+          console.warn('光标移动失败:', e);
+        }
+
+        await this.sleep(100);
+
+        const textToInsert = ` ${tagText}`;
+
+        // 2. 尝试 insertText
+        let success = false;
+        try {
+          success = document.execCommand('insertText', false, textToInsert);
+        } catch (e) {
+          console.warn('insertText tag failed:', e);
+        }
+
+        // 3. 尝试 paste
+        if (!success) {
+          try {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.setData('text/plain', textToInsert);
+            const pasteEvent = new ClipboardEvent('paste', {
+              clipboardData: dataTransfer,
+              bubbles: true,
+              cancelable: true
+            });
+            contentElement.dispatchEvent(pasteEvent);
+            success = true;
+          } catch (e) {
+            console.error('paste tag failed:', e);
+          }
+        }
+
+        // 4. 只有在全失败时才回退 dom 操作 (可能导致编辑器崩溃)
+        if (!success) {
+          const currentContent = contentElement.innerText || ''; // Tiptap usually works better with innerText
+          contentElement.innerText = currentContent + textToInsert;
+        }
+
         contentElement.dispatchEvent(new Event('input', { bubbles: true }));
       } else {
         // 对于input/textarea
-        contentElement.value = newContent;
+        const currentContent = contentElement.value || '';
+        contentElement.value = currentContent ? `${currentContent} ${tagText}` : tagText;
         contentElement.dispatchEvent(new Event('input', { bubbles: true }));
       }
 
@@ -628,16 +770,50 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       await this.sleep(200);
 
       if (element.contentEditable === 'true') {
-        console.log('📝 使用contentEditable填充');
-        element.innerHTML = '';
-        element.textContent = processedContent;
+        console.log('📝 使用模拟输入填充 (Tiptap Compat)');
 
-        // 触发输入事件
-        const events = ['input', 'change', 'blur'];
-        for (const eventType of events) {
-          element.dispatchEvent(new Event(eventType, { bubbles: true }));
-          await this.sleep(50);
+        // 1. 聚焦并全选现有内容
+        element.focus();
+        await this.sleep(100);
+        document.execCommand('selectAll', false, null);
+        await this.sleep(100);
+
+        // 2. 尝试使用 insertText (这会替换选中内容，是最安全的方式)
+        let success = false;
+        try {
+          success = document.execCommand('insertText', false, processedContent);
+        } catch (e) {
+          console.warn('execCommand insertText failed:', e);
         }
+
+        // 3. 如果 insertText 失败，尝试模拟粘贴
+        if (!success) {
+          console.log('⚠️ insertText 失败，尝试模拟粘贴事件');
+          try {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.setData('text/plain', processedContent);
+            const pasteEvent = new ClipboardEvent('paste', {
+              clipboardData: dataTransfer,
+              bubbles: true,
+              cancelable: true
+            });
+            element.dispatchEvent(pasteEvent);
+            success = true;
+          } catch (e) {
+            console.error('模拟粘贴失败:', e);
+          }
+        }
+
+        // 4. 兜底方案：如果上述都失败，才谨慎使用 innerText (尽量避免)
+        if (!success) {
+          console.warn('⚠️ 模拟输入全失败，回退到 innerText 赋值');
+          element.innerText = processedContent;
+        }
+
+        // 触发通过事件，通知编辑器状态更新
+        await this.sleep(100);
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
       } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
         console.log('📝 使用input/textarea填充');
         await this.setInputValue(element, processedContent);
@@ -723,6 +899,6 @@ if (typeof window !== 'undefined' && window.ZiliuPlatformRegistry) {
 
     const plugin = new XiaohongshuPlugin(config);
     window.ZiliuPlatformRegistry.register(plugin);
-    console.log(`📖 小红书插件已注册到平台注册中心: ${config.displayName || config.id}`);
+    console.log(`📖 小红书插件已注册到平台注册中心: ${config.id}`);
   });
 }

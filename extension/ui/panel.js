@@ -370,6 +370,12 @@ class ZiliuPanel {
         gap: 8px;
       }
 
+      #ziliu-panel .ziliu-actions .ziliu-btn {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
       #ziliu-panel .ziliu-btn {
         display: inline-flex;
         align-items: center;
@@ -383,6 +389,7 @@ class ZiliuPanel {
         font-weight: 600;
         cursor: pointer;
         user-select: none;
+        white-space: nowrap;
         transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
       }
 

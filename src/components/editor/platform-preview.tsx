@@ -1403,6 +1403,33 @@ function ShortTextPreview({ platform, title, content, tags = [], images = [], co
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const platformInfo = PLATFORM_CONFIGS[platform];
 
+  // 合并封面图和正文图片
+  const allImages = (() => {
+    const list = [...images];
+    if (coverImage) {
+      // 检查封面图是否已在列表中，不在则插入到第一位
+      const hasCover = list.some(img => img.url === coverImage);
+      if (!hasCover) {
+        list.unshift({ url: coverImage, alt: 'AI生成封面' });
+      } else {
+        // 如果已在列表中，移动到第一位
+        const idx = list.findIndex(img => img.url === coverImage);
+        if (idx > 0) {
+          const [item] = list.splice(idx, 1);
+          list.unshift(item);
+        }
+      }
+    }
+    return list;
+  })();
+
+  // 切换图片时确保索引有效
+  useEffect(() => {
+    if (activeImageIndex >= allImages.length) {
+      setActiveImageIndex(0);
+    }
+  }, [allImages.length, activeImageIndex]);
+
   const limits: Partial<Record<Platform, number>> = {
     wechat_xiaolushu: 1000,
     xiaohongshu_note: 1000,
@@ -1430,43 +1457,51 @@ function ShortTextPreview({ platform, title, content, tags = [], images = [], co
 
             <div className="flex-1 overflow-auto bg-white">
               {/* Media Area */}
-              <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden flex-shrink-0">
-                {images.length > 0 ? (
+              <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden flex-shrink-0 group/media">
+                {allImages.length > 0 ? (
                   <>
                     <img
-                      src={images[activeImageIndex].url}
+                      src={allImages[activeImageIndex].url}
                       className="w-full h-full object-cover transition-opacity duration-300"
                       alt={`预览图片 ${activeImageIndex + 1}`}
                     />
-                    {images.length > 1 && (
+
+                    {/* Cover Badge */}
+                    {coverImage && allImages[activeImageIndex].url === coverImage && (
+                      <div className="absolute top-3 left-3 px-2 py-1 bg-primary text-white text-[10px] font-bold rounded shadow-lg z-10">
+                        封面图
+                      </div>
+                    )}
+
+                    {allImages.length > 1 && (
                       <>
-                        <div className="absolute inset-y-0 left-0 w-12 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="absolute inset-y-0 left-0 w-12 flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+                              setActiveImageIndex(prev => (prev > 0 ? prev - 1 : allImages.length - 1));
                             }}
-                            className="w-8 h-8 rounded-full bg-black/20 text-white flex items-center justify-center backdrop-blur-sm"
+                            className="w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-sm transition-all shadow-lg active:scale-90"
                           >
                             <ChevronLeft className="w-5 h-5" />
                           </button>
                         </div>
-                        <div className="absolute inset-y-0 right-0 w-12 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="absolute inset-y-0 right-0 w-12 flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+                              setActiveImageIndex(prev => (prev < allImages.length - 1 ? prev + 1 : 0));
                             }}
-                            className="w-8 h-8 rounded-full bg-black/20 text-white flex items-center justify-center backdrop-blur-sm"
+                            className="w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-sm transition-all shadow-lg active:scale-90"
                           >
                             <ChevronLeft className="w-5 h-5 rotate-180" />
                           </button>
                         </div>
                         <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-1.5 pointer-events-none">
-                          {images.map((_, i) => (
+                          {allImages.map((_, i) => (
                             <div
                               key={i}
-                              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === activeImageIndex ? 'bg-white scale-110' : 'bg-white/40'
+                              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === activeImageIndex ? 'bg-white scale-110 shadow-sm' : 'bg-white/40'
                                 }`}
                             />
                           ))}
@@ -1562,21 +1597,51 @@ function ShortTextPreview({ platform, title, content, tags = [], images = [], co
 
             <div className="flex-1 overflow-auto bg-white">
               {/* Media Area (3:4) */}
-              <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden flex-shrink-0">
-                {images.length > 0 ? (
+              <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden flex-shrink-0 group/media">
+                {allImages.length > 0 ? (
                   <>
                     <img
-                      src={images[activeImageIndex].url}
+                      src={allImages[activeImageIndex].url}
                       className="w-full h-full object-cover transition-opacity duration-300"
                       alt={`预览图片 ${activeImageIndex + 1}`}
                     />
-                    {images.length > 1 && (
+
+                    {/* Cover Badge */}
+                    {coverImage && allImages[activeImageIndex].url === coverImage && (
+                      <div className="absolute top-4 left-4 px-2 py-1 bg-[#ff2442] text-white text-[10px] font-bold rounded shadow-lg z-10">
+                        封面
+                      </div>
+                    )}
+
+                    {allImages.length > 1 && (
                       <>
-                        <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest border border-white/10">
-                          {activeImageIndex + 1}/{images.length}
+                        <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest border border-white/10 z-10">
+                          {activeImageIndex + 1}/{allImages.length}
                         </div>
-                        <div className="absolute inset-y-0 left-0 w-10 flex items-center px-1" onClick={() => setActiveImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1))} />
-                        <div className="absolute inset-y-0 right-0 w-10 flex items-center px-1" onClick={() => setActiveImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0))} />
+
+                        {/* 仿小红书左右滑动手感 */}
+                        <div
+                          className="absolute inset-y-0 left-0 w-1/4 flex items-center justify-center z-10 cursor-pointer group/nav-left"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveImageIndex(prev => (prev > 0 ? prev - 1 : allImages.length - 1));
+                          }}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-black/10 text-white flex items-center justify-center opacity-0 group-hover/nav-left:opacity-100 transition-opacity backdrop-blur-sm active:scale-90">
+                            <ChevronLeft className="w-5 h-5 shadow-sm" />
+                          </div>
+                        </div>
+                        <div
+                          className="absolute inset-y-0 right-0 w-1/4 flex items-center justify-center z-10 cursor-pointer group/nav-right"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveImageIndex(prev => (prev < allImages.length - 1 ? prev + 1 : 0));
+                          }}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-black/10 text-white flex items-center justify-center opacity-0 group-hover/nav-right:opacity-100 transition-opacity backdrop-blur-sm active:scale-90">
+                            <ChevronLeft className="w-5 h-5 rotate-180 shadow-sm" />
+                          </div>
+                        </div>
                       </>
                     )}
                   </>
@@ -1589,10 +1654,14 @@ function ShortTextPreview({ platform, title, content, tags = [], images = [], co
               </div>
 
               {/* Dots */}
-              {images.length > 1 && (
+              {allImages.length > 1 && (
                 <div className="flex justify-center space-x-1.5 py-3">
-                  {images.map((_, i) => (
-                    <div key={i} className={`w-1 h-1 rounded-full transition-all duration-300 ${i === activeImageIndex ? 'bg-[#ff2442] scale-125' : 'bg-gray-200'}`} />
+                  {allImages.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-1 h-1 rounded-full transition-all duration-300 cursor-pointer ${i === activeImageIndex ? 'bg-[#ff2442] scale-125' : 'bg-gray-200'}`}
+                      onClick={() => setActiveImageIndex(i)}
+                    />
                   ))}
                 </div>
               )}

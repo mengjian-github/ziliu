@@ -47,14 +47,56 @@ class ZiliuContentService {
       if (isVideoPlatform) {
         // 视频平台：获取AI转换后的视频数据
         console.log('📹 处理视频平台数据，获取AI转换后的视频内容');
-        const videoData = await this.getVideoContent(data.articleId, platformId);
+        let videoData = await this.getVideoContent(data.articleId, platformId);
+
+        // 小红书特殊逻辑：如果是“视频”平台但没有视频内容，尝试获取“图文笔记”内容
+        // 场景：用户在网页端生成的是“Short Text”，插件选的是“小红书 (视频)”
+        if (platformId === 'xiaohongshu' && (!videoData.videoTitle && !videoData.videoDescription)) {
+          console.warn('⚠️ 小红书视频内容为空，尝试获取图文笔记内容作为回退...');
+
+          let noteData = null;
+
+          // 1. 强制从 API/DB 获取（用户要求不传递实时数据）
+          if (!noteData) {
+            try {
+              noteData = await this.getShortTextContent(data.articleId, 'xiaohongshu_note');
+              console.log('✅ 从数据库获取图文笔记内容 (Video Fallback)');
+            } catch (e) {
+              console.warn('回退获取图文笔记失败:', e);
+            }
+          }
+
+          if (noteData && (noteData.title || noteData.content)) {
+            console.log('✅ 成功获取图文笔记内容，映射到视频字段');
+
+            // 确保 tags 存在，如果 noteData.tags 为空，尝试回退到 articleDetail.tags
+            const finalTags = (noteData.tags && noteData.tags.length > 0)
+              ? noteData.tags
+              : (articleDetail.tags || []);
+
+            videoData = {
+              ...videoData, // 先保留其他字段，避免覆盖回退内容
+              videoTitle: noteData.title,
+              videoDescription: noteData.content,
+              // 同时覆盖通用字段，确保插件能取到正确的内容（因为插件优先取 content || videoDescription）
+              title: noteData.title,
+              content: noteData.content,
+              coverImage: noteData.coverImage,
+              images: noteData.images, // 传递图片列表，让插件自己决定怎么用
+              tags: finalTags
+            };
+          }
+        }
 
         // 同时保留原始文章数据作为回退
         baseData = {
           title: articleDetail.title,
           content: articleDetail.originalContent || articleDetail.content,
           // 包含AI转换后的视频数据
-          ...videoData
+          ...videoData,
+          // 显式透传 images 和 tags，方便小红书插件在“上传图文”模式下使用
+          images: videoData.images || [],
+          tags: videoData.tags || []
         };
       } else {
         // 普通平台：根据平台 contentType 决定使用 HTML / Markdown / 纯文本
@@ -97,19 +139,16 @@ class ZiliuContentService {
           const markdown = originalMarkdown || sourceContent || '';
 
           // 核心优化点：优先使用传入的生成内容 (Preview -> Publish flow)
-          if (data.generatedContent && Object.keys(data.generatedContent).length > 0) {
-            console.log('✅ 复用网页端传递的预览内容');
-            shortData = data.generatedContent;
-          } else {
-            // 尝试从后端获取已保存的内容
-            try {
-              if (platformId) {
-                shortData = await this.getShortTextContent(data.articleId, platformId);
-              }
-            } catch (error) {
-              console.warn('获取短图文内容失败:', error);
-              shortData = null;
+          // 核心优化点：强制从后端获取已保存的短图文内容（Preview -> Save -> Publish flow）
+          // 用户要求：不要传递实时数据，必须走数据库
+          try {
+            if (platformId) {
+              shortData = await this.getShortTextContent(data.articleId, platformId);
+              console.log('✅ 从数据库获取短图文内容');
             }
+          } catch (error) {
+            console.warn('获取短图文内容失败:', error);
+            shortData = null;
           }
 
           const baseText = shortData?.content ? shortData.content : this.markdownToPlainText(markdown);
@@ -128,6 +167,8 @@ class ZiliuContentService {
           // 额外字段：短图文可用
           tags: platformContentType === 'text' ? (shortData?.tags || []) : undefined,
           images: platformContentType === 'text' ? (shortData?.images || []) : undefined,
+          coverImage: platformContentType === 'text' ? (shortData?.coverImage || '') : undefined,
+          coverSuggestion: platformContentType === 'text' ? (shortData?.coverSuggestion || '') : undefined,
           originalMarkdown: originalMarkdown
         };
       }
@@ -293,11 +334,22 @@ class ZiliuContentService {
       }
 
       const data = response.data || {};
+
+      console.log('🔍 [DEBUG] API返回数据:', {
+        hasTitle: !!data.title,
+        hasTags: !!data.tags,
+        tagsType: typeof data.tags,
+        tagsLen: data.tags?.length,
+        tagsValue: data.tags
+      });
+
       return {
         title: data.title || '',
         content: data.content || '',
         tags: data.tags || [],
-        images: data.images || []
+        images: data.images || [],
+        coverImage: data.coverImage || '',
+        coverSuggestion: data.coverSuggestion || ''
       };
     } catch (error) {
       console.error('❌ 获取短图文内容失败:', error);
