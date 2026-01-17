@@ -259,6 +259,7 @@
         "plugins/config.js",
         "plugins/base-platform.js",
         "plugins/platforms/xiaohongshu.js",
+        "plugins/platforms/xiaohongshu-video.js",
         "ui/panel.js",
         "ui/features.js",
         "ui/subscription-status.js",

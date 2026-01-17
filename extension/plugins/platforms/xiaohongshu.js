@@ -1,29 +1,16 @@
 /**
- * 小红书平台插件
- * 支持小红书创作者平台的视频和图文发布页面
+ * 小红书平台插件（图文）
+ * 仅处理小红书创作者平台的图文发布页面
  */
 class XiaohongshuPlugin extends BasePlatformPlugin {
   constructor(config) {
     super(config);
-    // 默认支持视频，会自动根据页面 tab 切换
-    this.platformType = config.id === 'xiaohongshu_note' ? 'note' : 'video';
-    console.log(`📖 小红书插件初始化完成: ${this.platformType}`);
+    this.platformType = 'note';
+    console.log('📖 小红书图文插件初始化完成');
   }
 
-  /**
-   * 判断当前是否在图文 tab
-   */
   isNoteTab() {
-    const tabs = document.querySelectorAll('.tab-item');
-    for (const tab of tabs) {
-      if (tab.classList.contains('active') && tab.textContent.includes('图文')) {
-        return true;
-      }
-    }
-    // 兜底：检查上传区域的文字
-    const uploadArea = document.querySelector('.upload-container');
-    if (uploadArea && uploadArea.textContent.includes('图片')) return true;
-    return this.config.id === 'xiaohongshu_note';
+    return true;
   }
 
   /**
@@ -75,30 +62,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
         '.topic-tag',
         '[class*="hashtag"]'
       ],
-      // 封面触发器 (打开编辑/上传弹窗的按钮)
-      coverTrigger: [
-        '.cover-upload',
-        '.upload-cover',
-        '.upload-text',
-        'div.upload-text',
-        '.cover-container'
-      ],
-      // 封面上传Tab/按钮 (弹窗内部的“上传图片”按钮)
-      coverUploadTab: [
-        '.upload-btn',
-        '.upload-text',
-        'div:contains("+ 上传图片")',
-        'div:contains("上传图片")'
-      ],
-      // 封面输入框
-      cover: [
-        '.d-modal-mask input[type="file"][accept*="image"]',
-        '.cover-container input[type="file"][accept*="image"]',
-        '.upload-container input[type="file"]',
-        'input[type="file"][accept*="image"]',
-        '.upload-input',
-        '.ant-upload input[type="file"]'
-      ]
+      // 封面相关（图文模式由图片顺序决定，不处理）
     };
   }
 
@@ -142,25 +106,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
     elements.activityTopics = document.querySelectorAll('[class*="activity-topic"]');
     console.log('🎯 找到小红书活动话题:', elements.activityTopics.length, '个');
 
-    // 查找封面输入框
-    for (const selector of selectors.cover) {
-      const element = document.querySelector(selector);
-      if (element) {
-        elements.cover = element;
-        console.log('🎯 找到小红书封面输入框:', selector);
-        break;
-      }
-    }
-
-    // 查找封面触发器
-    for (const selector of selectors.coverTrigger) {
-      const element = document.querySelector(selector);
-      if (element) {
-        elements.coverTrigger = element;
-        console.log('🎯 找到小红书封面触发器:', selector);
-        break;
-      }
-    }
+    // 图文模式不处理封面
 
     return elements;
   }
@@ -194,20 +140,16 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       原始数据: {
         hasTitle: !!data.title,
         hasContent: !!data.content,
-        hasVideoTitle: !!data.videoTitle,
-        hasVideoDescription: !!data.videoDescription,
         hasTags: !!data.tags,
         hasCoverImage: !!data.coverImage
       }
     });
 
     try {
-      // 优先级：如果是图文 tab，先处理图片上传
-      const isNote = this.isNoteTab();
-      console.log('📖 小红书发布类型检测:', isNote ? '图文笔记' : '视频');
+      console.log('📖 小红书发布类型检测: 图文笔记');
 
-      // 1. 如果有图片且是图文模式，先上传图片（因为上传图片后才会显示标题和正文框）
-      if (isNote && data.images && data.images.length > 0) {
+      // 1. 如果有图片，先上传图片（因为上传图片后才会显示标题和正文框）
+      if (data.images && data.images.length > 0) {
         console.log('🖼️ 检测到图片列表，开始上传图片...');
         await this.fillXhsImages(data.images, data.coverImage);
         // 上传后给页面一点反应时间
@@ -219,9 +161,9 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       let fillCount = 0;
       const results = {};
 
-      // 直接使用AI转换后的视频/图文数据，如果没有则回退到原始数据
-      const title = data.title || data.videoTitle;
-      const description = data.content || data.videoDescription;
+      // 图文优先使用 title/content
+      const title = data.title;
+      const description = data.content;
       const tags = data.tags || [];
 
       console.log('📖 准备填充的内容数据:', {
@@ -279,17 +221,6 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
             fillCount++;
             console.log('✅ 小红书话题标签填充完成');
           }
-        }
-      }
-
-      // 填充封面 (仅限视频模式，图文模式封面由图片顺序决定)
-      if (!isNote && data.coverImage) {
-        results.cover = await this.fillCover(elements, data.coverImage);
-        if (results.cover.success) {
-          fillCount++;
-          console.log('✅ 小红书视频封面填充完成');
-        } else {
-          console.warn('⚠️ 小红书视频封面填充失败:', results.cover.error);
         }
       }
 
@@ -365,174 +296,11 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
     }
   }
 
-  /**
-   * 填充封面图片
-   */
-  async fillCover(elements, imageUrl) {
-    try {
-      console.log('🖼️ 开始填充封面 (增强版):', imageUrl.substring(0, 50) + '...');
-
-      const dispatchFullClick = (el) => {
-        if (!el) return;
-        console.log(`🖱️ 真正点击的元素: <${el.tagName.toLowerCase()}> Classes: [${el.className}]`);
-
-        // 尝试滚动到视野中
-        try { el.scrollIntoView({ block: 'center' }); } catch (e) { }
-
-        const eventOptions = {
-          bubbles: true,
-          cancelable: true,
-          view: window,
-          buttons: 1,
-          which: 1
-        };
-
-        // 按顺序触发所有相关交互事件
-        ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
-          const EventClass = type.startsWith('pointer') ? window.PointerEvent : window.MouseEvent;
-          el.dispatchEvent(new (EventClass || window.MouseEvent)(type, eventOptions));
-        });
-
-        // 最后兜底补一个原生 click
-        if (typeof el.click === 'function') {
-          el.click();
-        }
-      };
-
-      // 1. 寻找并点击“设置封面”触发器
-      console.log('🔍 寻找设置封面触发器...');
-      let trigger = Array.from(document.querySelectorAll('div, span, p'))
-        .find(el => el.textContent.trim() === '设置封面' && !el.closest('.d-modal-header') && this.isElementVisible(el));
-
-      if (!trigger) {
-        // 尝试通过类名寻找，优先找容器类
-        trigger = document.querySelector('.publish-video-cover') ||
-          document.querySelector('.cover-upload') ||
-          document.querySelector('.upload-cover');
-      }
-
-      if (trigger) {
-        console.log('🖱️ 准备点击触发器:', trigger.className || 'no-class');
-        // 如果点的是里面的小字，尝试向上找包裹它的方块容器
-        let clickableArea = trigger;
-        let p = trigger;
-        for (let i = 0; i < 5; i++) {
-          if (p && (p.classList.contains('publish-video-cover') || p.classList.contains('cover-upload'))) {
-            clickableArea = p;
-            break;
-          }
-          p = p?.parentElement;
-        }
-
-        dispatchFullClick(clickableArea);
-        await this.sleep(2000); // 增加等待时长
-      } else {
-        console.warn('⚠️ 未找到设置封面按钮，请检查页面是否已上传视频且封面区域可见');
-      }
-
-      // 2. 在弹窗内寻找“上传图片”按钮并点击
-      console.log('🔍 寻找弹窗内的上传图片按钮...');
-      let uploadBtn = null;
-      let modal = null;
-
-      // 等待弹窗真正渲染出内容 (避开骨架屏)
-      for (let i = 0; i < 20; i++) {
-        modal = document.querySelector('.d-modal-container, .d-modal-mask, .ant-modal');
-        if (modal) {
-          // 检查是否有骨架屏 (Xiaohongshu uses skeleton classes or placeholders)
-          const isSkeleton = modal.querySelector('.ant-skeleton, .loading, [class*="skeleton"]');
-          uploadBtn = modal.querySelector('.upload-btn') ||
-            Array.from(modal.querySelectorAll('div, span')).find(el => el.textContent.includes('上传图片'));
-
-          if (uploadBtn && !isSkeleton) {
-            console.log('✨ 弹窗内容已就绪');
-            break;
-          }
-        }
-        await this.sleep(1000); // 增加等待频率，给足 20s 极慢加载空间
-      }
-
-      if (uploadBtn) {
-        console.log('🖱️ 点击上传图片按钮');
-        dispatchFullClick(uploadBtn);
-        await this.sleep(2000); // 点击后等待文件选择器准备好
-      } else {
-        console.error('❌ 未能找到弹窗内的上传按钮');
-      }
-
-      // 3. 寻找真正的文件输入框 (严格锁定在弹窗内!)
-      console.log('🔍 寻找弹窗内部专属的文件输入框...');
-      let input = null;
-      for (let i = 0; i < 15; i++) {
-        modal = document.querySelector('.d-modal-container, .d-modal-mask, .ant-modal');
-        if (modal) {
-          // 只在 modal 内部探测，绝对不触碰背景页面的 input
-          input = modal.querySelector('input[type="file"][accept*="image"]') ||
-            modal.querySelector('input[type="file"]');
-
-          if (input) {
-            console.log('🎯 锁定弹窗内部输入框');
-            break;
-          }
-        }
-        await this.sleep(800);
-      }
-
-      if (!input) {
-        throw new Error('未能在弹窗内找到文件输入框。如果弹窗已加载，请尝试手动点击一次上传图片按钮。');
-      }
-
-      console.log('🎯 找到输入框，注入图片数据');
-      // 1. 获取图片Blob数据
-      const blob = await this.fetchImageBlob(imageUrl);
-      if (!blob) throw new Error('无法获取图片数据');
-
-      // 2. 创建File对象
-      const file = new File([blob], 'cover.png', { type: 'image/png' });
-
-      // 3. 模拟文件上传
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      input.files = dataTransfer.files;
-
-      // 4. 触发事件
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-
-      await this.sleep(2000); // 等待上传反应
-
-      return { success: true };
-    } catch (error) {
-      console.error('❌ 封面填充失败:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * 获取图片Blob
-   */
   async fetchImageBlob(url) {
-    // 如果是base64，直接转换
-    if (url.startsWith('data:')) {
-      const res = await fetch(url);
-      return await res.blob();
+    if (window.ZiliuUtilsService && typeof window.ZiliuUtilsService.fetchImageBlob === 'function') {
+      return await window.ZiliuUtilsService.fetchImageBlob(url);
     }
-
-    // 如果是URL，通过background script获取（避开CORS）
-    return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({
-        action: 'fetchBlob',
-        data: { url }
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          fetch(url).then(res => res.blob()).then(resolve).catch(reject);
-        } else if (response && response.success && response.data) {
-          fetch(response.data).then(res => res.blob()).then(resolve).catch(reject);
-        } else {
-          fetch(url).then(res => res.blob()).then(resolve).catch(reject);
-        }
-      });
-    });
+    return null;
   }
 
   /**
@@ -872,7 +640,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
    * 检查平台特性支持
    */
   supportsFeature(feature) {
-    const supportedFeatures = ['videoTitle', 'videoDescription', 'tags', 'topics'];
+    const supportedFeatures = ['title', 'content', 'tags', 'topics'];
     return supportedFeatures.includes(feature);
   }
 
@@ -891,7 +659,7 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
 // 自动注册插件
 if (typeof window !== 'undefined' && window.ZiliuPlatformRegistry) {
   const configs = (window.ZiliuPluginConfig?.platforms || [])
-    .filter(p => (p.id === 'xiaohongshu' || p.id === 'xiaohongshu_note') && p.enabled);
+    .filter(p => p.id === 'xiaohongshu_note' && p.enabled);
 
   configs.forEach((config) => {
     // 避免重复注册
@@ -899,6 +667,6 @@ if (typeof window !== 'undefined' && window.ZiliuPlatformRegistry) {
 
     const plugin = new XiaohongshuPlugin(config);
     window.ZiliuPlatformRegistry.register(plugin);
-    console.log(`📖 小红书插件已注册到平台注册中心: ${config.id}`);
+    console.log(`📖 小红书图文插件已注册到平台注册中心: ${config.id}`);
   });
 }
