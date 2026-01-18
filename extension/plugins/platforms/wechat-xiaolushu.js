@@ -88,7 +88,32 @@ class WeChatXiaolushuPlugin extends BasePlatformPlugin {
      */
     async fillContentEditor(contentElement, content, data) {
         console.log('📝 开始注入格式化正文...');
-        const textContent = content || '';
+        let textContent = content || '';
+
+        // 兜底：如果消息里没有带 preset，尝试从全局选中预设获取
+        if (!data?.preset && window.ZiliuApp?.getSelectedPreset) {
+            const fallbackPreset = window.ZiliuApp.getSelectedPreset();
+            if (fallbackPreset) {
+                data.preset = fallbackPreset;
+                console.log('✅ 小绿书兜底获取当前选中预设:', fallbackPreset.name);
+            } else {
+                console.warn('⚠️ 小绿书未获取到预设（消息与全局均为空）');
+            }
+        }
+
+        // 小绿书正文为“文本型”，这里直接拼接预设开头/结尾（保持纯文本效果）
+        if (data?.preset) {
+            const header = (data.preset.headerContent || '').trim();
+            const footer = (data.preset.footerContent || '').trim();
+            if (header) {
+                textContent = `${header}\n\n${textContent}`;
+                console.log('✅ 小绿书已添加预设开头');
+            }
+            if (footer) {
+                textContent = `${textContent}\n\n${footer}`;
+                console.log('✅ 小绿书已添加预设结尾');
+            }
+        }
 
         try {
             contentElement.focus();
@@ -287,7 +312,9 @@ class WeChatXiaolushuPlugin extends BasePlatformPlugin {
 if (typeof window !== 'undefined' && window.ZiliuPlatformRegistry) {
     const configs = (window.ZiliuPluginConfig?.platforms || []).filter(p => p.id === 'wechat_xiaolushu' && p.enabled);
     configs.forEach((config) => {
-        if (/(createType=8|type=77)/i.test(window.location.href)) {
+        // 仅在“小绿书”模式下注册：createType=8
+        // 注意：type=77 是公众号长文编辑器，不能走小绿书逻辑
+        if (/createType=8/i.test(window.location.href)) {
             if (!window.ZiliuPlatformRegistry.get(config.id)) {
                 window.ZiliuPlatformRegistry.register(new WeChatXiaolushuPlugin(config));
             }

@@ -22,7 +22,18 @@ class XPlugin extends BasePlatformPlugin {
             }
 
             const editor = elements.elements.content;
-            let text = data.content || '';
+            let text = (data.content || '').toString();
+
+            // X 字数限制（默认 280；若有配置且更小则用更小值）
+            const configLimit = this.config?.specialHandling?.contentLimit?.max;
+            const hardLimit = 280;
+            const limit = (typeof configLimit === 'number' && configLimit > 0)
+                ? Math.min(configLimit, hardLimit)
+                : hardLimit;
+            if (text.length > limit) {
+                console.warn(`⚠️ X 内容超长，已截断到 ${limit} 字`);
+                text = text.substring(0, limit);
+            }
 
             // 1. 填充文本内容
             // X 使用 Draft.js，直接赋值可能不生效，setEditorContent 基类中处理了 execCommand('insertText')
@@ -118,7 +129,23 @@ class XPlugin extends BasePlatformPlugin {
 
         // 3. 执行插入（模拟用户输入）
         const text = String(content ?? '');
-        const success = document.execCommand('insertText', false, text);
+        const lines = text.split(/\r?\n/);
+        let success = false;
+        try {
+            // 先插入首行，再逐行插入换行和内容，避免 Draft.js 只保留最后一行
+            success = document.execCommand('insertText', false, lines[0] ?? '');
+            for (let i = 1; i < lines.length; i++) {
+                const lbOk = document.execCommand('insertLineBreak', false, null) ||
+                    document.execCommand('insertParagraph', false, null);
+                if (!lbOk) {
+                    document.execCommand('insertText', false, '\n');
+                }
+                document.execCommand('insertText', false, lines[i]);
+            }
+        } catch (e) {
+            console.warn('execCommand 插入失败:', e);
+            success = false;
+        }
 
         if (!success) {
             console.warn('⚠️ insertText 失败，尝试备选方案');

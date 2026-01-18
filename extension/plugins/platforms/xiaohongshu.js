@@ -67,6 +67,27 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
   }
 
   /**
+   * 判断元素是否更像“标题输入框”
+   */
+  isLikelyTitleElement(element) {
+    if (!element) return false;
+    const placeholder = (element.getAttribute('placeholder') || '').toLowerCase();
+    const ariaLabel = (element.getAttribute('aria-label') || '').toLowerCase();
+    const className = (element.className || '').toLowerCase();
+    const dataTestId = (element.getAttribute('data-testid') || '').toLowerCase();
+
+    if (placeholder.includes('标题') || placeholder.includes('title')) return true;
+    if (ariaLabel.includes('标题') || ariaLabel.includes('title')) return true;
+    if (className.includes('title')) return true;
+    if (dataTestId.includes('title')) return true;
+
+    const titleContainer = element.closest?.(
+      '[class*="title"], [data-testid*="title"], [aria-label*="标题"], [placeholder*="标题"]'
+    );
+    return !!titleContainer;
+  }
+
+  /**
    * 查找所有可能的编辑器元素
    */
   findElements() {
@@ -87,6 +108,9 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
     for (const selector of selectors.content) {
       const element = document.querySelector(selector);
       if (element) {
+        // 避免误把标题输入框当成正文编辑器
+        if (elements.title && element === elements.title) continue;
+        if (this.isLikelyTitleElement(element)) continue;
         elements.content = element;
         console.log('🎯 找到小红书内容编辑器:', selector);
         break;
@@ -185,6 +209,8 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
           fillCount++;
           console.log('✅ 小红书标题填充完成');
         }
+        // 记录处理后的标题，供后续兜底重置使用
+        results._processedTitle = processedTitle;
       }
 
       // 填充内容 - 小红书内容限制1000字
@@ -225,6 +251,13 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
       }
 
       if (fillCount > 0) {
+        // 兜底：部分版本会在正文输入后重置标题，这里强制再写一次
+        if (elements.title && title) {
+          const finalTitle = results._processedTitle || title.toString().substring(0, 20);
+          await this.sleep(300);
+          await this.fillVideoTitle(elements.title, finalTitle);
+          console.log('✅ 小红书标题兜底重写完成');
+        }
         console.log('✅ 小红书内容填充成功，填充了', fillCount, '个字段');
         return results;
       } else {

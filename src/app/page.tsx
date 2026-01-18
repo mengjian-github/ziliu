@@ -207,9 +207,9 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
               </span>
-              <span className="font-semibold text-blue-300">全新大版本 v2.0.0 上线！</span>
+              <span className="font-semibold text-blue-300">新版本 v2.0.1 已发布！</span>
             </span>
-            <span className="hidden md:inline text-zinc-400">适配微博 & 即刻自动填充图文，效率极致提升。</span>
+            <span className="hidden md:inline text-zinc-400">修复了一些已知 bug，提升了插件的稳定性。</span>
             <Link href="/extension" className="text-primary hover:underline font-medium">
               立即更新插件 →
             </Link>

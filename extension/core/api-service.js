@@ -18,6 +18,20 @@ class ApiService {
   }
 
   /**
+   * 清理缓存（用于处理“预设/文章更新但仍读取到旧数据”的场景）
+   */
+  clearCache(prefix = null) {
+    if (!prefix) {
+      this.cache.clear();
+      return;
+    }
+
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) this.cache.delete(key);
+    }
+  }
+
+  /**
    * 初始化API服务
    */
   async init() {

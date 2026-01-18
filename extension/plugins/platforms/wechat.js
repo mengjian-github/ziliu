@@ -172,6 +172,17 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     });
 
     try {
+      // 兜底：如果消息里没有带 preset，尝试从全局选中预设获取
+      if (!data?.preset && window.ZiliuApp?.getSelectedPreset) {
+        const fallbackPreset = window.ZiliuApp.getSelectedPreset();
+        if (fallbackPreset) {
+          data.preset = fallbackPreset;
+          console.log('✅ 兜底获取当前选中预设:', fallbackPreset.name);
+        } else {
+          console.warn('⚠️ 未获取到预设（消息与全局均为空）');
+        }
+      }
+
       // 构建完整内容：开头 + 正文 + 结尾
       let fullContent = content;
 
@@ -1489,7 +1500,8 @@ if (window.ZiliuPlatformRegistry && window.ZiliuPluginConfig) {
     if (!matchesUrl(config.urlPatterns)) return;
 
     // 如果是小绿书模式 (createType=8)，则不由此插件处理
-    if (config.id === 'wechat' && /(createType=8|type=77)/i.test(window.location.href)) {
+    // 注意：type=77 在长文和小绿书都存在，不能作为区分条件
+    if (config.id === 'wechat' && /createType=8/i.test(window.location.href)) {
       console.log('⏭️ 检测到小绿书模式，跳过微信长文插件注册');
       return;
     }

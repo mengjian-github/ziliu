@@ -425,6 +425,11 @@ class ZiliuApp {
     const platformId = this.currentPlatform?.id || 'all';
 
     try {
+      // 预设变化很频繁（切换默认/编辑内容），这里强制刷新缓存，避免“预设不生效”其实是读到了旧数据
+      if (window.ZiliuApiService && typeof window.ZiliuApiService.clearCache === 'function') {
+        window.ZiliuApiService.clearCache('/api/presets');
+      }
+
       // 使用新的ApiService获取预设
       const response = await ZiliuApiService.presets.list();
 
@@ -444,11 +449,19 @@ class ZiliuApp {
 
         this.presets = platformPresets;
 
-        // 选择默认预设：优先选择当前平台的默认预设，然后是通用默认预设，最后是第一个
-        this.selectedPreset = this.presets.find(p => p.isDefault && (p.platform === platformId || !p.platform)) ||
-          this.presets.find(p => p.isDefault) ||
-          this.presets[0] ||
-          null;
+        // 兼容后端 platform 字段可能为数组：当前平台默认 > 通用默认 > 第一个
+        // 避免因为 platform 类型不一致导致“默认预设不生效”
+        if (this.presets.length > 0) {
+          const matchesPlatform = (p) => {
+            if (!p.platform || p.platform === 'all') return true;
+            if (Array.isArray(p.platform)) return p.platform.includes(platformId);
+            return p.platform === platformId;
+          };
+
+          const platformDefault = this.presets.find(p => p.isDefault && matchesPlatform(p));
+          const anyDefault = this.presets.find(p => p.isDefault);
+          this.selectedPreset = platformDefault || anyDefault || this.presets[0] || null;
+        }
 
         console.log(`✅ 预设加载完成: ${this.presets.length}个预设 (平台: ${platformId})`);
         console.log('🎯 选中默认预设:', this.selectedPreset?.name || '无');
