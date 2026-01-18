@@ -199,6 +199,23 @@ export default function Home() {
       </header>
 
       <main className="relative z-10">
+        {/* Release Announcement Banner */}
+        <div className="bg-primary/20 border-b border-primary/30 backdrop-blur-md">
+          <div className="container mx-auto px-6 py-3 flex items-center justify-center gap-4 text-sm">
+            <span className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              </span>
+              <span className="font-semibold text-blue-300">全新大版本 v2.0.0 上线！</span>
+            </span>
+            <span className="hidden md:inline text-zinc-400">适配微博 & 即刻自动填充图文，效率极致提升。</span>
+            <Link href="/extension" className="text-primary hover:underline font-medium">
+              立即更新插件 →
+            </Link>
+          </div>
+        </div>
+
         {/* Hero */}
         <section className="relative mx-auto w-full px-0 pb-20 pt-16 md:pt-28 lg:pb-32 overflow-hidden">
           {/* Background Elements */}

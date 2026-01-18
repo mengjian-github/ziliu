@@ -100,6 +100,15 @@ export default function ExtensionPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617]">
+      {/* Version Highlight Banner */}
+      <div className="relative z-[60] bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm">
+        <div className="container mx-auto px-6 py-2 flex items-center justify-center gap-3 text-sm">
+          <Badge className="bg-blue-500 text-white border-none">NEW</Badge>
+          <span className="text-blue-100 font-medium">v2.0.0 版本已发布：深度适配微博、即刻图文填充</span>
+          <span className="hidden sm:inline text-blue-300/60 transition-transform group-hover:translate-x-1">🚀</span>
+        </div>
+      </div>
+
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(0,102,255,0.15),transparent_45%),radial-gradient(circle_at_82%_10%,rgba(0,212,255,0.15),transparent_38%),radial-gradient(120%_90%_at_60%_90%,rgba(0,26,77,0.5),transparent_55%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(0,0,0,0.2),transparent_36%),linear-gradient(245deg,rgba(0,0,0,0.2),transparent_40%)]" />
 
