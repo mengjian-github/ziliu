@@ -1,45 +1,43 @@
 /**
- * 即刻平台插件
- * 处理即刻发布框的内容、标签和图片填充
+ * X (Twitter) 平台插件
+ * 处理 X 发布框的内容和图片填充
  */
-class JikePlugin extends BasePlatformPlugin {
+class XPlugin extends BasePlatformPlugin {
     constructor(config) {
         super(config);
         this.platformType = 'short-text';
-        console.log('🚀 即刻插件初始化完成');
+        console.log('🚀 X 插件初始化完成');
     }
 
     /**
-     * 填充内容到即刻编辑器
+     * 填充内容到 X 编辑器
      */
     async fillContent(data) {
-        console.log('🚀 开始填充即刻内容:', data);
+        console.log('🚀 开始填充 X 内容:', data);
 
         try {
             const elements = this.findEditorElements(false);
             if (!elements.isEditor) {
-                throw new Error('未找到即刻编辑器');
+                throw new Error('未找到 X 编辑器');
             }
 
             const editor = elements.elements.content;
             let text = data.content || '';
 
-            // 2. 填充文本内容
+            // 1. 填充文本内容
+            // X 使用 Draft.js，直接赋值可能不生效，setEditorContent 基类中处理了 execCommand('insertText')
             await this.setEditorContent(editor, text);
-            console.log('✅ 即刻文案填充成功');
+            console.log('✅ X 文案填充成功');
 
-            // 3. 处理图片上传
+            // 2. 处理图片上传
             if (data.images && data.images.length > 0) {
-                console.log('🖼️ 开始填充即刻图片...');
+                console.log('🖼️ 开始填充 X 图片...');
                 await this.fillImages(data.images, data.coverImage);
             }
 
-            // 4. 处理圈子选择 (可选)
-            // 如果需要选择圈子，可以尝试在 postFillProcess 中实现
-
             return { success: true };
         } catch (error) {
-            console.error('❌ 即刻填充失败:', error);
+            console.error('❌ X 填充失败:', error);
             throw error;
         }
     }
@@ -49,12 +47,11 @@ class JikePlugin extends BasePlatformPlugin {
      */
     async fillImages(images, coverImage) {
         try {
-            // 即刻的图片上传输入框
-            const fileInput = document.querySelector('input[type="file"]') ||
-                document.querySelector('input[type="file"][accept*="image"]');
+            // X 的图片上传输入框
+            const fileInput = document.querySelector('input[type="file"][data-testid="fileInput"]');
 
             if (!fileInput) {
-                console.warn('⚠️ 未找到即刻图片上传输入框');
+                console.warn('⚠️ 未找到 X 图片上传输入框');
                 return false;
             }
 
@@ -74,12 +71,13 @@ class JikePlugin extends BasePlatformPlugin {
             console.log('🖼️ 待上传图片数量:', allImageUrls.length);
 
             const dataTransfer = new DataTransfer();
-            for (let i = 0; i < Math.min(allImageUrls.length, 9); i++) { // 即刻限制
+            // X 限制 4 张图片
+            for (let i = 0; i < Math.min(allImageUrls.length, 4); i++) {
                 try {
                     const url = allImageUrls[i];
                     const blob = await window.ZiliuUtilsService.fetchImageBlob(url);
                     if (blob) {
-                        const fileName = `jike_image_${i}.png`;
+                        const fileName = `x_image_${i}.png`;
                         const file = new File([blob], fileName, { type: blob.type || 'image/png' });
                         dataTransfer.items.add(file);
                     }
@@ -97,38 +95,59 @@ class JikePlugin extends BasePlatformPlugin {
 
             return false;
         } catch (error) {
-            console.error('❌ 即刻图片上传失败:', error);
+            console.error('❌ X 图片上传失败:', error);
             return false;
         }
     }
 
     /**
-   * 针对即刻的编辑器进行内容填充优化
+   * 针对 X (Twitter) 的 Draft.js 编辑器进行特殊处理的内容填充
    */
     async setEditorContent(element, content) {
         if (!element || content === undefined) return;
 
-        console.log('📝 即刻专用填充');
+        console.log('📝 X 专用填充 (Draft.js 兼容)');
 
         // 1. 确保聚焦
         element.focus();
         await this.delay(100);
 
-        // 2. 全选并插入（模拟用户输入）
+        // 2. 全选现有内容（比 range 更能被 Draft.js 识别）
         document.execCommand('selectAll', false, null);
         await this.delay(50);
 
+        // 3. 执行插入（模拟用户输入）
         const text = String(content ?? '');
         const success = document.execCommand('insertText', false, text);
 
         if (!success) {
-            // 备选方案
-            element.innerText = text;
+            console.warn('⚠️ insertText 失败，尝试备选方案');
+            // 备选：模拟粘贴
+            try {
+                const dataTransfer = new DataTransfer();
+                dataTransfer.setData('text/plain', text);
+                const pasteEvent = new ClipboardEvent('paste', {
+                    clipboardData: dataTransfer,
+                    bubbles: true,
+                    cancelable: true
+                });
+                element.dispatchEvent(pasteEvent);
+            } catch (e) {
+                console.error('备选填充也失败:', e);
+                // 最后兜底（可能会破坏结构，但至少有字）
+                element.textContent = text;
+            }
         }
 
-        // 3. 触发事件
+        // 4. 触发 input 事件通知 React/Draft.js 状态更新
         element.dispatchEvent(new Event('input', { bubbles: true }));
-        console.log('✅ 即刻内容填充完成');
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // 5. 额外触发一个空格或退格键，强制 Draft.js 进行一次校验（可选）
+        // document.execCommand('insertText', false, ' ');
+        // document.execCommand('delete', false, null);
+
+        console.log('✅ X 内容填充指令已发出');
     }
 
     /**
@@ -142,14 +161,14 @@ class JikePlugin extends BasePlatformPlugin {
 // 自动注册插件
 if (typeof window !== 'undefined' && window.ZiliuPlatformRegistry) {
     const configs = (window.ZiliuPluginConfig?.platforms || [])
-        .filter(p => p.id === 'jike' && p.enabled);
+        .filter(p => p.id === 'x' && p.enabled);
 
     configs.forEach((config) => {
         // 避免重复注册
         if (window.ZiliuPlatformRegistry.get(config.id)) return;
 
-        const plugin = new JikePlugin(config);
+        const plugin = new XPlugin(config);
         window.ZiliuPlatformRegistry.register(plugin);
-        console.log(`📖 即刻插件已注册: ${config.id}`);
+        console.log(`📖 X 插件已注册: ${config.id}`);
     });
 }

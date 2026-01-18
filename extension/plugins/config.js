@@ -500,10 +500,12 @@ window.ZiliuPluginConfig = {
           'div[data-testid="tweetTextarea_0"] div[contenteditable="true"]',
           'div[role="textbox"][contenteditable="true"][data-testid^="tweetTextarea_"]',
           'div[role="textbox"][contenteditable="true"][aria-label*="Post"]',
-          'div[role="textbox"][contenteditable="true"][aria-label*="Tweet"]'
-        ]
+          'div[role="textbox"][contenteditable="true"][aria-label*="Tweet"]',
+          'div[aria-label="帖子文本"].public-DraftEditor-content'
+        ],
+        fileInput: 'input[type="file"][data-testid="fileInput"]'
       },
-      features: ['content'],
+      features: ['content', 'images'],
       contentType: 'text',
       specialHandling: {
         initDelay: 1500,
@@ -511,8 +513,8 @@ window.ZiliuPluginConfig = {
         maxWaitTime: 10000,
         buttonConfig: {
           fillButton: {
-            text: '填充文案',
-            tooltip: '填充短文案到 X 发布框'
+            text: '填充 X',
+            tooltip: '填充短文案和图片到 X'
           },
           copyButton: {
             text: '复制文案',
