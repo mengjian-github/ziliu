@@ -458,7 +458,7 @@ window.ZiliuPluginConfig = {
         fileInput: 'input[type="file"]',
         circleInput: 'input.jk-188pgdx'
       },
-      features: ['content', 'tags', 'images'],
+      features: ['content', 'images'],
       contentType: 'text',
       specialHandling: {
         initDelay: 1500,
@@ -467,7 +467,7 @@ window.ZiliuPluginConfig = {
         buttonConfig: {
           fillButton: {
             text: '填充即刻',
-            tooltip: '填充短文案、标签和图片到即刻'
+            tooltip: '填充短文案和图片到即刻'
           },
           copyButton: {
             text: '复制文案',

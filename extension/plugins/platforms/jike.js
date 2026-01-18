@@ -24,34 +24,9 @@ class JikePlugin extends BasePlatformPlugin {
             const editor = elements.elements.content;
             let text = data.content || '';
 
-            // 1. 处理标签 - 即刻支持 #标签 格式
-            if (data.tags) {
-                let tagsArray = [];
-                if (typeof data.tags === 'string') {
-                    try {
-                        tagsArray = JSON.parse(data.tags);
-                    } catch (e) {
-                        tagsArray = data.tags.split(/[,，\s]+/).filter(tag => tag.trim());
-                    }
-                } else if (Array.isArray(data.tags)) {
-                    tagsArray = data.tags;
-                }
-
-                if (tagsArray.length > 0) {
-                    const formattedTags = tagsArray.map(tag => {
-                        const t = tag.trim().replace(/^#|#$/g, '');
-                        return `#${t}`;
-                    }).join(' ');
-
-                    if (formattedTags && !text.includes(formattedTags)) {
-                        text = `${text}\n\n${formattedTags}`.trim();
-                    }
-                }
-            }
-
             // 2. 填充文本内容
             await this.setEditorContent(editor, text);
-            console.log('✅ 即刻文案与标签填充成功');
+            console.log('✅ 即刻文案填充成功');
 
             // 3. 处理图片上传
             if (data.images && data.images.length > 0) {
