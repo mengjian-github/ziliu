@@ -449,13 +449,16 @@ window.ZiliuPluginConfig = {
       editorUrl: 'https://web.okjike.com/',
       selectors: {
         content: [
+          'div.jk-14c1wfn[role="textbox"]',
           'div[role="dialog"] div[role="textbox"][contenteditable="true"]',
           'div[role="textbox"][contenteditable="true"]',
           'div[contenteditable="true"]',
           'textarea'
-        ]
+        ],
+        fileInput: 'input[type="file"]',
+        circleInput: 'input.jk-188pgdx'
       },
-      features: ['content'],
+      features: ['content', 'tags', 'images'],
       contentType: 'text',
       specialHandling: {
         initDelay: 1500,
@@ -464,7 +467,7 @@ window.ZiliuPluginConfig = {
         buttonConfig: {
           fillButton: {
             text: '填充即刻',
-            tooltip: '填充短文案到即刻发布框'
+            tooltip: '填充短文案、标签和图片到即刻'
           },
           copyButton: {
             text: '复制文案',
