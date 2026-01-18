@@ -408,13 +408,15 @@ window.ZiliuPluginConfig = {
       editorUrl: 'https://weibo.com/',
       selectors: {
         content: [
+          'textarea._input_2ho67_8',
           'textarea[placeholder*="新鲜事"]',
           'textarea[placeholder*="说点什么"]',
           'div[role="textbox"][contenteditable="true"]',
           'div[contenteditable="true"]'
-        ]
+        ],
+        fileInput: 'input[type="file"]._file_hqmwy_20'
       },
-      features: ['content'],
+      features: ['content', 'tags', 'images'],
       contentType: 'text',
       specialHandling: {
         initDelay: 1500,
@@ -423,7 +425,7 @@ window.ZiliuPluginConfig = {
         buttonConfig: {
           fillButton: {
             text: '填充微博',
-            tooltip: '填充短文案到微博输入框'
+            tooltip: '填充短文案、标签和图片到微博'
           },
           copyButton: {
             text: '复制文案',

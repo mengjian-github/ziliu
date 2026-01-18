@@ -288,6 +288,7 @@
         "core/plugin-manager.js",
         "plugins/config.js",
         "plugins/base-platform.js",
+        "plugins/platforms/weibo.js",
         "ui/panel.js",
         "ui/features.js",
         "ui/subscription-status.js",
