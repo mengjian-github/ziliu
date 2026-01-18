@@ -18,8 +18,8 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
    */
   isPlatformMatch() {
     const url = window.location.href;
-    const isMatch = url.includes('creator.xiaohongshu.com/publish/publish');
-    console.log('📖 小红书平台检测:', { url, isMatch });
+    const isMatch = url.includes('creator.xiaohongshu.com/publish/publish') && url.includes('target=image');
+    console.log('📖 小红书图文平台检测:', { url, isMatch });
     return isMatch;
   }
 
@@ -334,19 +334,19 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
           addedTagTexts.push(tagText);
           addedTags++;
           console.log(`✅ 通过推荐话题添加: ${tagText}`);
-          await this.sleep(200);
+          await this.sleep(400); // 增加等待时间
         } else {
-          // 如果推荐标签中没有，尝试手动添加到内容中
+          // 如果推荐标签中没有，尝试手动输入并从下拉框选择
           if (elements.content) {
-            console.log(`⌨️ [DEBUG] 尝试手动输入标签: ${tagText}`);
+            console.log(`⌨️ [DEBUG] 尝试手动输入并选择话题: ${tagText}`);
             const manualAdded = await this.addTagToContent(elements.content, tagText);
             if (manualAdded) {
               addedTagTexts.push(tagText);
               addedTags++;
-              console.log(`✅ 通过内容区添加: ${tagText}`);
-              await this.sleep(300);
+              console.log(`✅ 通过手动输入选择话题成功: ${tagText}`);
+              await this.sleep(500); // 给编辑器反应时间
             } else {
-              console.warn(`❌ 手动输入标签失败: ${tagText}`);
+              console.warn(`❌ 手动输入话题失败: ${tagText}`);
             }
           } else {
             console.warn('⚠️ 未找到内容编辑器元素，无法填入手动标签');
@@ -416,76 +416,70 @@ class XiaohongshuPlugin extends BasePlatformPlugin {
    */
   async addTagToContent(contentElement, tagText) {
     try {
-      console.log(`📝 将话题添加到内容区: ${tagText}`);
+      console.log(`📝 开始交互式添加话题: ${tagText}`);
+      const tagName = tagText.replace(/^#/, ''); // 去掉开头的#
 
-      // 聚焦内容编辑器
+      // 1. 聚焦并移动光标到末尾
       contentElement.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(contentElement);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
       await this.sleep(100);
 
-      if (contentElement.contentEditable === 'true') {
-        // 对于 Tiptap/ProseMirror 编辑器，必须使用 execCommand 或 paste 事件
-        // 1. 移动光标到末尾 (Tiptap 通常需要先聚焦)
-        contentElement.focus();
+      // 2. 输入 # 触发下拉框
+      document.execCommand('insertText', false, '#');
+      await this.sleep(200);
 
-        // 尝试将光标移到最后
-        try {
-          const range = document.createRange();
-          range.selectNodeContents(contentElement);
-          range.collapse(false); // false = 到末尾
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-        } catch (e) {
-          console.warn('光标移动失败:', e);
-        }
+      // 3. 输入话题名称
+      document.execCommand('insertText', false, tagName);
+      console.log(`⌨️ 已输入话题文本: ${tagName}，等待下拉框...`);
 
-        await this.sleep(100);
+      // 4. 等待下拉框出现并包含匹配项
+      let success = false;
+      for (let i = 0; i < 10; i++) {
+        const container = document.getElementById('creator-editor-topic-container');
+        if (container) {
+          const items = container.querySelectorAll('.item');
+          if (items.length > 0) {
+            console.log(`🎯 找到话题下拉框，项数: ${items.length}`);
 
-        const textToInsert = ` ${tagText}`;
+            // 尝试找最匹配的一项
+            let targetItem = items[0]; // 默认选第一项
+            for (const item of items) {
+              const nameEl = item.querySelector('.name');
+              const name = nameEl?.textContent?.trim().replace(/^#/, '');
+              if (name === tagName) {
+                targetItem = item;
+                break;
+              }
+            }
 
-        // 2. 尝试 insertText
-        let success = false;
-        try {
-          success = document.execCommand('insertText', false, textToInsert);
-        } catch (e) {
-          console.warn('insertText tag failed:', e);
-        }
-
-        // 3. 尝试 paste
-        if (!success) {
-          try {
-            const dataTransfer = new DataTransfer();
-            dataTransfer.setData('text/plain', textToInsert);
-            const pasteEvent = new ClipboardEvent('paste', {
-              clipboardData: dataTransfer,
-              bubbles: true,
-              cancelable: true
-            });
-            contentElement.dispatchEvent(pasteEvent);
+            console.log('🖱️ 点击话题项:', targetItem.textContent);
+            targetItem.click();
             success = true;
-          } catch (e) {
-            console.error('paste tag failed:', e);
+            break;
           }
         }
-
-        // 4. 只有在全失败时才回退 dom 操作 (可能导致编辑器崩溃)
-        if (!success) {
-          const currentContent = contentElement.innerText || ''; // Tiptap usually works better with innerText
-          contentElement.innerText = currentContent + textToInsert;
-        }
-
-        contentElement.dispatchEvent(new Event('input', { bubbles: true }));
-      } else {
-        // 对于input/textarea
-        const currentContent = contentElement.value || '';
-        contentElement.value = currentContent ? `${currentContent} ${tagText}` : tagText;
-        contentElement.dispatchEvent(new Event('input', { bubbles: true }));
+        await this.sleep(300);
       }
 
-      await this.sleep(100);
+      // 5. 兜底逻辑：如果下拉框没出，或者没匹配到，按个空格变成普通文本
+      if (!success) {
+        console.warn('⚠️ 未能触发话题下拉框选择，作为普通文本处理');
+        document.execCommand('insertText', false, ' ');
+        return true;
+      }
+
+      // 话题选择后插入一个空格方便后续继续输入
+      await this.sleep(200);
+      document.execCommand('insertText', false, ' ');
+
       return true;
     } catch (error) {
-      console.error('添加话题到内容区失败:', error);
+      console.error('交互式添加话题失败:', error);
       return false;
     }
   }

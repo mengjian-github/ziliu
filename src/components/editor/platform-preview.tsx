@@ -615,7 +615,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       case 'zhihu': return 'https://zhuanlan.zhihu.com/write';
       case 'juejin': return 'https://juejin.cn/editor/drafts/new?v=2';
       case 'zsxq': return 'https://wx.zsxq.com/';
-      case 'xiaohongshu_note':
+      case 'xiaohongshu_note': return 'https://creator.xiaohongshu.com/publish/publish?from=tab_switch&target=image';
       case 'xiaohongshu': return 'https://creator.xiaohongshu.com/publish/publish';
       case 'weibo': return 'https://weibo.com/';
       case 'jike': return 'https://web.okjike.com/';

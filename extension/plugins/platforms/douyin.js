@@ -92,10 +92,10 @@ class DouyinPlugin extends BasePlatformPlugin {
   activateEditor() {
     try {
       // 查找"添加作品简介"文本或相关区域
-      const introText = Array.from(document.querySelectorAll('*')).find(el => 
+      const introText = Array.from(document.querySelectorAll('*')).find(el =>
         el.textContent && el.textContent.includes('添加作品简介')
       );
-      
+
       if (introText) {
         console.log('🎵 点击激活作品简介编辑器');
         introText.click();
@@ -123,7 +123,7 @@ class DouyinPlugin extends BasePlatformPlugin {
    */
   async fillContent(data) {
     console.log('🎵 开始填充抖音内容:', data);
-    
+
     // 打印数据结构以调试
     console.log('📊 数据分析:', {
       原始数据: {
@@ -159,7 +159,7 @@ class DouyinPlugin extends BasePlatformPlugin {
           processedTitle = processedTitle.substring(0, 30);
           console.log('⚠️ 标题超长，已截取到30字符');
         }
-        
+
         results.title = await this.fillVideoTitle(elements.title, processedTitle);
         if (results.title.success) {
           fillCount++;
@@ -171,46 +171,44 @@ class DouyinPlugin extends BasePlatformPlugin {
       if (videoDescription) {
         // 先尝试激活编辑器
         this.activateEditor();
-        
+
         // 等待编辑器激活
         await this.sleep(1000);
-        
-        // 重新查找内容编辑器
-        const contentEditor = document.querySelector('[contenteditable="true"]:not(input)');
+
+        // 重新查找内容编辑器 (使用更准确的选择器)
+        const contentEditor = document.querySelector('.editor-kit-container') || document.querySelector('[contenteditable="true"]:not(input)');
         if (contentEditor) {
+          // 这里传入描述，不包含标签
           results.description = await this.fillVideoDescription(contentEditor, videoDescription);
           if (results.description.success) {
             fillCount++;
             console.log('✅ 抖音内容填充完成');
           }
-        }
-      }
 
-      // 填充话题标签
-      if (elements.tags && tags) {
-        // 处理标签数据 - 可能是JSON字符串或数组
-        let tagsArray = [];
-        if (typeof tags === 'string') {
-          try {
-            tagsArray = JSON.parse(tags);
-          } catch (e) {
-            // 如果解析失败，可能是用空格分隔的字符串
-            tagsArray = tags.split(' ').filter(tag => tag.trim());
-          }
-        } else if (Array.isArray(tags)) {
-          tagsArray = tags;
-        }
+          // 填充话题标签 - 抖音的话题也填在内容编辑器里，但需要交互式触发
+          if (tags) {
+            let tagsArray = [];
+            if (typeof tags === 'string') {
+              try {
+                tagsArray = JSON.parse(tags);
+              } catch (e) {
+                tagsArray = tags.split(' ').filter(tag => tag.trim());
+              }
+            } else if (Array.isArray(tags)) {
+              tagsArray = tags;
+            }
 
-        if (tagsArray.length > 0) {
-          const tagsText = tagsArray.slice(0, 5).map(tag => {
-            // 确保标签以#开头
-            return tag.startsWith('#') ? tag : `#${tag}`;
-          }).join(' ');
-          
-          results.tags = await this.fillVideoTitle(elements.tags, tagsText);
-          if (results.tags.success) {
-            fillCount++;
-            console.log('✅ 抖音话题填充完成');
+            if (tagsArray.length > 0) {
+              console.log('🏷️ 开始交互式填充抖音话题:', tagsArray);
+              let addedTags = 0;
+              for (const tag of tagsArray.slice(0, 5)) {
+                const success = await this.addTagToContent(contentEditor, tag);
+                if (success) addedTags++;
+                await this.sleep(500); // 抖音建议列表反应稍慢
+              }
+              results.tags = { success: addedTags > 0, count: addedTags };
+              if (addedTags > 0) fillCount++;
+            }
           }
         }
       }
@@ -246,22 +244,22 @@ class DouyinPlugin extends BasePlatformPlugin {
    */
   extractKeywords(text) {
     if (!text) return [];
-    
+
     // 简单的关键词提取逻辑
     const keywords = [];
-    
+
     // 提取中文关键词
     const chineseMatches = text.match(/[\u4e00-\u9fa5]{2,8}/g);
     if (chineseMatches) {
       keywords.push(...chineseMatches.slice(0, 2));
     }
-    
+
     // 提取英文关键词
     const englishMatches = text.match(/[A-Za-z]{3,10}/g);
     if (englishMatches) {
       keywords.push(...englishMatches.slice(0, 1));
     }
-    
+
     return [...new Set(keywords)]; // 去重
   }
 
@@ -280,7 +278,7 @@ class DouyinPlugin extends BasePlatformPlugin {
 
       // 设置新内容
       element.innerHTML = content;
-      
+
       // 触发输入事件
       const events = ['input', 'change', 'blur'];
       for (const eventType of events) {
@@ -303,7 +301,7 @@ class DouyinPlugin extends BasePlatformPlugin {
   async fillVideoTitle(element, title) {
     try {
       console.log('🎵 开始填充标题到元素:', element.tagName, title);
-      
+
       // 确保标题长度在限制范围内
       let processedTitle = title;
       if (title.length > 30) {
@@ -332,36 +330,114 @@ class DouyinPlugin extends BasePlatformPlugin {
   async fillVideoDescription(element, description) {
     try {
       console.log('🎵 开始填充描述到元素:', element.tagName, description);
-      
+
       // 确保元素获得焦点
       element.focus();
       await this.sleep(200);
 
       if (element.contentEditable === 'true') {
-        console.log('📝 使用contentEditable填充');
-        element.innerHTML = '';
-        element.textContent = description;
-        
+        console.log('📝 使用交互式填充内容');
+        element.focus();
+        // 清空当前内容
+        document.execCommand('selectAll', false, null);
+        document.execCommand('delete', false, null);
+        await this.sleep(100);
+
+        // 插入描述文本 (不带标签)
+        document.execCommand('insertText', false, description);
+
         // 触发输入事件
-        const events = ['input', 'change', 'blur'];
-        for (const eventType of events) {
-          element.dispatchEvent(new Event(eventType, { bubbles: true }));
-          await this.sleep(50);
-        }
+        element.dispatchEvent(new Event('input', { bubbles: true }));
       } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
         console.log('📝 使用input/textarea填充');
         await this.setInputValue(element, description);
-      } else {
-        // 尝试直接设置文本
-        console.log('📝 使用通用方法填充');
-        element.textContent = description;
-        element.dispatchEvent(new Event('input', { bubbles: true }));
       }
 
       return { success: true, value: description };
     } catch (error) {
       console.error('视频描述填充失败:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 交互式添加话题到抖音编辑器
+   */
+  async addTagToContent(contentElement, tagText) {
+    try {
+      console.log(`📝 开始交互式添加抖音话题: ${tagText}`);
+      const tagName = tagText.toString().replace(/^#/, '').trim(); // 去掉开头的#
+      if (!tagName) return false;
+
+      // 1. 聚焦并移动光标到末尾
+      contentElement.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(contentElement);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(selection.rangeCount > 0 ? selection.getRangeAt(0) : range);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      await this.sleep(100);
+
+      // 2. 输入 # 触发下拉框
+      document.execCommand('insertText', false, ' #'); // 前面带个空格防止粘连
+      await this.sleep(300);
+
+      // 3. 输入内容
+      document.execCommand('insertText', false, tagName);
+      console.log(`⌨️ 已输入话题文本: ${tagName}，等待下拉框...`);
+
+      // 4. 等待下拉框出现，优先选择与输入完全匹配的话题
+      let success = false;
+      const normalize = (text) => text.toLowerCase().replace(/[#\s]/g, '');
+      const target = normalize(tagName);
+      // 抖音的下拉框类名带有动态hash，使用属性选择器匹配
+      let fallbackItem = null;
+      for (let i = 0; i < 20; i++) {
+        const container = document.querySelector('div[class*="mention-suggest-item-container-"]');
+        if (container) {
+          const items = container.querySelectorAll('div[class*="tag-"], [role="option"], div');
+          if (items.length > 0) {
+            console.log(`🎯 找到话题下拉框，项数: ${items.length}`);
+            let matched = null;
+            for (const item of items) {
+              const text = item.textContent?.trim() || '';
+              if (!text) continue;
+              const normalized = normalize(text);
+              if (normalized === target) {
+                matched = item;
+                break;
+              }
+              if (!fallbackItem) fallbackItem = item;
+            }
+            if (matched) {
+              matched.click();
+              success = true;
+              break;
+            }
+          }
+        }
+        await this.sleep(200);
+      }
+      if (!success && fallbackItem) {
+        console.warn('⚠️ 未找到完全匹配话题，使用首个候选项');
+        fallbackItem.click();
+        success = true;
+      }
+
+      // 5. 兜底
+      if (!success) {
+        console.warn('⚠️ 未能触发抖音话题选择，按空格转换');
+        document.execCommand('insertText', false, ' ');
+      }
+
+      await this.sleep(200);
+      return true;
+    } catch (error) {
+      console.error('抖音话题交互式填充失败:', error);
+      return false;
     }
   }
 
@@ -380,7 +456,7 @@ class DouyinPlugin extends BasePlatformPlugin {
 
       // 设置新值
       element.value = value;
-      
+
       // 触发事件
       const events = ['input', 'change', 'blur'];
       for (const eventType of events) {

@@ -353,11 +353,11 @@ window.ZiliuPluginConfig = {
       enabled: true,
       requiredPlan: 'pro',
       featureId: 'xiaohongshu_note-platform',
-      // 目前小红书图文/视频在创作者平台大多共用 publish 页面，因此先复用 URL
+      // 小红书图文发布页面，增加 target=image 区分
       urlPatterns: [
-        'https://creator.xiaohongshu.com/publish/publish*'
+        'https://creator.xiaohongshu.com/publish/publish*target=image*'
       ],
-      editorUrl: 'https://creator.xiaohongshu.com/publish/publish',
+      editorUrl: 'https://creator.xiaohongshu.com/publish/publish?from=tab_switch&target=image',
       selectors: {
         title: 'input[placeholder*="填写标题"]',
         content: 'div[contenteditable="true"]',
@@ -388,7 +388,7 @@ window.ZiliuPluginConfig = {
         contentLimit: { max: 1000 },
         topicLimit: { max: 10 }
       },
-      priority: 8
+      priority: 10
     },
 
     // =========================

@@ -14,8 +14,8 @@ class XiaohongshuVideoPlugin extends BasePlatformPlugin {
    */
   isPlatformMatch() {
     const url = window.location.href;
-    const isMatch = url.includes('creator.xiaohongshu.com/publish/publish');
-    console.log('📖 小红书平台检测:', { url, isMatch });
+    const isMatch = url.includes('creator.xiaohongshu.com/publish/publish') && !url.includes('target=image');
+    console.log('📖 小红书视频平台检测:', { url, isMatch });
     return isMatch;
   }
 
@@ -463,16 +463,17 @@ class XiaohongshuVideoPlugin extends BasePlatformPlugin {
           addedTagTexts.push(tagText);
           addedTags++;
           console.log(`✅ 通过推荐话题添加: ${tagText}`);
-          await this.sleep(200);
+          await this.sleep(400); // 增加等待时间
         } else {
-          // 如果推荐标签中没有，尝试手动添加到内容中
+          // 如果推荐标签中没有，尝试手动输入并从下拉框选择
           if (elements.content) {
+            console.log(`⌨️ [DEBUG] 尝试手动输入并选择话题: ${tagText}`);
             const manualAdded = await this.addTagToContent(elements.content, tagText);
             if (manualAdded) {
               addedTagTexts.push(tagText);
               addedTags++;
-              console.log(`✅ 通过内容区添加: ${tagText}`);
-              await this.sleep(300);
+              console.log(`✅ 通过手动输入选择话题成功: ${tagText}`);
+              await this.sleep(500); // 给编辑器反应时间
             }
           }
         }
@@ -530,24 +531,70 @@ class XiaohongshuVideoPlugin extends BasePlatformPlugin {
    */
   async addTagToContent(contentElement, tagText) {
     try {
-      // 聚焦内容框
-      contentElement.focus();
+      console.log(`📝 开始交互式添加话题: ${tagText}`);
+      const tagName = tagText.replace(/^#/, ''); // 去掉开头的#
 
-      // 模拟输入话题标签
+      // 1. 聚焦并移动光标到末尾
+      contentElement.focus();
       const selection = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(contentElement);
-      range.collapse(false); // 移动到末尾
+      range.collapse(false);
       selection.removeAllRanges();
       selection.addRange(range);
-
-      // 插入话题文本
-      document.execCommand('insertText', false, ` ${tagText} `);
-
       await this.sleep(100);
+
+      // 2. 输入 # 触发下拉框
+      document.execCommand('insertText', false, '#');
+      await this.sleep(200);
+
+      // 3. 输入话题名称
+      document.execCommand('insertText', false, tagName);
+      console.log(`⌨️ 已输入话题文本: ${tagName}，等待下拉框...`);
+
+      // 4. 等待下拉框出现并包含匹配项
+      let success = false;
+      for (let i = 0; i < 10; i++) {
+        const container = document.getElementById('creator-editor-topic-container');
+        if (container) {
+          const items = container.querySelectorAll('.item');
+          if (items.length > 0) {
+            console.log(`🎯 找到话题下拉框，项数: ${items.length}`);
+
+            // 尝试找最匹配的一项
+            let targetItem = items[0]; // 默认选第一项
+            for (const item of items) {
+              const nameEl = item.querySelector('.name');
+              const name = nameEl?.textContent?.trim().replace(/^#/, '');
+              if (name === tagName) {
+                targetItem = item;
+                break;
+              }
+            }
+
+            console.log('🖱️ 点击话题项:', targetItem.textContent);
+            targetItem.click();
+            success = true;
+            break;
+          }
+        }
+        await this.sleep(300);
+      }
+
+      // 5. 兜底逻辑：如果下拉框没出，或者没匹配到，按个空格变成普通文本
+      if (!success) {
+        console.warn('⚠️ 未能触发话题下拉框选择，作为普通文本处理');
+        document.execCommand('insertText', false, ' ');
+        return true;
+      }
+
+      // 话题选择后插入一个空格方便后续继续输入
+      await this.sleep(200);
+      document.execCommand('insertText', false, ' ');
+
       return true;
     } catch (error) {
-      console.warn('内容区添加话题失败:', error);
+      console.warn('交互式内容区添加话题失败:', error);
       return false;
     }
   }
