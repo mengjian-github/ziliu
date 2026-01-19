@@ -380,6 +380,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                 <Input
                   value={editingSettings?.name || ''}
                   onChange={(e) => {
+                    if ((e.nativeEvent as InputEvent).isComposing) return;
                     const newSettings = editingSettings ? { ...editingSettings, name: e.target.value } : null;
                     setEditingSettings(newSettings);
                     saveEditingContent(newSettings);
@@ -399,6 +400,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Input
                         value={editingSettings?.authorName || ''}
                         onChange={(e) => {
+                          if ((e.nativeEvent as InputEvent).isComposing) return;
                           const newSettings = editingSettings ? { ...editingSettings, authorName: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
@@ -434,6 +436,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.headerContent || ''}
                         onChange={(e) => {
+                          if ((e.nativeEvent as InputEvent).isComposing) return;
                           const newSettings = editingSettings ? { ...editingSettings, headerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
@@ -470,6 +473,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.footerContent || ''}
                         onChange={(e) => {
+                          if ((e.nativeEvent as InputEvent).isComposing) return;
                           const newSettings = editingSettings ? { ...editingSettings, footerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
@@ -512,6 +516,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.headerContent || ''}
                         onChange={(e) => {
+                          if ((e.nativeEvent as InputEvent).isComposing) return;
                           const newSettings = editingSettings ? { ...editingSettings, headerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
@@ -548,6 +553,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.footerContent || ''}
                         onChange={(e) => {
+                          if ((e.nativeEvent as InputEvent).isComposing) return;
                           const newSettings = editingSettings ? { ...editingSettings, footerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
@@ -589,6 +595,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.headerContent || ''}
                         onChange={(e) => {
+                          if ((e.nativeEvent as InputEvent).isComposing) return;
                           const newSettings = editingSettings ? { ...editingSettings, headerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
@@ -624,6 +631,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <Textarea
                         value={editingSettings?.footerContent || ''}
                         onChange={(e) => {
+                          if ((e.nativeEvent as InputEvent).isComposing) return;
                           const newSettings = editingSettings ? { ...editingSettings, footerContent: e.target.value } : null;
                           setEditingSettings(newSettings);
                           saveEditingContent(newSettings);
