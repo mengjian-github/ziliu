@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlusCircle, FileText, LogOut, Crown, Gift, Settings, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, FileText, LogOut, Crown, Gift, Settings, ChevronDown, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 import { RedeemCodeDialog } from '@/components/ui/redeem-code-dialog';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
@@ -215,6 +215,13 @@ export default function DashboardPage() {
                   </DropdownMenuLabel>
 
                   <DropdownMenuSeparator className="bg-white/10" />
+
+                  <Link href="https://my.feishu.cn/wiki/MCBVwctYYiqO6rkz5iAcRYN0nEU?from=from_copylink" target="_blank">
+                    <DropdownMenuItem className="group focus:bg-white/10 cursor-pointer">
+                      <HelpCircle className="mr-3 h-4 w-4 text-zinc-400 group-hover:text-white" />
+                      <span className="text-zinc-200 group-hover:text-white transition-colors">使用指南</span>
+                    </DropdownMenuItem>
+                  </Link>
 
                   <Link href="/dashboard/settings">
                     <DropdownMenuItem className="group focus:bg-white/10 cursor-pointer">

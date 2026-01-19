@@ -160,6 +160,7 @@ export default function Home() {
               <Link className="transition hover:text-white" href="/pricing">定价</Link>
               <Link className="transition hover:text-white" href="/dashboard">工作台</Link>
               <Link className="transition hover:text-white" href="/extension">插件</Link>
+              <Link className="transition hover:text-white" href="https://my.feishu.cn/wiki/MCBVwctYYiqO6rkz5iAcRYN0nEU?from=from_copylink" target="_blank">指南</Link>
             </nav>
 
             <div className="flex items-center gap-3">
@@ -548,7 +549,7 @@ export default function Home() {
                 <p className="text-sm font-bold text-white">资源</p>
                 <div className="flex flex-col gap-3 text-sm text-zinc-500">
                   <Link href="/blog" className="hover:text-primary transition-colors">博客 / 更新</Link>
-                  <Link href="/docs" className="hover:text-primary transition-colors">使用指南</Link>
+                  <Link href="https://my.feishu.cn/wiki/MCBVwctYYiqO6rkz5iAcRYN0nEU?from=from_copylink" target="_blank" className="hover:text-primary transition-colors">使用指南</Link>
                   <Link href="/faq" className="hover:text-primary transition-colors">常见问题</Link>
                 </div>
               </div>

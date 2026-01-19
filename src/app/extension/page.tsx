@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Shield,
   Sparkles,
+  HelpCircle,
 } from 'lucide-react';
 
 export default function ExtensionPage() {
@@ -263,6 +264,12 @@ export default function ExtensionPage() {
                     <p className="text-sm text-zinc-400">{step}</p>
                   </div>
                 ))}
+                <div className="mt-6 pt-4 border-t border-white/5">
+                  <Link href="https://my.feishu.cn/wiki/MCBVwctYYiqO6rkz5iAcRYN0nEU?from=from_copylink" target="_blank" className="text-sm text-primary hover:underline flex items-center gap-2">
+                    <ExternalLink size={14} />
+                    查看详细图文安装教程
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -313,6 +320,12 @@ export default function ExtensionPage() {
                   <RefreshCw size={16} className="mr-2" />
                   已安装？重新检测
                 </Button>
+                <Link href="https://my.feishu.cn/wiki/MCBVwctYYiqO6rkz5iAcRYN0nEU?from=from_copylink" target="_blank">
+                  <Button variant="outline" size="lg" className="rounded-xl px-6 py-3 border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white">
+                    <HelpCircle size={16} className="mr-2" />
+                    查看详细指南
+                  </Button>
+                </Link>
                 <Link href="/dashboard">
                   <Button variant="ghost" size="lg" className="rounded-xl px-6 py-3 text-zinc-400 hover:text-white hover:bg-white/10">
                     返回工作台

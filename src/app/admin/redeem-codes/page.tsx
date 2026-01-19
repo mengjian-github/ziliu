@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Gift, Copy, Calendar, Clock } from 'lucide-react';
+import { Gift, Copy, Calendar, Clock, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 interface RedeemCode {
   id: string;
@@ -100,36 +99,50 @@ export default function AdminRedeemCodesPage() {
     alert('兑换码已复制到剪贴板');
   };
 
+  const formatDate = (value?: string) =>
+    value ? new Date(value).toLocaleDateString('zh-CN') : '';
+
   if (status === 'loading') {
     return <div className="p-8">加载中...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">兑换码管理</h1>
-          <p className="text-gray-600">生成和管理专业版兑换码</p>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white px-4 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 sm:gap-8">
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/80 px-5 py-5 shadow-sm sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">兑换码管理</h1>
+              <p className="text-sm text-slate-600 sm:text-base">生成与管理专业版兑换码</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 sm:text-sm">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-600">未使用可直接复制</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">已使用会显示用户信息</span>
+          </div>
         </div>
 
         {/* 生成兑换码 */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Gift className="h-5 w-5 mr-2" />
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+              <Gift className="h-5 w-5 text-blue-600" />
               生成兑换码
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   类型
                 </label>
                 <select
                   value={generateType}
                   onChange={(e) => setGenerateType(e.target.value as 'monthly' | 'yearly')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="monthly">月卡 (1个月)</option>
                   <option value="yearly">年卡 (12个月)</option>
@@ -137,7 +150,7 @@ export default function AdminRedeemCodesPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   数量
                 </label>
                 <Input
@@ -146,45 +159,52 @@ export default function AdminRedeemCodesPage() {
                   max="50"
                   value={generateCount}
                   onChange={(e) => setGenerateCount(parseInt(e.target.value) || 1)}
+                  className="border-slate-200 text-sm text-slate-900 focus-visible:ring-blue-200"
                 />
               </div>
               
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   备注
                 </label>
                 <Input
                   placeholder="可选：批次备注信息"
                   value={generateNote}
                   onChange={(e) => setGenerateNote(e.target.value)}
+                  className="border-slate-200 text-sm text-slate-900 focus-visible:ring-blue-200"
                 />
               </div>
             </div>
             
-            <Button
-              onClick={generateCodes}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Gift className="h-4 w-4 mr-2" />
-              生成 {generateCount} 个{generateType === 'monthly' ? '月卡' : '年卡'}
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500 sm:text-sm">
+                建议：手机端生成后直接复制，批量发放更高效。
+              </p>
+              <Button
+                onClick={generateCodes}
+                disabled={isLoading}
+                className="h-10 w-full bg-blue-600 text-sm hover:bg-blue-700 sm:w-auto"
+              >
+                <Gift className="h-4 w-4 mr-2" />
+                生成 {generateCount} 个{generateType === 'monthly' ? '月卡' : '年卡'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
         {/* 兑换码列表 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>兑换码列表</CardTitle>
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg text-slate-900">兑换码列表</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-2 text-gray-600">加载中...</p>
+                <p className="mt-2 text-sm text-slate-600">加载中...</p>
               </div>
             ) : codes.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-sm text-slate-500">
                 暂无兑换码
               </div>
             ) : (
@@ -192,56 +212,62 @@ export default function AdminRedeemCodesPage() {
                 {codes.map((code) => (
                   <div
                     key={code.id}
-                    className={`p-4 rounded-lg border ${
-                      code.isUsed ? 'bg-gray-50 border-gray-200' : 'bg-green-50 border-green-200'
+                    className={`rounded-xl border px-4 py-4 shadow-sm transition ${
+                      code.isUsed
+                        ? 'border-slate-200 bg-white'
+                        : 'border-emerald-200 bg-emerald-50/60'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                        <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
                           code.type === 'yearly'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-blue-100 text-blue-700'
                         }`}>
                           {code.type === 'yearly' ? (
                             <>
-                              <Calendar className="h-3 w-3 inline mr-1" />
+                              <Calendar className="h-3 w-3" />
                               年卡
                             </>
                           ) : (
                             <>
-                              <Clock className="h-3 w-3 inline mr-1" />
+                              <Clock className="h-3 w-3" />
                               月卡
                             </>
                           )}
                         </div>
-                        
+
                         <div>
-                          <div className="font-mono text-lg font-bold text-gray-900">
+                          <div className="font-mono text-base font-semibold text-slate-900 sm:text-lg">
                             {code.code}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {code.note} · 创建于 {new Date(code.createdAt).toLocaleDateString('zh-CN')}
+                          <div className="text-xs text-slate-500 sm:text-sm">
+                            {code.note} · 创建于 {formatDate(code.createdAt)}
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center space-x-3">
+
+                      <div className="flex items-center justify-between gap-3 sm:justify-end">
                         {code.isUsed ? (
-                          <div className="text-sm text-gray-500">
-                            <div>已使用</div>
-                            {code.usedByUser && (
-                              <div>用户: {code.usedByUser.name}</div>
-                            )}
-                            {code.usedAt && (
-                              <div>{new Date(code.usedAt).toLocaleDateString('zh-CN')}</div>
-                            )}
+                          <div className="flex items-center gap-2 text-xs text-slate-500 sm:text-sm">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                            <div>
+                              <div className="font-medium text-slate-600">已使用</div>
+                              {code.usedByUser && (
+                                <div>用户: {code.usedByUser.name}</div>
+                              )}
+                              {code.usedAt && (
+                                <div>{formatDate(code.usedAt)}</div>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => copyCode(code.code)}
+                            className="h-9 w-full border-slate-200 text-slate-700 hover:border-blue-200 hover:text-blue-600 sm:w-auto"
                           >
                             <Copy className="h-4 w-4 mr-1" />
                             复制
