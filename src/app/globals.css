@@ -167,6 +167,7 @@ body {
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 13px;
   color: inherit;
+  white-space: pre;
 }
 
 .wechat-content pre {
@@ -178,6 +179,8 @@ body {
   margin: 1.5em 0;
   border-left: 4px solid #3B6AE0;
   color: inherit;
+  white-space: pre;
+  word-break: normal;
 }
 
 .wechat-content pre code {
