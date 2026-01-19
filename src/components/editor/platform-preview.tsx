@@ -610,8 +610,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
   const getPlatformUrl = (platform: Platform) => {
     switch (platform) {
-      case 'wechat': return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&createType=0';
-      case 'wechat_xiaolushu': return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&createType=8';
+      case 'wechat': return 'https://mp.weixin.qq.com/';
+      case 'wechat_xiaolushu': return 'https://mp.weixin.qq.com/';
       case 'zhihu': return 'https://zhuanlan.zhihu.com/write';
       case 'juejin': return 'https://juejin.cn/editor/drafts/new?v=2';
       case 'zsxq': return 'https://wx.zsxq.com/';
