@@ -36,7 +36,7 @@ const OUTPUT_LIMITS: Record<ShortTextPlatform, { titleMax?: number; contentMax?:
 const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
   wechat_xiaolushu: `
 你是“微信小绿书（公众号图片消息）”运营助手。请把原始内容改写为适合发布的小绿书短图文文案。
-风格要求：类似小红书，轻松、分享感强、多用Emoji。
+风格要求：类似小红书，但必须纯文字，不要使用Emoji或任何小图标/符号装饰。
 
 要求：
 1) 标题：可选，6-20个汉字（不要出现“标题：”前缀）
@@ -62,7 +62,7 @@ const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
 你是“微博”运营助手。请把原始内容改写为适合微博发布的短图文文案。
 
 要求：
-1) 正文：80-220字（更短更好），信息密度高；允许换行
+1) 正文：80-220字（更短更好），信息密度高；用短句+换行排版；保留换行样式
 2) 可包含 1-3 个话题词（返回 tags 数组，不要带#号）
 3) 不要出现Markdown语法；不要输出图片URL；避免硬广
 
@@ -73,7 +73,7 @@ const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
 你是“即刻”运营助手。请把原始内容改写为适合即刻发布的短图文动态。
 
 要求：
-1) 正文：120-300字，语气真诚、有个人视角；允许换行
+1) 正文：120-300字，语气真诚、有个人视角；用短句+换行排版；保留换行样式
 2) 可包含 1-3 个话题词（返回 tags 数组，不要带#号）
 3) 不要出现Markdown语法；不要输出图片URL；避免标题党
 
@@ -86,8 +86,9 @@ You are an X (Twitter) post assistant. Rewrite the original content into an X po
 Requirements:
 1) Keep the language consistent with the input (Chinese stays Chinese, English stays English).
 2) Prefer a single post that is concise; keep it within 280-400 characters if possible (hard max 4000).
-3) No Markdown syntax; do not output image URLs.
-4) Return optional tags as a list of keywords (no #).
+3) Use short sentences with line breaks; preserve line-break style in the output.
+4) No Markdown syntax; do not output image URLs.
+5) Return optional tags as a list of keywords (no #).
 
 Output MUST be strict JSON only:
 {"content":"...","tags":["..."]}`,
@@ -341,7 +342,7 @@ function normalizeOutput(
     .filter(Boolean)
     .slice(0, limits.tagMax || 0);
 
-  let content = String(output.content || '').trim();
+  let content = formatShortTextContent(platform, String(output.content || '').trim());
   if (limits.contentMax && content.length > limits.contentMax) {
     content = content.slice(0, limits.contentMax).trim();
   }
@@ -354,6 +355,18 @@ function normalizeOutput(
   } else {
     // Non-title platforms: keep title optional
     title = title?.trim() || undefined;
+  }
+
+  if (platform === 'wechat_xiaolushu') {
+    content = stripEmojis(content);
+    if (title) {
+      title = stripEmojis(title);
+    }
+    if (tags.length > 0) {
+      for (let i = 0; i < tags.length; i += 1) {
+        tags[i] = stripEmojis(tags[i]);
+      }
+    }
   }
 
   return { title, content, tags: limits.tagMax ? tags : [] };
@@ -394,6 +407,37 @@ function summarizeImages(images: ExtractedImage[]): string {
     .join('\n');
 }
 
+function stripEmojis(text: string): string {
+  return String(text || '')
+    .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function formatShortTextContent(platform: ShortTextPlatform, content: string): string {
+  if (platform !== 'weibo' && platform !== 'jike' && platform !== 'x') {
+    return content;
+  }
+
+  let formatted = String(content || '').replace(/\r\n/g, '\n');
+
+  // Favor short sentences with line breaks for image-text platforms.
+  formatted = formatted
+    .replace(/([。！？；])/g, '$1\n')
+    .replace(/([.!?])\s+/g, '$1\n')
+    .replace(/([,，、])\s*/g, '$1\n');
+
+  formatted = formatted
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return formatted;
+}
+
 function fallbackShortText(input: {
   platform: ShortTextPlatform;
   title: string;
@@ -409,10 +453,10 @@ function fallbackShortText(input: {
   const commonTags = input.images.length > 0 ? ['配图', '分享'] : ['分享'];
 
   if (input.platform === 'wechat_xiaolushu') {
-    const t = input.title ? input.title.slice(0, 20) : '图片消息';
+    const t = stripEmojis(input.title ? input.title.slice(0, 20) : '图片消息');
     return {
       title: t,
-      content: `${short}\n\n欢迎在评论区补充。`,
+      content: stripEmojis(`${short}\n\n欢迎在评论区补充。`),
       tags: [],
     };
   }
@@ -428,21 +472,21 @@ function fallbackShortText(input: {
 
   if (input.platform === 'weibo') {
     return {
-      content: `${short.slice(0, 220)}\n\n你怎么看？`,
+      content: formatShortTextContent('weibo', `${short.slice(0, 220)}\n\n你怎么看？`),
       tags: ['日常', ...commonTags].slice(0, 5),
     };
   }
 
   if (input.platform === 'jike') {
     return {
-      content: `${short.slice(0, 300)}\n\n欢迎补充。`,
+      content: formatShortTextContent('jike', `${short.slice(0, 300)}\n\n欢迎补充。`),
       tags: ['随手记', ...commonTags].slice(0, 5),
     };
   }
 
   if (input.platform === 'x') {
     return {
-      content: short.slice(0, 4000),
+      content: formatShortTextContent('x', short.slice(0, 4000)),
       tags: ['thoughts', ...commonTags].slice(0, 8),
     };
   }
