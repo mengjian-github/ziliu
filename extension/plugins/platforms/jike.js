@@ -119,7 +119,46 @@ class JikePlugin extends BasePlatformPlugin {
         await this.delay(50);
 
         const text = String(content ?? '');
-        const success = document.execCommand('insertText', false, text);
+        const escapeHtml = (value) => String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        const paragraphs = text
+            .split(/\n{2,}/)
+            .map(p => p.trim())
+            .filter(Boolean)
+            .map(p => p.split('\n').map(escapeHtml).join('<br>'))
+            .map(p => `<p>${p}</p>`)
+            .join('');
+        const html = paragraphs || escapeHtml(text);
+
+        let success = false;
+
+        // 优先模拟粘贴（即刻对 execCommand 支持不稳定）
+        try {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.setData('text/plain', text);
+            dataTransfer.setData('text/html', html);
+            const pasteEvent = new ClipboardEvent('paste', {
+                clipboardData: dataTransfer,
+                bubbles: true,
+                cancelable: true
+            });
+            element.dispatchEvent(pasteEvent);
+            success = true;
+        } catch (e) {
+            success = false;
+        }
+
+        if (!success) {
+            try {
+                success = document.execCommand('insertText', false, text);
+            } catch (e) {
+                success = false;
+            }
+        }
 
         if (!success) {
             // 备选方案

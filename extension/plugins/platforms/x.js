@@ -129,41 +129,36 @@ class XPlugin extends BasePlatformPlugin {
 
         // 3. 执行插入（模拟用户输入）
         const text = String(content ?? '');
-        const lines = text.split(/\r?\n/);
+        const normalizedText = text.replace(/\u00A0/g, ' ');
         let success = false;
+
+        // 优先模拟粘贴，避免行顺序错乱
         try {
-            // 先插入首行，再逐行插入换行和内容，避免 Draft.js 只保留最后一行
-            success = document.execCommand('insertText', false, lines[0] ?? '');
-            for (let i = 1; i < lines.length; i++) {
-                const lbOk = document.execCommand('insertLineBreak', false, null) ||
-                    document.execCommand('insertParagraph', false, null);
-                if (!lbOk) {
-                    document.execCommand('insertText', false, '\n');
-                }
-                document.execCommand('insertText', false, lines[i]);
-            }
+            const dataTransfer = new DataTransfer();
+            dataTransfer.setData('text/plain', normalizedText);
+            const pasteEvent = new ClipboardEvent('paste', {
+                clipboardData: dataTransfer,
+                bubbles: true,
+                cancelable: true
+            });
+            element.dispatchEvent(pasteEvent);
+            success = true;
         } catch (e) {
-            console.warn('execCommand 插入失败:', e);
             success = false;
         }
 
         if (!success) {
-            console.warn('⚠️ insertText 失败，尝试备选方案');
-            // 备选：模拟粘贴
             try {
-                const dataTransfer = new DataTransfer();
-                dataTransfer.setData('text/plain', text);
-                const pasteEvent = new ClipboardEvent('paste', {
-                    clipboardData: dataTransfer,
-                    bubbles: true,
-                    cancelable: true
-                });
-                element.dispatchEvent(pasteEvent);
+                success = document.execCommand('insertText', false, normalizedText);
             } catch (e) {
-                console.error('备选填充也失败:', e);
-                // 最后兜底（可能会破坏结构，但至少有字）
-                element.textContent = text;
+                console.warn('execCommand 插入失败:', e);
+                success = false;
             }
+        }
+
+        if (!success) {
+            console.warn('⚠️ 填充失败，使用兜底方案');
+            element.textContent = normalizedText;
         }
 
         // 4. 触发 input 事件通知 React/Draft.js 状态更新
