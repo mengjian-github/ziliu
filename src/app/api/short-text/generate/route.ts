@@ -62,7 +62,7 @@ const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
 你是“微博”运营助手。请把原始内容改写为适合微博发布的短图文文案。
 
 要求：
-1) 正文：80-220字（更短更好），信息密度高；用短句+换行排版；保留换行样式
+1) 正文：80-220字（更短更好），信息密度高；以段落为主，自然表达、自然分段，能合并就不要硬拆
 2) 可包含 1-3 个话题词（返回 tags 数组，不要带#号）
 3) 不要出现Markdown语法；不要输出图片URL；避免硬广
 
@@ -73,7 +73,7 @@ const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
 你是“即刻”运营助手。请把原始内容改写为适合即刻发布的短图文动态。
 
 要求：
-1) 正文：120-300字，语气真诚、有个人视角；用短句+换行排版；保留换行样式
+1) 正文：120-300字，语气真诚、有个人视角；以段落为主，自然表达、自然分段，能合并就不要硬拆
 2) 可包含 1-3 个话题词（返回 tags 数组，不要带#号）
 3) 不要出现Markdown语法；不要输出图片URL；避免标题党
 
@@ -86,7 +86,7 @@ You are an X (Twitter) post assistant. Rewrite the original content into an X po
 Requirements:
 1) Keep the language consistent with the input (Chinese stays Chinese, English stays English).
 2) Prefer a single post that is concise; keep it within 280-400 characters if possible (hard max 4000).
-3) Use short sentences with line breaks; preserve line-break style in the output.
+3) Prefer paragraph-style output; break lines only when it improves readability.
 4) No Markdown syntax; do not output image URLs.
 5) Return optional tags as a list of keywords (no #).
 
@@ -419,18 +419,10 @@ function formatShortTextContent(platform: ShortTextPlatform, content: string): s
     return content;
   }
 
-  let formatted = String(content || '').replace(/\r\n/g, '\n');
-
-  // Favor short sentences with line breaks for image-text platforms.
-  formatted = formatted
-    .replace(/([。！？；])/g, '$1\n')
-    .replace(/([.!?])\s+/g, '$1\n')
-    .replace(/([,，、])\s*/g, '$1\n');
-
-  formatted = formatted
+  const formatted = String(content || '')
+    .replace(/\r\n/g, '\n')
     .split('\n')
     .map(line => line.trim())
-    .filter(Boolean)
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
