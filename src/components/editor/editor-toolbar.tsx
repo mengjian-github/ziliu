@@ -266,7 +266,7 @@ export function EditorToolbar({
   return (
     <div className="border-b border-white/5 bg-black/20 backdrop-blur-xl px-4 py-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1">
+        <div className="flex flex-wrap items-center gap-1">
           {toolbarGroups.map((group, groupIndex) => (
             <div key={group.name} className="flex items-center">
               {groupIndex > 0 && (
@@ -347,14 +347,14 @@ export function EditorToolbar({
       </div>
 
       {/* 快捷键提示 */}
-      <div className="mt-2 text-xs text-zinc-500 border-t border-white/5 pt-2">
+      <div className="mt-2 text-xs text-zinc-500 border-t border-white/5 pt-2 flex flex-wrap gap-x-2 gap-y-1">
         <span>💡 快捷键：</span>
-        <span className="ml-2">Ctrl+Z 撤销</span>
-        <span className="ml-2">Ctrl+Y 重做</span>
-        <span className="ml-2">Ctrl+B 粗体</span>
-        <span className="ml-2">Ctrl+I 斜体</span>
-        <span className="ml-2">Ctrl+K 链接</span>
-        <span className="ml-2">拖拽图片到编辑器可直接上传</span>
+        <span>Ctrl+Z 撤销</span>
+        <span>Ctrl+Y 重做</span>
+        <span>Ctrl+B 粗体</span>
+        <span>Ctrl+I 斜体</span>
+        <span>Ctrl+K 链接</span>
+        <span>拖拽图片到编辑器可直接上传</span>
       </div>
     </div>
   );

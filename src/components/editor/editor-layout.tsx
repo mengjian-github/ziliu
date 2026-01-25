@@ -252,9 +252,9 @@ export function EditorLayout({
       {/* 左右分栏布局 */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-0">
         {/* 主编辑区域 */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
           {/* 左侧：编辑器 */}
-          <div className="w-1/2 border-r border-white/5 bg-white/[0.02]">
+          <div className="w-full lg:w-1/2 border-b lg:border-b-0 lg:border-r border-white/5 bg-white/[0.02]">
             <MultiPlatformEditor
               title={title}
               content={content}
@@ -264,7 +264,7 @@ export function EditorLayout({
           </div>
 
           {/* 右侧：预览区域 */}
-          <div className="w-1/2 bg-black/20">
+          <div className="w-full lg:w-1/2 bg-black/20">
             <PlatformPreview
               title={title}
               content={content}

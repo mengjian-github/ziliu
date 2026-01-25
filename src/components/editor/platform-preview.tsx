@@ -835,7 +835,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
           {/* 长图文平台 */}
           <div className="mb-3">
             <div className="text-xs text-zinc-500 mb-2">长图文平台</div>
-            <div className="flex bg-white/5 rounded-xl p-1 gap-1">
+            <div className="flex flex-wrap bg-white/5 rounded-xl p-1 gap-1">
               {longTextPlatforms.map((platform) => {
                 const platformFeatureId = `${platform.id}-platform`;
                 const hasAccess = hasFeature(platformFeatureId);
@@ -921,7 +921,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
           {/* 视频平台 */}
           <div>
             <div className="text-xs text-zinc-500 mb-2">视频平台</div>
-            <div className="flex bg-white/5 rounded-xl p-1 gap-1">
+            <div className="flex flex-wrap bg-white/5 rounded-xl p-1 gap-1">
               {videoPlatforms.map((platform) => {
                 const platformFeatureId = `${platform.id}-platform`;
                 const hasAccess = hasFeature(platformFeatureId);
@@ -956,8 +956,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
         {/* 长图文/短图文：发布设置 + 去发布 */}
         {!isVideoPlatform(selectedPlatform) && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               {getPlatformType(selectedPlatform) === 'long_text' ? (
                 <>
                   <div className="flex items-center space-x-2">
@@ -977,7 +977,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                       }
                       handleStyleChange(newStyle);
                     }}
-                    className="text-sm border border-white/10 rounded-lg px-3 py-1.5 bg-white/5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent [&>option]:bg-[#020617] [&>option]:text-zinc-200"
+                    className="text-sm border border-white/10 rounded-lg px-3 py-1.5 bg-white/5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent [&>option]:bg-[#020617] [&>option]:text-zinc-200 w-full sm:w-auto"
                   >
                     <option value="default">默认样式</option>
                     <option value="tech" disabled={!hasFeature('advanced-styles')}>
@@ -992,7 +992,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                   </select>
                 </>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="text-xs text-zinc-500 font-medium">
                     ✨ AI 爆款方案
                   </div>
@@ -1012,7 +1012,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               )}
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {hasFeature('publish-presets') ? (
                 <PublishSettings
                   platform={selectedPlatform}
@@ -1039,14 +1039,14 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               )}
 
               {isChecking ? (
-                <button disabled className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed">
+                <button disabled className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed w-full sm:w-auto justify-center">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>检测中...</span>
                 </button>
               ) : !isInstalled ? (
                 <button
                   onClick={() => router.push('/extension')}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 w-full sm:w-auto justify-center"
                 >
                   <Chrome className="h-4 w-4" />
                   <span>安装插件</span>
@@ -1056,7 +1056,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 <button
                   onClick={handlePublish}
                   disabled={isPublishing || !title.trim() || !content.trim()}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isPublishing || !title.trim() || !content.trim()
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full sm:w-auto justify-center ${isPublishing || !title.trim() || !content.trim()
                     ? 'bg-white/5 text-zinc-500 cursor-not-allowed'
                     : 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30'
                     }`}
@@ -1072,8 +1072,8 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
         {/* 视频平台操作区 */}
         {isVideoPlatform(selectedPlatform) && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {isGeneratingVideo ? (
                 <div className="flex items-center text-sm text-zinc-400">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -1091,14 +1091,14 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               )}
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {isChecking ? (
-                <button disabled className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed">
+                <button disabled className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-zinc-500 cursor-not-allowed w-full sm:w-auto justify-center">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>检测中...</span>
                 </button>
               ) : !isInstalled ? (
-                <button onClick={() => router.push('/extension')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20">
+                <button onClick={() => router.push('/extension')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 w-full sm:w-auto justify-center">
                   <Chrome className="h-4 w-4" />
                   <span>安装插件</span>
                   <ExternalLink className="h-3 w-3" />
@@ -1110,7 +1110,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     window.open(platformUrl, '_blank');
                   }}
                   disabled={!videoMetadata || isGeneratingVideo}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${!videoMetadata || isGeneratingVideo
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full sm:w-auto justify-center ${!videoMetadata || isGeneratingVideo
                     ? 'bg-white/5 text-zinc-500 cursor-not-allowed'
                     : 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30'
                     }`}
