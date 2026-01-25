@@ -80,7 +80,7 @@ export function PlatformGuard({ platform, children }: {
 }
 
 export function StyleGuard({ style, children }: { 
-  style: 'default' | 'tech' | 'minimal'; 
+  style: 'default' | 'minimal' | 'elegant' | 'tech' | 'card' | 'print' | 'night'; 
   children: ReactNode;
 }) {
   if (style === 'default') {

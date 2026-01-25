@@ -220,6 +220,12 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       // 清理HTML内容
       const cleanContent = this.cleanHtmlContent(finalContent);
 
+      // 优先尝试使用微信公众号官方 JSAPI（新编辑器）
+      const mpJsApiResult = await this.tryMpEditorSetContent(cleanContent);
+      if (mpJsApiResult?.success) {
+        return mpJsApiResult;
+      }
+
       switch (editorType) {
         case 'ProseMirror':
           return await this.fillProseMirrorEditor(contentElement, cleanContent);
@@ -237,6 +243,71 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     } catch (error) {
       console.error(`微信内容填充失败 [${editorType}]:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * 获取微信编辑器 JSAPI
+   */
+  getMpEditorApi() {
+    return window.__MP_Editor_JSAPI__;
+  }
+
+  /**
+   * 调用微信编辑器 JSAPI（Promise 化）
+   */
+  mpInvoke(apiName, apiParam) {
+    return new Promise((resolve, reject) => {
+      const api = this.getMpEditorApi();
+      if (!api || typeof api.invoke !== 'function') {
+        reject(new Error('MP Editor JSAPI 不可用'));
+        return;
+      }
+
+      api.invoke({
+        apiName,
+        apiParam,
+        sucCb: (res) => resolve(res),
+        errCb: (err) => reject(err)
+      });
+    });
+  }
+
+  /**
+   * 获取编辑器就绪状态
+   */
+  async mpGetIsReady() {
+    try {
+      const res = await this.mpInvoke('mp_editor_get_isready');
+      return {
+        isReady: !!res?.isReady,
+        isNew: !!res?.isNew
+      };
+    } catch (error) {
+      console.warn('获取编辑器状态失败:', error);
+      return { isReady: false, isNew: false };
+    }
+  }
+
+  /**
+   * 使用微信编辑器 JSAPI 设置全文内容（新编辑器）
+   */
+  async tryMpEditorSetContent(content) {
+    const api = this.getMpEditorApi();
+    if (!api) return null;
+
+    const status = await this.mpGetIsReady();
+    if (!status.isReady || !status.isNew) {
+      return null;
+    }
+
+    try {
+      await this.mpInvoke('mp_editor_set_content', { content });
+      console.log('✅ 使用 MP 编辑器 JSAPI 设置内容成功');
+      return { success: true, value: content, type: 'MPJSAPI' };
+    } catch (error) {
+      console.warn('⚠️ MP 编辑器 JSAPI 设置内容失败，回退原逻辑:', error);
+      return { success: false, error: error?.message || 'mp_editor_set_content 失败' };
     }
   }
 

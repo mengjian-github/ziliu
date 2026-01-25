@@ -27,7 +27,7 @@ export const articles = sqliteTable('articles', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   content: text('content').notNull(),
-  style: text('style', { enum: ['default', 'tech', 'minimal', 'elegant'] }).notNull().default('default'),
+  style: text('style', { enum: ['default', 'minimal', 'elegant', 'tech', 'card', 'print', 'night'] }).notNull().default('default'),
   status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
   wordCount: integer('word_count').default(0),
   readingTime: integer('reading_time').default(0), // 预计阅读时间（分钟）

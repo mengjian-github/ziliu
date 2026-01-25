@@ -154,7 +154,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   const savedState = getSavedState();
 
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(savedState?.platform || 'wechat');
-  const [selectedStyle, setSelectedStyle] = useState<'default' | 'tech' | 'minimal' | 'elegant'>(savedState?.style || 'default');
+  const [selectedStyle, setSelectedStyle] = useState<'default' | 'minimal' | 'elegant' | 'tech' | 'card' | 'print' | 'night'>(savedState?.style || 'default');
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewText, setPreviewText] = useState('');
   const [isConverting, setIsConverting] = useState(false);
@@ -979,15 +979,24 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     }}
                     className="text-sm border border-white/10 rounded-lg px-3 py-1.5 bg-white/5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent [&>option]:bg-[#020617] [&>option]:text-zinc-200 w-full sm:w-auto"
                   >
-                    <option value="default">默认样式</option>
-                    <option value="tech" disabled={!hasFeature('advanced-styles')}>
-                      技术风格（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
-                    </option>
+                    <option value="default">清爽简约</option>
                     <option value="minimal" disabled={!hasFeature('advanced-styles')}>
-                      简约风格（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                      极简留白（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
                     </option>
                     <option value="elegant" disabled={!hasFeature('advanced-styles')}>
-                      雅致杂志（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                      杂志雅致（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                    <option value="tech" disabled={!hasFeature('advanced-styles')}>
+                      极客技术（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                    <option value="card" disabled={!hasFeature('advanced-styles')}>
+                      卡片模块（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                    <option value="print" disabled={!hasFeature('advanced-styles')}>
+                      书刊印刷（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                    <option value="night" disabled={!hasFeature('advanced-styles')}>
+                      夜幕墨黑（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
                     </option>
                   </select>
                 </>

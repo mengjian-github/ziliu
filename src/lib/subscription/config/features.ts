@@ -128,7 +128,7 @@ export const FEATURES: Record<string, FeatureConfig> = {
   'advanced-styles': {
     id: 'advanced-styles',
     name: '专业样式',
-    description: '使用技术风格和简约风格模板',
+    description: '极简、杂志、极客、卡片、书刊、夜间主题',
     plans: ['pro']
   },
 
@@ -189,7 +189,7 @@ export const UPGRADE_PROMPTS: Record<string, UpgradePromptConfig> = {
 
   'style-locked': {
     title: '使用专业样式',
-    description: '技术风格和简约风格让你的文章更出彩',
+    description: '高级主题让你的文章更出彩',
     features: ['advanced-styles'],
     cta: '解锁专业样式',
     style: 'inline'
