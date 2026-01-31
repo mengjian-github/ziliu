@@ -38,8 +38,8 @@ export function convertToWechatInline(
 
   const html = marked(processMathFormulas(markdown)) as string;
 
-  // 预处理HTML，解决格式问题
-  const cleanedHtml = preprocessHtmlForWechat(html, styleKey);
+  // 预处理HTML，解决格式问题（传入 mode 以正确选择标题样式）
+  const cleanedHtml = preprocessHtmlForWechat(html, styleKey, mode);
 
   // 获取根据样式的内联样式映射
   const theme = WECHAT_STYLES[styleKey] || WECHAT_STYLES.default;
@@ -74,7 +74,7 @@ function processMathFormulas(markdown: string): string {
 }
 
 // 预处理HTML，解决微信公众号编辑器的格式问题
-function preprocessHtmlForWechat(html: string, styleKey: keyof typeof WECHAT_STYLES): string {
+function preprocessHtmlForWechat(html: string, styleKey: keyof typeof WECHAT_STYLES, mode: 'day' | 'night' = 'day'): string {
   let processedHtml = html;
 
   // 0. 保护代码块，避免后续清理误伤格式
@@ -115,8 +115,9 @@ function preprocessHtmlForWechat(html: string, styleKey: keyof typeof WECHAT_STY
   });
 
   // 2.5 兼容微信公众号：将 h1/h2/h3 转为等价的 p 内联样式（使用当前主题样式），避免 h 标签被剥离
-  // 获取当前主题的 header 样式作为基础
-  const inlineStyles = WECHAT_STYLES[styleKey]?.inline || WECHAT_STYLES.default.inline;
+  // 获取当前主题的 header 样式作为基础（根据 mode 选择日间/夜间样式）
+  const theme = WECHAT_STYLES[styleKey] || WECHAT_STYLES.default;
+  const inlineStyles = mode === 'night' ? (theme.inlineDark || theme.inline) : theme.inline;
   const h1Style = inlineStyles.h1 || '';
   const h2Style = inlineStyles.h2 || '';
   const h3Style = inlineStyles.h3 || '';

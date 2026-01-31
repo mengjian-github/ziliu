@@ -88,7 +88,7 @@ export default function ExtensionPage() {
     try {
       // 创建下载链接
       const link = document.createElement('a');
-      const href = latest?.url || '/ziliu-extension-v2.0.2.zip';
+      const href = latest?.url || '/ziliu-extension-v2.0.3.zip';
       link.href = href; // 默认回退
       link.download = href.split('/').pop() || 'ziliu-extension.zip';
       link.click();
@@ -105,7 +105,7 @@ export default function ExtensionPage() {
       <div className="relative z-[60] bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-2 flex items-center justify-center gap-3 text-sm">
           <Badge className="bg-blue-500 text-white border-none">NEW</Badge>
-          <span className="text-blue-100 font-medium">v2.0.2 版本已发布：修复已知问题，优化使用体验</span>
+          <span className="text-blue-100 font-medium">v2.0.3 版本已发布：优化公众号夜间模式样式</span>
           <span className="hidden sm:inline text-blue-300/60 transition-transform group-hover:translate-x-1">🚀</span>
         </div>
       </div>

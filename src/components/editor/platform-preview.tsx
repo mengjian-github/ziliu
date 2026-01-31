@@ -672,7 +672,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     } finally {
       setIsConverting(false);
     }
-  }, [finalContent, content, shortTextCache, generateShortTextContent, loadShortTextContent, selectedPlatform, articleId]);
+  }, [finalContent, content, shortTextCache, generateShortTextContent, loadShortTextContent, selectedPlatform, articleId, wechatTheme]);
 
   // 自动预览
   useEffect(() => {
