@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { content, platform, style, mode } = convertSchema.parse(body);
 
-    // 所有平台都使用相同的转换逻辑，只是样式不同
-    const result = previewConversion(content, style as keyof typeof WECHAT_STYLES, mode as 'day' | 'night');
+    // 根据平台使用不同的转换逻辑（zsxq 有独立的 CSS 白名单限制）
+    const result = previewConversion(content, style as keyof typeof WECHAT_STYLES, mode as 'day' | 'night', platform);
 
     return NextResponse.json({
       success: true,

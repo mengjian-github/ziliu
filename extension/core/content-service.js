@@ -121,7 +121,8 @@ class ZiliuContentService {
 
         if (platformContentType === 'html') {
           // HTML 平台：走 convert API 生成内联样式
-          const targetFormat = platformId === 'zhihu' ? 'zhihu' : 'wechat';
+          // zsxq 使用专属转换器（CSS 白名单限制）
+          const targetFormat = platformId === 'zsxq' ? 'zsxq' : (platformId === 'zhihu' ? 'zhihu' : 'wechat');
           console.log('📝 处理普通平台数据，转换为HTML格式:', targetFormat);
 
           contentForFill = await this.convertArticleFormat(

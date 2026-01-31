@@ -293,12 +293,164 @@ function applyInlineStyles(html: string, styles: Record<string, string>): string
   return styledHtml;
 }
 
+/**
+ * 转换 Markdown 到知识星球优化 HTML
+ * 
+ * zsxq API 的 CSS 白名单非常严格，只保留以下属性的值：
+ * display, font-size, color, margin, text-align, line-height
+ * 
+ * 其他属性（background, padding, font-weight, border, border-radius,
+ * box-shadow, font-family 等）的值会被剥掉，只留下属性名。
+ * 
+ * 策略：
+ * - 用 font-size + color 区分标题层次
+ * - 用 <strong> 标签实现粗体（font-weight CSS 被剥掉）
+ * - 用 color 做视觉区分（引用、代码等）
+ * - 保持良好的 margin 垂直节奏
+ * - 不使用任何会被剥掉的属性
+ */
+export function convertToZsxq(markdown: string): string {
+  marked.setOptions({ breaks: true, gfm: true });
+
+  const html = marked(processMathFormulas(markdown)) as string;
+
+  // zsxq 安全的样式定义（只用白名单属性）
+  const S = {
+    h1: 'display: block; font-size: 24px; color: #1a1a1a; margin: 32px 0 16px; line-height: 1.4',
+    h2: 'display: block; font-size: 20px; color: #2563EB; margin: 28px 0 14px; line-height: 1.4',
+    h3: 'display: block; font-size: 18px; color: #1a1a1a; margin: 24px 0 12px; line-height: 1.4',
+    h4: 'display: block; font-size: 17px; color: #374151; margin: 20px 0 10px; line-height: 1.4',
+    p:  'display: block; font-size: 16px; color: #374151; margin: 14px 0; line-height: 1.9; text-align: justify',
+    blockquote: 'display: block; color: #6B7280; font-size: 15px; margin: 16px 0; line-height: 1.8',
+    pre: 'display: block; font-size: 13px; color: #1F2937; margin: 16px 0; line-height: 1.6',
+    code: 'display: inline; font-size: 14px; color: #2563EB',
+    li:  'display: block; font-size: 16px; color: #374151; margin: 6px 0; line-height: 1.8',
+    img: 'display: block; margin: 18px 0',
+    a:   'color: #2563EB',
+    hr:  'display: block; margin: 28px 0; line-height: 0.5; text-align: center; color: #D1D5DB',
+    th:  'font-size: 14px; color: #1F2937; text-align: left',
+    td:  'font-size: 14px; color: #374151',
+    strong: 'color: #111827',
+  };
+
+  let result = html;
+
+  // --- 标题：转为 <p> + <strong>，用 font-size 和 color 区分层次 ---
+  result = result
+    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_, t) =>
+      `<p style="${S.h1}"><strong style="${S.strong}">${t}</strong></p>`)
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_, t) =>
+      `<p style="${S.h2}"><strong>${t}</strong></p>`)
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_, t) =>
+      `<p style="${S.h3}"><strong style="${S.strong}">${t}</strong></p>`)
+    .replace(/<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi, (_, t) =>
+      `<p style="${S.h4}"><strong style="${S.strong}">${t}</strong></p>`);
+
+  // --- 段落 ---
+  result = result.replace(/<p([^>]*)>/gi, (match, attrs) => {
+    // 跳过已处理的（带 style 的）
+    if (attrs && attrs.includes('style=')) return match;
+    return `<p style="${S.p}">`;
+  });
+
+  // --- 引用块 ---
+  result = result.replace(/<blockquote>/gi, `<blockquote style="${S.blockquote}">「`);
+  result = result.replace(/<\/blockquote>/gi, '」</blockquote>');
+
+  // --- 代码块 ---
+  // 保护代码块内容
+  result = result.replace(
+    /<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
+    (_match, codeAttrs, codeContent) => {
+      const protectedCode = String(codeContent)
+        .replace(/\t/g, '    ')
+        .replace(/\n/g, '<br/>');
+      return `<p style="${S.pre}"><code${codeAttrs} style="${S.code}">${protectedCode}</code></p>`;
+    }
+  );
+
+  // --- 行内代码 ---
+  result = result.replace(/<code>([^<]+)<\/code>/g,
+    (_, content) => `<code style="${S.code}">「${content}」</code>`);
+
+  // --- 列表：转为 div + 文本符号 ---
+  // 有序列表
+  result = result.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, listContent) => {
+    let counter = 1;
+    const items = listContent.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_: string, liContent: string) => {
+      const clean = liContent.replace(/<p[^>]*>/gi, '').replace(/<\/p>/gi, '');
+      return `<p style="${S.li}">${counter++}. ${clean}</p>`;
+    });
+    return `<div style="margin: 14px 0">${items}</div>`;
+  });
+
+  // 无序列表
+  result = result.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_, listContent) => {
+    const items = listContent.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_: string, liContent: string) => {
+      const clean = liContent.replace(/<p[^>]*>/gi, '').replace(/<\/p>/gi, '');
+      return `<p style="${S.li}">• ${clean}</p>`;
+    });
+    return `<div style="margin: 14px 0">${items}</div>`;
+  });
+
+  // --- 图片 ---
+  result = result.replace(/<img([^>]*)>/gi, (match, attrs) => {
+    if (attrs.includes('class="formula')) return match; // 保留公式图片
+    // 只保留 src 和 alt
+    const srcMatch = attrs.match(/src="([^"]*)"/i);
+    const altMatch = attrs.match(/alt="([^"]*)"/i);
+    const src = srcMatch ? srcMatch[1] : '';
+    const alt = altMatch ? altMatch[1] : '';
+    return `<img src="${src}" alt="${alt}" style="${S.img}">`;
+  });
+
+  // --- 链接 ---
+  result = result.replace(/<a([^>]*)>/gi, (match, attrs) => {
+    if (attrs.includes('style=')) return match;
+    const hrefMatch = attrs.match(/href="([^"]*)"/i);
+    const href = hrefMatch ? hrefMatch[1] : '';
+    return `<a href="${href}" style="${S.a}">`;
+  });
+
+  // --- 分割线（用文本替代，因为 border 会被剥掉）---
+  result = result.replace(/<hr\s*\/?>/gi,
+    `<p style="${S.hr}">—— ✦ ——</p>`);
+
+  // --- 表格 ---
+  result = result.replace(/<th([^>]*)>/gi, `<th style="${S.th}">`);
+  result = result.replace(/<td([^>]*)>/gi, `<td style="${S.td}">`);
+
+  // --- 加粗标签增强 ---
+  result = result.replace(/<strong>/gi, `<strong style="${S.strong}">`);
+
+  // --- 清理 ---
+  result = result
+    .replace(/>\s+</g, '><') // 清理标签间空白
+    .replace(/<section[^>]*>/gi, '<div>')
+    .replace(/<\/section>/gi, '</div>');
+
+  return result;
+}
+
 // 预览转换结果
-export function previewConversion(markdown: string, styleKey: keyof typeof WECHAT_STYLES = 'default', mode: 'day' | 'night' = 'day') {
+export function previewConversion(markdown: string, styleKey: keyof typeof WECHAT_STYLES = 'default', mode: 'day' | 'night' = 'day', platform: string = 'wechat') {
+  const wordCount = markdown.replace(/\s/g, '').length;
+  const readingTime = Math.ceil(wordCount / 300);
+
+  // 知识星球使用专属转换器
+  if (platform === 'zsxq') {
+    const html = convertToZsxq(markdown);
+    return {
+      html,
+      inlineHtml: html,
+      wordCount,
+      readingTime,
+      style: '知识星球',
+    };
+  }
+
   const html = convertToWechat(markdown, styleKey, mode);
   const inlineHtml = convertToWechatInline(markdown, styleKey, mode);
-  const wordCount = markdown.replace(/\s/g, '').length;
-  const readingTime = Math.ceil(wordCount / 300); // 假设每分钟阅读300字
 
   return {
     html, // 用于预览的HTML（带CSS类）

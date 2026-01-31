@@ -974,17 +974,14 @@ class ZsxqPlatformPlugin extends BasePlatformPlugin {
 
   /**
    * 发布到单个星球
+   * 注意：data.content 已由 content-service 通过 convert API 转换为带内联样式的 HTML，
+   * 这里不要再调用 convert API，否则会导致双重转换（HTML 被当作 markdown 再解析一次）。
+   * 但需要做 zsxq CSS 白名单适配（zsxq API 会剥掉大部分 CSS 属性值）。
    */
   async publishToGroup(data, group) {
     try {
       const groupId = group.groupId || group;
       
-      // 获取当前选择的样式和模式
-      const storedData = await this.getStoredContentData(data.articleId);
-      const style = storedData?.style || 'default';
-      const mode = storedData?.mode || 'day';
-      
-      // 处理内容：调用convert API获取带样式的HTML
       let contentToPublish = '';
       
       // 添加预设开头内容
@@ -993,41 +990,14 @@ class ZsxqPlatformPlugin extends BasePlatformPlugin {
         contentToPublish += currentPreset.headerContent + '\n\n';
       }
       
-      // 获取带样式的HTML内容
+      // data.content 已经是 content-service 转换好的带内联样式 HTML
       if (data.content) {
-        try {
-          const convertResponse = await fetch(`${window.ZiliuApiService.baseUrl}/api/convert`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              content: data.content,
-              platform: 'zsxq',
-              style: style,
-              mode: mode
-            })
-          });
-          
-          const convertData = await convertResponse.json();
-          if (convertData.success && convertData.data?.inlineHtml) {
-            // 使用带内联样式的HTML
-            let styledHtml = convertData.data.inlineHtml;
-            // 处理列表标签以适配知识星球
-            styledHtml = this.convertListsForZsxq(styledHtml);
-            contentToPublish += styledHtml;
-          } else {
-            // 降级：使用原始内容
-            console.warn('转换失败，使用原始内容');
-            let processedContent = this.unescapeContent(data.content);
-            contentToPublish += this.convertListsForZsxq(processedContent);
-          }
-        } catch (error) {
-          console.error('调用convert API失败:', error);
-          // 降级：使用原始内容
-          let processedContent = this.unescapeContent(data.content);
-          contentToPublish += this.convertListsForZsxq(processedContent);
-        }
+        let styledHtml = data.content;
+        // 1. 适配知识星球 CSS 白名单（移除 zsxq 会剥掉的属性，修复标题样式等）
+        styledHtml = this.sanitizeForZsxq(styledHtml);
+        // 2. 处理列表标签以适配知识星球
+        styledHtml = this.convertListsForZsxq(styledHtml);
+        contentToPublish += styledHtml;
       }
       
       // 添加预设结尾内容
@@ -1058,6 +1028,117 @@ class ZsxqPlatformPlugin extends BasePlatformPlugin {
         error: error.message
       };
     }
+  }
+
+  /**
+   * 知识星球 CSS 白名单适配
+   * zsxq API 只保留部分 CSS 属性值（display, font-size, color, margin, text-align, line-height）
+   * 其他属性（background, padding, font-weight, border, border-radius, box-shadow 等）的值会被剥掉
+   * 
+   * 策略：
+   * 1. 只保留 zsxq 支持的 CSS 属性
+   * 2. 标题：背景色方案 → 文字色方案（蓝底白字 → 蓝色加粗大字）
+   * 3. 用 <strong>/<b> 标签替代 font-weight CSS
+   * 4. 简化代码块、引用块、表格样式
+   */
+  sanitizeForZsxq(html) {
+    if (!html) return '';
+
+    // zsxq 允许保留值的 CSS 属性白名单
+    const ALLOWED_PROPS = new Set([
+      'display', 'font-size', 'color', 'margin', 'margin-top', 'margin-bottom',
+      'margin-left', 'margin-right', 'text-align', 'line-height'
+    ]);
+
+    /**
+     * 从 style 字符串中只保留白名单属性
+     */
+    const filterStyle = (styleStr) => {
+      if (!styleStr) return '';
+      const pairs = styleStr.split(';').map(s => s.trim()).filter(Boolean);
+      const kept = [];
+      for (const pair of pairs) {
+        const colonIdx = pair.indexOf(':');
+        if (colonIdx === -1) continue;
+        const prop = pair.substring(0, colonIdx).trim().toLowerCase();
+        const val = pair.substring(colonIdx + 1).trim();
+        if (ALLOWED_PROPS.has(prop) && val) {
+          kept.push(`${prop}: ${val}`);
+        }
+      }
+      return kept.join('; ');
+    };
+
+    let result = html;
+
+    // --- 1. 处理标题（p[data-heading]）---
+    // 公众号标题常用 background + color:#fff + padding 方案
+    // zsxq 会剥掉 background/padding → 白字不可见
+    // 转换为：强调色文字 + <strong> 包裹
+    result = result.replace(
+      /<p([^>]*data-heading="(h[1-6])"[^>]*)>([\s\S]*?)<\/p>/gi,
+      (match, attrs, level, inner) => {
+        // 提取原 style
+        const styleMatch = attrs.match(/style="([^"]*)"/i);
+        const origStyle = styleMatch ? styleMatch[1] : '';
+
+        // 从原 style 中提取 font-size 和 margin
+        let fontSize = '20px';
+        let margin = '24px 0 16px';
+        const fsMatch = origStyle.match(/font-size:\s*([^;]+)/i);
+        const mMatch = origStyle.match(/margin:\s*([^;]+)/i);
+        if (fsMatch) fontSize = fsMatch[1].trim();
+        if (mMatch) margin = mMatch[1].trim();
+
+        // 检测原色是否为白色（说明原本是深色背景方案）
+        const colorMatch = origStyle.match(/color:\s*([^;]+)/i);
+        const origColor = colorMatch ? colorMatch[1].trim().toLowerCase() : '';
+        const isWhiteText = origColor === '#fff' || origColor === '#ffffff' || origColor === 'white' || origColor === 'rgb(255, 255, 255)';
+
+        // 用强调色（蓝色）作为标题色；如果原色不是白色则保留
+        const headingColor = isWhiteText ? '#2563EB' : (origColor || '#1F2937');
+
+        const newStyle = `display: block; font-size: ${fontSize}; color: ${headingColor}; margin: ${margin}; line-height: 1.4`;
+        return `<p data-heading="${level}" style="${newStyle}"><strong>${inner}</strong></p>`;
+      }
+    );
+
+    // --- 2. 处理普通元素的 style 属性 ---
+    // 保留白名单属性，移除其他
+    result = result.replace(
+      /(<(?:p|div|span|section|blockquote|pre|code|td|th|table|img|a|strong|em|b|i|hr))((?:\s+[^>]*?)?)(\s*\/?>)/gi,
+      (match, tagStart, attrs, tagEnd) => {
+        if (!attrs) return match;
+        // 跳过已处理的 heading
+        if (attrs.includes('data-heading=')) return match;
+
+        const styleMatch = attrs.match(/style="([^"]*)"/i);
+        if (!styleMatch) return match;
+
+        const origStyle = styleMatch[1];
+        const newStyle = filterStyle(origStyle);
+
+        if (!newStyle) {
+          // 无有效样式，移除 style 属性
+          const newAttrs = attrs.replace(/\s*style="[^"]*"/i, '');
+          return tagStart + newAttrs + tagEnd;
+        }
+
+        const newAttrs = attrs.replace(/style="[^"]*"/i, `style="${newStyle}"`);
+        return tagStart + newAttrs + tagEnd;
+      }
+    );
+
+    // --- 3. 移除 section 包裹（zsxq 可能不支持）---
+    result = result.replace(/<section[^>]*style="[^"]*"[^>]*>/gi, '<div>');
+    result = result.replace(/<\/section>/gi, '</div>');
+
+    // --- 4. 移除 data-tools 等微信专属属性 ---
+    result = result.replace(/\s*data-tools="[^"]*"/gi, '');
+    result = result.replace(/\s*data-heading="[^"]*"/gi, '');
+
+    console.log('✅ 知识星球 CSS 适配完成');
+    return result;
   }
 
   /**
