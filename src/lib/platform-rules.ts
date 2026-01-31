@@ -108,6 +108,15 @@ const PUBLISH_SCHEDULES: Partial<Record<Platform, PlatformSchedule>> = {
     ],
     good: [],
   },
+  linkedin: {
+    best: [
+      { start: 7, end: 9, label: '上班前刷LinkedIn' },
+      { start: 12, end: 13, label: '午休浏览' },
+    ],
+    good: [
+      { start: 17, end: 18, label: '下班前' },
+    ],
+  },
 };
 
 export type PublishTimeStatus = 'best' | 'good' | 'low';
@@ -206,6 +215,7 @@ const TRAFFIC_SENSITIVE: Record<string, string[]> = {
   zhihu: [],
   bilibili: [],
   jike: [],
+  linkedin: [],
 };
 
 /**
@@ -296,6 +306,7 @@ function getPlatformName(platform: Platform): string {
     video_wechat: '视频号',
     wechat: '公众号',
     juejin: '掘金',
+    linkedin: 'LinkedIn',
   };
   return names[platform] || platform;
 }
@@ -325,6 +336,7 @@ export const COVER_SPECS: Partial<Record<Platform, CoverSpec | CoverSpec[]>> = {
   youtube: { width: 1280, height: 720, ratio: '16:9', label: 'YouTube' },
   zhihu: { width: 690, height: 388, ratio: '16:9', label: '知乎专栏' },
   weibo: { width: 1080, height: 1080, ratio: '1:1', label: '微博方图' },
+  linkedin: { width: 1200, height: 627, ratio: '1.91:1', label: 'LinkedIn 帖子配图' },
 };
 
 // ============================================================
@@ -353,6 +365,7 @@ export const CONTENT_LIMITS: Partial<Record<Platform, ContentLimits>> = {
   weibo: { contentMax: 2000 },
   jike: { contentMax: 2000 },
   x: { contentMax: 4000 },
+  linkedin: { contentMax: 3000 },
   douyin: { speechMin: 200, speechMax: 400, durationMin: 60, durationMax: 120 },
   bilibili: { speechMin: 500, speechMax: 4500, durationMin: 180, durationMax: 900 },
   video_wechat: { speechMin: 200, speechMax: 500, durationMin: 60, durationMax: 300 },
@@ -626,6 +639,38 @@ export const TRAFFIC_TEMPLATES: Partial<Record<Platform, TrafficTemplate[]>> = {
       template: '我把这个系列的所有分享整理成了日记集锦，点我主页就能看到完整合集 📝',
       risk: 'safe',
       note: '即刻日记功能适合做内容归档，方便粉丝回顾',
+    },
+  ],
+  linkedin: [
+    {
+      method: '关注引导',
+      template: '关注我的 LinkedIn，了解更多行业洞察和实操经验分享 🔔',
+      risk: 'safe',
+      note: 'LinkedIn 鼓励用户互相关注，引导关注完全合规',
+    },
+    {
+      method: '评论区互动',
+      template: '你怎么看这个观点？评论区留言交流，我会一一回复 💬',
+      risk: 'safe',
+      note: '评论互动有利于帖子算法推荐，LinkedIn 非常鼓励深度讨论',
+    },
+    {
+      method: '个人简介引导',
+      template: '更多资源和联系方式在我的 Profile 个人简介中，点击头像即可查看 👤',
+      risk: 'safe',
+      note: 'LinkedIn Profile 支持放置网站链接、联系方式，非常适合引流',
+    },
+    {
+      method: 'Newsletter 订阅',
+      template: '我每周发布一期 Newsletter，深度解析行业趋势，点击"订阅"不错过 📩',
+      risk: 'safe',
+      note: 'LinkedIn Newsletter 是平台官方功能，订阅引导完全安全',
+    },
+    {
+      method: '帖子附带外链',
+      template: '完整文章/资源链接放在评论区第一条了，需要的自取 ⬇️',
+      risk: 'moderate',
+      note: 'LinkedIn 会降权含外链的帖子，建议将链接放在评论区而非正文中',
     },
   ],
 };

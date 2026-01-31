@@ -13,6 +13,7 @@ const SHORT_TEXT_PLATFORMS = [
   'weibo',
   'jike',
   'x',
+  'linkedin',
 ] as const;
 
 const generateSchema = z.object({
@@ -31,6 +32,7 @@ const OUTPUT_LIMITS: Record<ShortTextPlatform, { titleMax?: number; contentMax?:
   weibo: { contentMax: 2000, tagMax: 5 },
   jike: { contentMax: 2000, tagMax: 5 },
   x: { contentMax: 4000, tagMax: 8 },
+  linkedin: { contentMax: 3000, tagMax: 5 },
 };
 
 const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
@@ -130,6 +132,34 @@ Requirements:
 Output MUST be strict JSON only:
 {"content":"...","tags":["..."]}`,
 
+  linkedin: `
+你是 LinkedIn 资深内容运营。请把原始内容改写为适合 LinkedIn 发布的职业动态。
+
+风格要求：
+- 专业但有温度，像行业专家在分享观点
+- 善用「换行留白」提升可读性（LinkedIn 算法偏好长停留时间）
+- 开头第一行必须是 hook（问题/数据/反常识），因为 LinkedIn 只展示前 3 行
+- 可以用 emoji 做段落标记，但不要过度（每3-5行1个）
+- 适合的人称："I/我" + 个人经验分享
+
+结构建议：
+1) Hook（第一行抓人）
+2) 故事/案例/数据（中间内容）
+3) 洞察/观点（核心价值）
+4) CTA（互动引导："Agree? Drop your thoughts below." / "你怎么看？评论区聊聊"）
+
+要求：
+1) 正文 200-1500 字符，保持输入语言（中文输入→中文输出，英文→英文）
+2) 每1-3句换一行（LinkedIn 的竖向排版更吸引注意力）
+3) 不要 Markdown 语法，不要输出图片 URL
+4) 1-5个话题标签（不带#号，直接给词）
+5) 如果内容偏英文/国际化，标签也用英文
+
+❌ 禁止：AI 套话、过于正式的商务信函语气、堆砌 emoji
+
+输出必须是严格 JSON：
+{"content":"...","tags":["..."]}`,
+
 };
 
 const MODEL_MAP: Record<ShortTextPlatform, string> = {
@@ -138,6 +168,7 @@ const MODEL_MAP: Record<ShortTextPlatform, string> = {
   weibo: 'openai/gpt-4o-mini',
   jike: 'openai/gpt-4o-mini',
   x: 'openai/gpt-4o-mini',
+  linkedin: 'openai/gpt-4o-mini',
 };
 
 const aiOutputSchema = z.object({
@@ -460,7 +491,7 @@ function stripEmojis(text: string): string {
 }
 
 function formatShortTextContent(platform: ShortTextPlatform, content: string): string {
-  if (platform !== 'weibo' && platform !== 'jike' && platform !== 'x') {
+  if (platform !== 'weibo' && platform !== 'jike' && platform !== 'x' && platform !== 'linkedin') {
     return content;
   }
 
@@ -525,6 +556,13 @@ function fallbackShortText(input: {
     return {
       content: formatShortTextContent('x', short.slice(0, 4000)),
       tags: ['thoughts', ...commonTags].slice(0, 8),
+    };
+  }
+
+  if (input.platform === 'linkedin') {
+    return {
+      content: formatShortTextContent('linkedin', `${short.slice(0, 1500)}\n\n你怎么看？评论区聊聊。`),
+      tags: ['行业洞察', ...commonTags].slice(0, 5),
     };
   }
 

@@ -94,6 +94,13 @@ const SHORT_TEXT_PLATFORMS = [
     icon: '𝕏',
     color: 'bg-black',
     description: 'X（Twitter）'
+  },
+  {
+    id: 'linkedin' as Platform,
+    name: 'LinkedIn',
+    icon: '💼',
+    color: 'bg-blue-700',
+    description: 'LinkedIn 职业动态'
   }
 ];
 
@@ -748,6 +755,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       case 'weibo': return 'https://weibo.com/';
       case 'jike': return 'https://web.okjike.com/';
       case 'x': return 'https://x.com/compose/post';
+      case 'linkedin': return 'https://www.linkedin.com/feed/';
       case 'video_wechat': return 'https://channels.weixin.qq.com/platform/post/create';
       case 'douyin': return 'https://creator.douyin.com/creator-micro/content/post/video';
       case 'bilibili': return 'https://member.bilibili.com/platform/upload/video/frame';

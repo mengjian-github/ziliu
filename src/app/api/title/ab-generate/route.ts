@@ -16,6 +16,7 @@ const SUPPORTED_PLATFORMS = [
   'video_wechat',
   'xiaohongshu',
   'youtube',
+  'linkedin',
 ] as const;
 
 type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number];
@@ -108,6 +109,8 @@ const PLATFORM_TITLE_RULES: Record<string, string> = {
 - 可加 1-2 个 emoji
 - 有场景感和结果感
 - 示例风格："3分钟学会🔥这个效果太绝了"`,
+
+  linkedin: '第一行即 hook，≤100字符，专业+洞察感。用问句/数据/反常识开头。避免 clickbait。',
 
   youtube: `YouTube 标题规则：
 - English-friendly

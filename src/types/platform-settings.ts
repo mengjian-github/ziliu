@@ -9,7 +9,8 @@ export type ShortTextPlatform =
   | 'xiaohongshu_note'
   | 'weibo'
   | 'jike'
-  | 'x';
+  | 'x'
+  | 'linkedin';
 
 // 文本平台（长图文 + 短图文）
 export type TextPlatform = LongTextPlatform | ShortTextPlatform;
@@ -96,6 +97,10 @@ export interface JikeSettings extends BasePlatformSettings {
 
 export interface XSettings extends BasePlatformSettings {
   platform: 'x';
+}
+
+export interface LinkedInSettings extends BasePlatformSettings {
+  platform: 'linkedin';
 }
 
 // 视频平台设置
@@ -200,6 +205,14 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformInfo> = {
     description: 'X（Twitter）短帖发布',
     supportedFeatures: ['短文案', '线程拆分（规划）', '标签建议（规划）']
   },
+  linkedin: {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    icon: '💼',
+    color: 'bg-blue-700',
+    description: 'LinkedIn 职业动态发布',
+    supportedFeatures: ['短文案', '话题标签', '链接预览']
+  },
   video_wechat: {
     id: 'video_wechat',
     name: '视频号',
@@ -252,7 +265,7 @@ export function isLongTextPlatform(platform: Platform): platform is LongTextPlat
 }
 
 export function isShortTextPlatform(platform: Platform): platform is ShortTextPlatform {
-  return ['wechat_xiaolushu', 'xiaohongshu_note', 'weibo', 'jike', 'x'].includes(platform as ShortTextPlatform);
+  return ['wechat_xiaolushu', 'xiaohongshu_note', 'weibo', 'jike', 'x', 'linkedin'].includes(platform as ShortTextPlatform);
 }
 
 export function isTextPlatform(platform: Platform): platform is TextPlatform {
