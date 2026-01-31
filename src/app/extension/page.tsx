@@ -23,7 +23,7 @@ import {
 export default function ExtensionPage() {
   const [extensionStatus, setExtensionStatus] = useState<'checking' | 'installed' | 'not-installed'>('checking');
   const [isDownloading, setIsDownloading] = useState(false);
-  const [latest, setLatest] = useState<{ version?: string; url?: string } | null>(null);
+  const [latest, setLatest] = useState<{ version?: string; url?: string; changelog?: string } | null>(null);
 
   // 加载最新插件包信息
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function ExtensionPage() {
       <div className="relative z-[60] bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-2 flex items-center justify-center gap-3 text-sm">
           <Badge className="bg-blue-500 text-white border-none">NEW</Badge>
-          <span className="text-blue-100 font-medium">v2.0.7 版本已发布：新增知识星球专属排版优化</span>
+          <span className="text-blue-100 font-medium">{latest?.version ? `v${latest.version}` : ''} 版本已发布{latest?.changelog ? `：${latest.changelog}` : ''}</span>
           <span className="hidden sm:inline text-blue-300/60 transition-transform group-hover:translate-x-1">🚀</span>
         </div>
       </div>
