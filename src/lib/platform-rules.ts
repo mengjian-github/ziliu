@@ -359,3 +359,286 @@ export const CONTENT_LIMITS: Partial<Record<Platform, ContentLimits>> = {
   xiaohongshu: { speechMin: 200, speechMax: 400, durationMin: 60, durationMax: 120 },
   youtube: { speechMin: 500, speechMax: 2000, durationMin: 180, durationMax: 480 },
 };
+
+// ============================================================
+// 安全引流模板库
+// ============================================================
+
+export interface TrafficTemplate {
+  method: string;       // 引流方式名称
+  template: string;     // 可直接使用的文案模板
+  risk: 'safe' | 'moderate' | 'risky';  // 风险等级
+  note: string;         // 注意事项
+}
+
+export const TRAFFIC_TEMPLATES: Partial<Record<Platform, TrafficTemplate[]>> = {
+  xiaohongshu_note: [
+    {
+      method: '主页置顶笔记',
+      template: '想了解更多干货？看我主页置顶笔记，整理好了完整攻略 📌',
+      risk: 'safe',
+      note: '确保置顶笔记不含违规内容，适合引导到自己其他笔记',
+    },
+    {
+      method: '评论区回复引导',
+      template: '需要的姐妹评论区扣"要"，我一个个私信发给你们～',
+      risk: 'safe',
+      note: '通过评论互动引导私信，增加笔记互动权重',
+    },
+    {
+      method: '小红书群聊',
+      template: '我建了一个交流群，感兴趣的宝子点我头像进群聊，每天分享实用技巧 🎯',
+      risk: 'safe',
+      note: '小红书群聊是平台自有功能，不会被判为站外引流',
+    },
+    {
+      method: '搜索同名账号',
+      template: '全网同名哦～其他平台搜"XXX"就能找到我，内容更全 ✨',
+      risk: 'moderate',
+      note: '不要直接提及具体平台名称，只说"全网同名"即可',
+    },
+    {
+      method: '首字母缩写',
+      template: '资料包在我的 gzh：X X X（首字母），回复"666"自动获取',
+      risk: 'moderate',
+      note: '使用首字母缩写降低被检测概率，但仍有风险，不宜高频使用',
+    },
+    {
+      method: '直接提及微信（高风险）',
+      template: '加V：XXXXX，备注小红书',
+      risk: 'risky',
+      note: '⚠️ 极易被限流/删帖/封号，强烈不建议在正文和评论中使用',
+    },
+  ],
+  xiaohongshu: [
+    {
+      method: '视频口播引导主页',
+      template: '更多教程看我主页，置顶笔记有完整合集 📌',
+      risk: 'safe',
+      note: '视频口播中自然提及，比文字更难被审核检测',
+    },
+    {
+      method: '评论区互动',
+      template: '有问题评论区问我，我会一一回复～也可以私信我领资料包 📦',
+      risk: 'safe',
+      note: '引导到私信是平台内行为，相对安全',
+    },
+    {
+      method: '小红书群聊',
+      template: '点我头像，加入粉丝群，群里有独家分享和答疑 🔥',
+      risk: 'safe',
+      note: '利用小红书群聊功能，官方支持的引流方式',
+    },
+    {
+      method: '全网同名搜索',
+      template: '全网同名"XXX"，各平台都能找到我，更多内容等你发现 🌐',
+      risk: 'moderate',
+      note: '适合视频结尾口播，不直接提及其他平台名称',
+    },
+  ],
+  douyin: [
+    {
+      method: '主页联系方式',
+      template: '想合作/咨询的朋友，主页有联系方式，直接点我头像就能看到 👆',
+      risk: 'safe',
+      note: '抖音允许在主页简介放联系方式（需开通企业号效果更好）',
+    },
+    {
+      method: '评论区扣关键词',
+      template: '想要同款教程的家人们，评论区扣"1"，我私信发你 🎁',
+      risk: 'safe',
+      note: '高互动评论有利于视频推荐，扣1是抖音常见引流手法',
+    },
+    {
+      method: '粉丝群',
+      template: '加入我的粉丝群，群里每天更新独家内容，点我头像"粉丝群"按钮进入 🔥',
+      risk: 'safe',
+      note: '抖音粉丝群是平台功能，安全且有利于粉丝粘性',
+    },
+    {
+      method: '全平台同名搜索',
+      template: '全网同名搜索"XXX"，完整版内容在那边～',
+      risk: 'moderate',
+      note: '口播时自然带过，不要刻意强调，避免被审核标记',
+    },
+    {
+      method: '直接引导加微信（高风险）',
+      template: 'V我：XXXXX',
+      risk: 'risky',
+      note: '⚠️ 抖音对微信引流零容忍，极大概率限流/封号/重置账号',
+    },
+  ],
+  weibo: [
+    {
+      method: '置顶微博',
+      template: '详细内容整理在置顶微博了，去我主页看置顶，一篇说清楚 📌',
+      risk: 'safe',
+      note: '置顶微博是微博自有功能，引导查看不会触发审核',
+    },
+    {
+      method: '头条文章链接',
+      template: '完整版写成了头条文章，点我主页"文章"栏就能看到全文 📖',
+      risk: 'safe',
+      note: '微博头条文章支持长篇内容，适合深度引流',
+    },
+    {
+      method: '超话社区',
+      template: '我在#XXX超话#里发了更详细的教程，关注超话不迷路 🏠',
+      risk: 'safe',
+      note: '超话是微博生态内容，引导用户进入自己管理的超话非常安全',
+    },
+    {
+      method: '评论区放链接',
+      template: '链接放评论区了～点开评论第一条就是 ⬇️',
+      risk: 'moderate',
+      note: '微博对外链有一定限制，淘口令/短链有时会被吞，建议用微博自有功能',
+    },
+    {
+      method: '粉丝群',
+      template: '想持续获取分享，加我的微博粉丝群，群里干货更多 🤝',
+      risk: 'safe',
+      note: '微博粉丝群是平台功能，运营维护群聊可增强粉丝粘性',
+    },
+  ],
+  zhihu: [
+    {
+      method: '文末引用来源',
+      template: '以上内容整理自我的专栏文章，更多系列内容可以关注专栏「XXX」持续更新中 📚',
+      risk: 'safe',
+      note: '知乎鼓励原创内容引用，文末自然引导到自己的专栏非常安全',
+    },
+    {
+      method: '个人简介引导',
+      template: '想看更多干货？欢迎关注我，个人简介有完整资源汇总 📋',
+      risk: 'safe',
+      note: '知乎个人简介可以放站外链接（需达到一定创作等级）',
+    },
+    {
+      method: '专栏引导关注',
+      template: '这是我「XXX系列」的第N篇，关注专栏可以看到完整系列，持续更新 ✍️',
+      risk: 'safe',
+      note: '用系列内容制造连续阅读需求，自然引导关注',
+    },
+    {
+      method: '文中自然提及',
+      template: '关于这个话题，我之前在公号写过一篇深度分析，感兴趣的可以搜一下"XXX"',
+      risk: 'moderate',
+      note: '在文中自然提及即可，不要过于频繁，知乎对软广有一定容忍度',
+    },
+    {
+      method: '好物推荐卡片',
+      template: '我常用的工具都整理在"想法"里了，可以看看有没有适合你的 💡',
+      risk: 'safe',
+      note: '利用知乎"想法"功能发布轻量内容，引导查看',
+    },
+  ],
+  bilibili: [
+    {
+      method: '简介区链接',
+      template: '相关资源和工具链接放在视频简介区了，展开就能看到 ⬇️',
+      risk: 'safe',
+      note: 'B站简介区可以放外部链接，是最安全的引流位置',
+    },
+    {
+      method: '置顶评论',
+      template: '视频提到的所有工具/资源，我整理到置顶评论了，自取 📦',
+      risk: 'safe',
+      note: 'UP主可以置顶自己的评论，放链接或引导信息非常自然',
+    },
+    {
+      method: '动态发布',
+      template: '详细的图文教程发在我的动态了，配合视频食用效果更佳 ✨',
+      risk: 'safe',
+      note: 'B站动态支持图文，适合补充视频内容',
+    },
+    {
+      method: '口播提醒关注',
+      template: '觉得有用的话，一键三连支持一下，关注我不迷路，下期更精彩 🔔',
+      risk: 'moderate',
+      note: '口播引导关注是B站常见做法，但频率不宜过高，自然带过即可',
+    },
+    {
+      method: '充电/粉丝装扮',
+      template: '充电的同学可以加入专属粉丝群，群里有独家资源分享 💎',
+      risk: 'safe',
+      note: 'B站官方变现渠道，引导充电同时提供增值服务',
+    },
+  ],
+  wechat: [
+    {
+      method: '阅读原文链接',
+      template: '完整资料/工具链接，请点击文末「阅读原文」获取 👇',
+      risk: 'safe',
+      note: '阅读原文是公众号官方功能，可以放任何外链',
+    },
+    {
+      method: '公众号菜单',
+      template: '进入公众号主页，点击底部菜单「免费领取」获取完整资料包 📁',
+      risk: 'safe',
+      note: '公众号菜单是官方功能，适合放常用引流入口',
+    },
+    {
+      method: '引导关注',
+      template: '觉得有用的话，点个关注不迷路 ⭐ 后续还会持续更新同系列干货',
+      risk: 'safe',
+      note: '引导关注公众号是完全合规的，可以配合文末二维码',
+    },
+    {
+      method: '文末卡片/小程序',
+      template: '👇 点击下方卡片，即可跳转使用（或扫码体验）',
+      risk: 'safe',
+      note: '公众号支持插入小程序卡片、话题标签等，形式丰富且安全',
+    },
+    {
+      method: '历史消息引导',
+      template: '这是「XXX系列」第N篇，之前的内容可以在公众号发送"目录"获取合集 📖',
+      risk: 'safe',
+      note: '利用自动回复关键词引导阅读历史内容，增加粉丝粘性',
+    },
+  ],
+  jike: [
+    {
+      method: '个人简介',
+      template: '我的其他平台账号和联系方式都在个人简介里啦，点我头像就能看到 🏠',
+      risk: 'safe',
+      note: '即刻个人简介支持填写多个社交链接，社区对此非常宽容',
+    },
+    {
+      method: '评论互动引导',
+      template: '对这个话题感兴趣的朋友，欢迎评论讨论 💬 会一一回复～',
+      risk: 'safe',
+      note: '即刻社区鼓励互动，通过评论建立信任后再引导私信更自然',
+    },
+    {
+      method: '关联链接分享',
+      template: '相关的深度文章我写在了博客/公众号，链接附在评论区 📎',
+      risk: 'safe',
+      note: '即刻对外部链接分享非常友好，可以直接在动态中放链接',
+    },
+    {
+      method: '圈子/话题引导',
+      template: '我在"XXX"圈子里持续分享相关内容，感兴趣可以关注这个圈子 🎯',
+      risk: 'safe',
+      note: '即刻圈子类似话题社区，引导关注圈子是平台鼓励的行为',
+    },
+    {
+      method: '即刻日记/集锦',
+      template: '我把这个系列的所有分享整理成了日记集锦，点我主页就能看到完整合集 📝',
+      risk: 'safe',
+      note: '即刻日记功能适合做内容归档，方便粉丝回顾',
+    },
+  ],
+};
+
+/**
+ * 获取指定平台的安全引流模板列表
+ * @param platform 目标平台
+ * @returns 引流模板列表（按风险从低到高排序）
+ */
+export function getTrafficTemplates(platform: Platform): TrafficTemplate[] {
+  // xiaohongshu 视频版也使用 xiaohongshu 的模板（已有独立条目）
+  // xiaohongshu_note 和 xiaohongshu 各有独立模板
+  const templates = TRAFFIC_TEMPLATES[platform] || [];
+  const riskOrder: Record<TrafficTemplate['risk'], number> = { safe: 0, moderate: 1, risky: 2 };
+  return [...templates].sort((a, b) => riskOrder[a.risk] - riskOrder[b.risk]);
+}

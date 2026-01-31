@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Platform, isVideoPlatform, getPlatformType, PLATFORM_CONFIGS } from '@/types/platform-settings';
-import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon, Sparkles, Heart, MessageSquare, Star, User, MoreHorizontal, ChevronLeft, Send, Bookmark, Clock, ShieldCheck, AlertTriangle, Info } from 'lucide-react';
-import { getPublishTimeInfo, checkCompliance } from '@/lib/platform-rules';
+import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon, Sparkles, Heart, MessageSquare, Star, User, MoreHorizontal, ChevronLeft, Send, Bookmark, Clock, ShieldCheck, AlertTriangle, Info, Wand2, Check, Link } from 'lucide-react';
+import { getPublishTimeInfo, checkCompliance, getTrafficTemplates, type TrafficTemplate } from '@/lib/platform-rules';
 import { PublishSettings } from './publish-settings';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { PlatformGuard, StyleGuard } from '@/lib/subscription/components/FeatureGuard';
@@ -2406,9 +2406,21 @@ function ZsxqPreview({ title, content }: { title: string; content: string }) {
   );
 }
 
+// A/B 标题生成结果类型
+type ABTitle = {
+  text: string;
+  reason: string;
+};
+
 // 智能发布助手组件
 function SmartPublishBar({ platform, content, title }: { platform: Platform; content: string; title: string }) {
   const [showIssues, setShowIssues] = useState(false);
+  const [showTitleOptimizer, setShowTitleOptimizer] = useState(false);
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+  const [abTitles, setAbTitles] = useState<ABTitle[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedTrafficIdx, setCopiedTrafficIdx] = useState<number | null>(null);
 
   // 获取发布时间评估
   const timeInfo = getPublishTimeInfo(platform);
@@ -2421,13 +2433,83 @@ function SmartPublishBar({ platform, content, title }: { platform: Platform; con
   const infoCount = issues.filter(i => i.type === 'info').length;
   const hasIssues = issues.length > 0;
 
+  // 安全引流模板
+  const trafficTemplates = getTrafficTemplates(platform);
+  const hasTrafficTemplates = trafficTemplates.length > 0;
+
+  const copyTrafficTemplate = async (text: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedTrafficIdx(idx);
+      setTimeout(() => setCopiedTrafficIdx(null), 1500);
+    } catch (error) {
+      console.error('复制失败:', error);
+    }
+  };
+
+  const trafficRiskLabel = (risk: TrafficTemplate['risk']) => {
+    switch (risk) {
+      case 'safe': return '🟢 安全';
+      case 'moderate': return '🟡 中等';
+      case 'risky': return '🔴 高风险';
+    }
+  };
+
+  const trafficRiskColor = (risk: TrafficTemplate['risk']) => {
+    switch (risk) {
+      case 'safe': return 'text-green-400 border-green-500/20 bg-green-500/10';
+      case 'moderate': return 'text-amber-400 border-amber-500/20 bg-amber-500/10';
+      case 'risky': return 'text-red-400 border-red-500/20 bg-red-500/10';
+    }
+  };
+
+  // A/B 标题生成
+  const generateABTitles = async () => {
+    if (!title.trim()) return;
+    setIsGeneratingTitles(true);
+    setAbTitles([]);
+    setCopiedIndex(null);
+    try {
+      const response = await fetch('/api/title/ab-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform,
+          title,
+          content: content?.slice(0, 500) || '',
+        }),
+      });
+      const data = await response.json();
+      if (data?.success && data.data?.titles) {
+        setAbTitles(data.data.titles);
+      } else {
+        console.error('标题生成失败:', data?.error);
+      }
+    } catch (error) {
+      console.error('标题生成出错:', error);
+    } finally {
+      setIsGeneratingTitles(false);
+    }
+  };
+
+  // 复制标题到剪贴板
+  const copyTitle = async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (error) {
+      console.error('复制失败:', error);
+    }
+  };
+
   if (!content.trim()) return null;
 
   return (
     <div className="mt-3 space-y-2">
-      {/* 时间 + 合规 一行显示 */}
+      {/* 时间 + 合规 + 标题优化 一行显示 */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        {/* 发布时间指示 */}
+        {/* 左侧: 发布时间指示 */}
         <div className="flex items-center gap-2 text-xs">
           <Clock className="h-3.5 w-3.5 text-zinc-500" />
           <span className={
@@ -2439,38 +2521,161 @@ function SmartPublishBar({ platform, content, title }: { platform: Platform; con
           </span>
         </div>
 
-        {/* 合规检查状态 */}
-        {hasIssues ? (
-          <button
-            onClick={() => setShowIssues(!showIssues)}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors ${
-              forbiddenCount > 0
-                ? 'text-red-400 border-red-500/20 bg-red-500/10 hover:bg-red-500/20'
-                : warningCount > 0
-                  ? 'text-amber-400 border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20'
-                  : 'text-blue-400 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20'
-            }`}
-          >
-            {forbiddenCount > 0 ? (
-              <AlertTriangle className="h-3.5 w-3.5" />
-            ) : (
-              <Info className="h-3.5 w-3.5" />
-            )}
-            <span>
-              {forbiddenCount > 0 && `${forbiddenCount}项违规`}
-              {forbiddenCount > 0 && warningCount > 0 && ' · '}
-              {warningCount > 0 && `${warningCount}项警告`}
-              {forbiddenCount === 0 && warningCount === 0 && infoCount > 0 && `${infoCount}项提示`}
-            </span>
-            <span className="text-[10px] opacity-60">{showIssues ? '▲' : '▼'}</span>
-          </button>
-        ) : content.trim() ? (
-          <div className="flex items-center gap-1.5 text-xs text-green-400">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>内容合规</span>
-          </div>
-        ) : null}
+        {/* 右侧: 安全引流 + 标题优化 + 合规 */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 安全引流按钮 */}
+          {hasTrafficTemplates && (
+            <button
+              onClick={() => {
+                setShowTraffic(!showTraffic);
+                if (!showTraffic) { setShowIssues(false); setShowTitleOptimizer(false); }
+              }}
+              className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                showTraffic
+                  ? 'text-primary border-primary/30 bg-primary/10'
+                  : 'text-zinc-400 border-white/10 bg-white/5 hover:bg-white/10 hover:text-zinc-200'
+              }`}
+            >
+              <Link className="h-3.5 w-3.5" />
+              <span>🔗 安全引流</span>
+              <span className="text-[10px] opacity-60">{showTraffic ? '▲' : '▼'}</span>
+            </button>
+          )}
+
+          {/* 标题优化按钮 */}
+          {title.trim() && (
+            <button
+              onClick={() => {
+                setShowTitleOptimizer(!showTitleOptimizer);
+                if (!showTitleOptimizer) { setShowTraffic(false); setShowIssues(false); }
+                if (!showTitleOptimizer && abTitles.length === 0 && !isGeneratingTitles) {
+                  generateABTitles();
+                }
+              }}
+              disabled={isGeneratingTitles}
+              className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                showTitleOptimizer
+                  ? 'text-amber-400 border-amber-500/30 bg-amber-500/15'
+                  : 'text-zinc-400 border-white/10 bg-white/5 hover:bg-white/10 hover:text-zinc-200'
+              }`}
+            >
+              {isGeneratingTitles ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Wand2 className="h-3.5 w-3.5" />
+              )}
+              <span>✨ 标题优化</span>
+            </button>
+          )}
+
+          {/* 合规检查状态 */}
+          {hasIssues ? (
+            <button
+              onClick={() => {
+                setShowIssues(!showIssues);
+                if (!showIssues) { setShowTraffic(false); setShowTitleOptimizer(false); }
+              }}
+              className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                forbiddenCount > 0
+                  ? 'text-red-400 border-red-500/20 bg-red-500/10 hover:bg-red-500/20'
+                  : warningCount > 0
+                    ? 'text-amber-400 border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20'
+                    : 'text-blue-400 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20'
+              }`}
+            >
+              {forbiddenCount > 0 ? (
+                <AlertTriangle className="h-3.5 w-3.5" />
+              ) : (
+                <Info className="h-3.5 w-3.5" />
+              )}
+              <span>
+                {forbiddenCount > 0 && `${forbiddenCount}项违规`}
+                {forbiddenCount > 0 && warningCount > 0 && ' · '}
+                {warningCount > 0 && `${warningCount}项警告`}
+                {forbiddenCount === 0 && warningCount === 0 && infoCount > 0 && `${infoCount}项提示`}
+              </span>
+              <span className="text-[10px] opacity-60">{showIssues ? '▲' : '▼'}</span>
+            </button>
+          ) : content.trim() ? (
+            <div className="flex items-center gap-1.5 text-xs text-green-400">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>内容合规</span>
+            </div>
+          ) : null}
+        </div>
       </div>
+
+      {/* A/B 标题优化面板 */}
+      {showTitleOptimizer && (
+        <div className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-amber-400 font-medium">
+              <Wand2 className="h-3.5 w-3.5" />
+              <span>A/B 标题方案</span>
+            </div>
+            <button
+              onClick={generateABTitles}
+              disabled={isGeneratingTitles}
+              className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isGeneratingTitles ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3" />
+              )}
+              <span>{isGeneratingTitles ? '生成中...' : '重新生成'}</span>
+            </button>
+          </div>
+
+          {isGeneratingTitles && abTitles.length === 0 ? (
+            <div className="flex items-center justify-center py-4 text-xs text-zinc-500">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              正在为「{PLATFORM_CONFIGS[platform]?.name || platform}」生成优化标题...
+            </div>
+          ) : abTitles.length > 0 ? (
+            <div className="space-y-2">
+              {abTitles.map((item, index) => (
+                <div
+                  key={index}
+                  className="p-2.5 rounded-md border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors group"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[10px] font-bold text-amber-400/80 bg-amber-400/10 px-1.5 py-0.5 rounded">
+                          {String.fromCharCode(65 + index)}
+                        </span>
+                        <span className="text-sm text-zinc-200 font-medium break-all">{item.text}</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed pl-6">{item.reason}</p>
+                    </div>
+                    <button
+                      onClick={() => copyTitle(item.text, index)}
+                      className="flex-shrink-0 flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-white/10 bg-white/5 text-zinc-400 hover:bg-primary/20 hover:text-primary hover:border-primary/30 transition-all opacity-70 group-hover:opacity-100"
+                    >
+                      {copiedIndex === index ? (
+                        <>
+                          <Check className="h-3 w-3 text-green-400" />
+                          <span className="text-green-400">已复制</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" />
+                          <span>选用</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-3 text-xs text-zinc-500">
+              点击"重新生成"获取标题优化方案
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 展开的问题详情 */}
       {showIssues && issues.length > 0 && (
@@ -2488,6 +2693,47 @@ function SmartPublishBar({ platform, content, title }: { platform: Platform; con
                 <span className="font-medium">「{issue.keyword}」</span>
                 {' '}{issue.message}
               </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 展开的安全引流模板 */}
+      {showTraffic && trafficTemplates.length > 0 && (
+        <div className="p-3 rounded-lg border border-white/5 bg-white/[0.02] space-y-2 max-h-64 overflow-auto">
+          {trafficTemplates.map((tpl, idx) => (
+            <div key={idx} className="flex flex-col gap-1.5 p-2.5 rounded-md bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-medium text-zinc-200">{tpl.method}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${trafficRiskColor(tpl.risk)}`}>
+                  {trafficRiskLabel(tpl.risk)}
+                </span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="flex-1 text-xs text-zinc-400 leading-relaxed break-all">
+                  {tpl.template}
+                </span>
+                <button
+                  onClick={() => copyTrafficTemplate(tpl.template, idx)}
+                  className="flex-shrink-0 flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 transition-colors"
+                  title="复制文案"
+                >
+                  {copiedTrafficIdx === idx ? (
+                    <>
+                      <Check className="h-3 w-3 text-green-400" />
+                      <span className="text-green-400">已复制</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      <span>复制</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="text-[10px] text-zinc-600 leading-relaxed">
+                💡 {tpl.note}
+              </div>
             </div>
           ))}
         </div>
