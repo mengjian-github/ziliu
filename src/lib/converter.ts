@@ -46,15 +46,127 @@ export function convertToWechatInline(
   const inlineStyles = mode === 'night' ? (theme.inlineDark || theme.inline) : theme.inline;
 
   // 解析HTML并添加内联样式
-  const styledHtml = applyInlineStyles(cleanedHtml, inlineStyles);
+  let styledHtml = applyInlineStyles(cleanedHtml, inlineStyles);
+
+  // 微信暗黑模式兼容：在日间模式导出时，添加 data-darkmode-* 属性
+  // 这样微信 App 的暗黑模式会直接使用我们指定的颜色，而不是靠算法反转（效果很差）
+  if (mode === 'day') {
+    const darkInlineStyles = theme.inlineDark || theme.inline;
+    styledHtml = addWechatDarkModeAttrs(styledHtml, darkInlineStyles);
+  }
 
   // 如果主题定义了根样式，包裹一层
   const rootStyle = mode === 'night' ? (theme.rootStyleDark || theme.rootStyle) : theme.rootStyle;
   if (rootStyle) {
-    return `<section style="${rootStyle}">${styledHtml}</section>`;
+    // 日间模式下也为根元素添加暗黑模式属性
+    let darkRootAttrs = '';
+    if (mode === 'day') {
+      const darkRootStyle = theme.rootStyleDark || theme.rootStyle || '';
+      darkRootAttrs = buildDarkModeRootAttrs(darkRootStyle);
+    }
+    return `<section style="${rootStyle}"${darkRootAttrs}>${styledHtml}</section>`;
   }
 
   return styledHtml;
+}
+
+// ============================================================
+// 微信暗黑模式兼容工具函数
+// ============================================================
+
+/**
+ * 从 CSS 内联样式字符串中提取指定属性的值
+ * 例如: extractCssProperty('color: #333; background: #fff;', 'color') => '#333'
+ */
+function extractCssProperty(style: string, prop: string): string | null {
+  // 处理带连字符的属性名，如 background-color
+  const escapedProp = prop.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const regex = new RegExp(`(?:^|;\\s*|\\s)${escapedProp}\\s*:\\s*([^;]+)`, 'i');
+  const match = style.match(regex);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * 判断颜色值是否是简单的可作为 data 属性的值
+ * 排除 gradient、url()、inherit/initial 等复杂值
+ */
+function isSimpleColor(value: string): boolean {
+  if (!value) return false;
+  const v = value.toLowerCase().trim();
+  if (v.includes('gradient') || v.includes('url(') || v.includes('inherit') || v.includes('initial') || v.includes('unset') || v === 'transparent' || v === 'none') {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 为根 section 元素构建暗黑模式数据属性
+ */
+function buildDarkModeRootAttrs(darkRootStyle: string): string {
+  const attrs: string[] = [];
+  const darkBg = extractCssProperty(darkRootStyle, 'background-color') || extractCssProperty(darkRootStyle, 'background');
+  const darkColor = extractCssProperty(darkRootStyle, 'color');
+
+  if (darkBg && isSimpleColor(darkBg)) {
+    attrs.push(`data-darkmode-bgcolor="${darkBg}"`);
+  }
+  if (darkColor && isSimpleColor(darkColor)) {
+    attrs.push(`data-darkmode-color="${darkColor}"`);
+  }
+
+  return attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+}
+
+/**
+ * 为 HTML 中的元素添加微信暗黑模式兼容的 data-darkmode-* 属性
+ * 
+ * 微信公众号 App 在暗黑模式下会：
+ * 1. 优先使用 data-darkmode-bgcolor / data-darkmode-color 属性的值
+ * 2. 如果没有这些属性，则用算法反转颜色（效果通常较差）
+ * 
+ * 通过显式指定暗黑模式颜色，可以确保文章在夜间模式下也有良好的视觉效果。
+ */
+function addWechatDarkModeAttrs(html: string, darkStyles: Record<string, string>): string {
+  let result = html;
+
+  for (const [tag, darkStyle] of Object.entries(darkStyles)) {
+    const darkBgColor = extractCssProperty(darkStyle, 'background-color') || extractCssProperty(darkStyle, 'background');
+    const darkColor = extractCssProperty(darkStyle, 'color');
+
+    // 如果没有有效的暗黑色值，跳过
+    if (!darkBgColor && !darkColor) continue;
+
+    // 构建 data-darkmode 属性
+    const attrs: string[] = [];
+    if (darkBgColor && isSimpleColor(darkBgColor)) {
+      attrs.push(`data-darkmode-bgcolor="${darkBgColor}"`);
+    }
+    if (darkColor && isSimpleColor(darkColor)) {
+      attrs.push(`data-darkmode-color="${darkColor}"`);
+    }
+    if (attrs.length === 0) continue;
+    const attrStr = ' ' + attrs.join(' ');
+
+    // 标题（h1/h2/h3/h4/h5/h6）已在预处理阶段被转为 <p data-heading="hX">
+    if (/^h[1-6]$/.test(tag)) {
+      const headingRegex = new RegExp(`<p([^>]*data-heading="${tag}"[^>]*)>`, 'gi');
+      result = result.replace(headingRegex, (match, existing) => {
+        if (match.includes('data-darkmode-')) return match;
+        return `<p${existing}${attrStr}>`;
+      });
+    } else {
+      // 普通标签: p, blockquote, pre, code, th, td, ul, ol, li, a, img 等
+      const tagRegex = new RegExp(`<${tag}([^>]*style="[^"]*"[^>]*)>`, 'gi');
+      result = result.replace(tagRegex, (match, existing) => {
+        if (match.includes('data-darkmode-')) return match;
+        // 跳过已被标记为标题的 <p> 标签
+        if (tag === 'p' && existing.includes('data-heading=')) return match;
+        return `<${tag}${existing}${attrStr}>`;
+      });
+    }
+  }
+
+  return result;
 }
 
 // 处理 LaTeX 公式
