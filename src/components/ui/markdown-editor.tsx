@@ -173,7 +173,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
       .replace(/^1\. (.+)$/gm, '<li>$1</li>')
       .replace(/^---$/gm, '<hr class="border-white/10">')
       .replace(/\n/g, '<br>')
-      .replace(/{{featured-articles:(\d+)}}/g, '<div class="featured-articles" data-count="$1" style="border: 1px dashed rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; color: #a1a1aa; font-size: 14px;">（将展示 $1 篇精选文章）</div>');
+      .replace(/{{featured-articles:(\d+)}}/g, '<div style="background: rgba(30, 41, 59, 0.3); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 16px; margin: 16px 0;"><h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #818CF8;">📚 精选文章推荐</h4><p style="margin: 0; color: #94A3B8; font-size: 14px;">（将智能匹配并展示 $1 篇相关历史文章）</p></div>');
   };
 
   return (

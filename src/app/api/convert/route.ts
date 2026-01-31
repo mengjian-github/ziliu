@@ -5,17 +5,18 @@ import { z } from 'zod';
 // 请求验证schema
 const convertSchema = z.object({
   content: z.string().min(1, '内容不能为空'),
-  platform: z.enum(['wechat', 'zhihu', 'juejin', 'zsxq']).default('wechat'),
+  platform: z.enum(['wechat', 'zhihu', 'juejin', 'zsxq', 'wechat_xiaolushu']).default('wechat'),
   style: z.enum(['default', 'minimal', 'elegant', 'tech', 'card', 'print', 'night']).default('default'),
+  mode: z.enum(['day', 'night']).default('day'),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { content, platform, style } = convertSchema.parse(body);
+    const { content, platform, style, mode } = convertSchema.parse(body);
 
     // 所有平台都使用相同的转换逻辑，只是样式不同
-    const result = previewConversion(content, style as keyof typeof WECHAT_STYLES);
+    const result = previewConversion(content, style as keyof typeof WECHAT_STYLES, mode as 'day' | 'night');
 
     return NextResponse.json({
       success: true,
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({
         success: false,
-      error: error.issues?.[0]?.message || '参数错误',
+        error: error.issues?.[0]?.message || '参数错误',
       }, { status: 400 });
     }
 

@@ -55,7 +55,7 @@ class ApiService {
    */
   async makeRequest(endpoint, options = {}) {
     const timeout = options.timeout || this.config.timeout;
-    
+
     return Promise.race([
       new Promise((resolve, reject) => {
         // 检查extension context是否有效
@@ -67,7 +67,7 @@ class ApiService {
         console.log(`🔗 发起API请求: ${endpoint}`, options);
         console.log(`🔗 当前API服务baseURL:`, this.config.baseURL);
         console.log(`📨 发送消息给background script`);
-        
+
         chrome.runtime.sendMessage({
           action: 'apiRequest',
           data: {
@@ -92,9 +92,9 @@ class ApiService {
           }
         });
       }),
-      
+
       // 超时处理
-      new Promise((_, reject) => 
+      new Promise((_, reject) =>
         setTimeout(() => {
           console.error(`⏰ API请求超时 ${endpoint} (${timeout}ms)`);
           reject(new Error(`API请求超时: ${endpoint}`));
@@ -113,13 +113,13 @@ class ApiService {
 
     const cacheKey = `${endpoint}_${JSON.stringify(options)}`;
     const cached = this.cache.get(cacheKey);
-    
+
     if (cached && Date.now() - cached.timestamp < this.config.cacheExpiration) {
       return cached.data;
     }
 
     const response = await this.makeRequest(endpoint, options);
-    
+
     this.cache.set(cacheKey, {
       data: response,
       timestamp: Date.now()
@@ -137,7 +137,7 @@ class ApiService {
         const params = new URLSearchParams(options).toString();
         return this.cachedRequest(`/api/articles?${params}`);
       },
-      
+
       get: async (id, format = 'inline', style) => {
         let finalStyle = style;
         try {
@@ -155,27 +155,27 @@ class ApiService {
         const styleQuery = format === 'inline' && finalStyle ? `&style=${encodeURIComponent(finalStyle)}` : '';
         return this.cachedRequest(`/api/articles/${id}?format=${format}${styleQuery}`);
       },
-      
+
       create: async (articleData) => {
         return this.makeRequest('/api/articles', {
           method: 'POST',
           body: articleData
         });
       },
-      
+
       update: async (id, articleData) => {
         return this.makeRequest(`/api/articles/${id}`, {
           method: 'PUT',
           body: articleData
         });
       },
-      
+
       delete: async (id) => {
         return this.makeRequest(`/api/articles/${id}`, {
           method: 'DELETE'
         });
       },
-      
+
       search: async (query, options = {}) => {
         return this.search(query, { type: 'articles', ...options });
       }
@@ -190,25 +190,25 @@ class ApiService {
       list: async () => {
         return this.cachedRequest('/api/presets');
       },
-      
+
       get: async (id) => {
         return this.cachedRequest(`/api/presets/${id}`);
       },
-      
+
       create: async (presetData) => {
         return this.makeRequest('/api/presets', {
           method: 'POST',
           body: presetData
         });
       },
-      
+
       update: async (id, presetData) => {
         return this.makeRequest(`/api/presets/${id}`, {
           method: 'PUT',
           body: presetData
         });
       },
-      
+
       delete: async (id) => {
         return this.makeRequest(`/api/presets/${id}`, {
           method: 'DELETE'
@@ -225,11 +225,11 @@ class ApiService {
       profile: async () => {
         return this.cachedRequest('/api/user/profile');
       },
-      
+
       stats: async () => {
         return this.cachedRequest('/api/user/stats');
       },
-      
+
       updateSettings: async (settings) => {
         return this.makeRequest('/api/user/settings', {
           method: 'PUT',
@@ -270,20 +270,20 @@ class ApiService {
    */
   get content() {
     return {
-      convert: async (content, platform, style = 'default') => {
+      convert: async (content, platform, style = 'default', mode = 'day') => {
         return this.makeRequest('/api/convert', {
           method: 'POST',
-          body: { content, platform, style }
+          body: { content, platform, style, mode }
         });
       },
-      
+
       optimize: async (content, options = {}) => {
         return this.makeRequest('/api/content/optimize', {
           method: 'POST',
           body: { content, ...options }
         });
       },
-      
+
       analyze: async (content) => {
         return this.makeRequest('/api/content/analyze', {
           method: 'POST',

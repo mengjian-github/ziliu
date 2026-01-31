@@ -196,14 +196,14 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
         // 转换开头内容的Markdown为HTML
         if (data.preset.headerContent) {
-          const headerHtml = await this.convertMarkdownToHtml(data.preset.headerContent, articleStyle);
+          const headerHtml = await this.convertMarkdownToHtml(data.preset.headerContent, articleStyle, data.mode);
           fullContent = headerHtml + fullContent;
           console.log('✅ 开头内容已添加并转换为HTML');
         }
 
         // 转换结尾内容的Markdown为HTML
         if (data.preset.footerContent) {
-          const footerHtml = await this.convertMarkdownToHtml(data.preset.footerContent, articleStyle);
+          const footerHtml = await this.convertMarkdownToHtml(data.preset.footerContent, articleStyle, data.mode);
           fullContent = fullContent + footerHtml;
           console.log('✅ 结尾内容已添加并转换为HTML');
         }
@@ -211,7 +211,9 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
       // 处理特殊语法（如 {{featured-articles:10}}）
       console.log('🔄 处理特殊语法...');
-      const processedContent = await this.processSpecialSyntax(fullContent);
+      const articleStyle = data.style || 'default';
+      const articleMode = data.mode || 'day';
+      const processedContent = await this.processSpecialSyntax(fullContent, articleStyle, articleMode);
 
       // 转换外链图片
       console.log('🖼️ 转换外链图片...');
@@ -247,29 +249,86 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
   }
 
   /**
-   * 获取微信编辑器 JSAPI
-   */
-  getMpEditorApi() {
-    return window.__MP_Editor_JSAPI__;
-  }
-
-  /**
-   * 调用微信编辑器 JSAPI（Promise 化）
+   * 调用微信编辑器 JSAPI（通过注入脚本访问页面上下文）
    */
   mpInvoke(apiName, apiParam) {
     return new Promise((resolve, reject) => {
-      const api = this.getMpEditorApi();
-      if (!api || typeof api.invoke !== 'function') {
-        reject(new Error('MP Editor JSAPI 不可用'));
-        return;
-      }
+      const requestId = 'mp_req_' + Date.now() + Math.random().toString(36).substr(2, 9);
 
-      api.invoke({
-        apiName,
-        apiParam,
-        sucCb: (res) => resolve(res),
-        errCb: (err) => reject(err)
-      });
+      const handleMessage = (event) => {
+        if (event.data && event.data.type === 'MP_JSAPI_RES' && event.data.requestId === requestId) {
+          window.removeEventListener('message', handleMessage);
+          clearTimeout(timeoutId);
+          if (event.data.success) {
+            resolve(event.data.data);
+          } else {
+            reject(event.data.error || new Error('Unknown error from JSAPI'));
+          }
+        }
+      };
+
+      const timeoutId = setTimeout(() => {
+        window.removeEventListener('message', handleMessage);
+        reject(new Error(`JSAPI调用超时: ${apiName}`));
+      }, 5000);
+
+      window.addEventListener('message', handleMessage);
+
+      // 注入脚本到页面上下文执行
+      const scriptContent = `
+        (function() {
+          try {
+            if (!window.__MP_Editor_JSAPI__) {
+              window.postMessage({ 
+                type: 'MP_JSAPI_RES', 
+                requestId: '${requestId}', 
+                success: false, 
+                error: 'window.__MP_Editor_JSAPI__ not found' 
+              }, '*');
+              return;
+            }
+            
+            window.__MP_Editor_JSAPI__.invoke({
+              apiName: '${apiName}',
+              apiParam: ${JSON.stringify(apiParam || {})},
+              sucCb: (res) => {
+                window.postMessage({ 
+                  type: 'MP_JSAPI_RES', 
+                  requestId: '${requestId}', 
+                  success: true, 
+                  data: res 
+                }, '*');
+              },
+              errCb: (err) => {
+                window.postMessage({ 
+                  type: 'MP_JSAPI_RES', 
+                  requestId: '${requestId}', 
+                  success: false, 
+                  error: err 
+                }, '*');
+              }
+            });
+          } catch (e) {
+            window.postMessage({ 
+              type: 'MP_JSAPI_RES', 
+              requestId: '${requestId}', 
+              success: false, 
+              error: e.message 
+            }, '*');
+          }
+        })();
+      `;
+
+      try {
+        const script = document.createElement('script');
+        script.textContent = scriptContent;
+        (document.head || document.documentElement).appendChild(script);
+        script.remove();
+      } catch (e) {
+        window.removeEventListener('message', handleMessage);
+        clearTimeout(timeoutId);
+        reject(e);
+      }
     });
   }
 
@@ -293,9 +352,6 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    * 使用微信编辑器 JSAPI 设置全文内容（新编辑器）
    */
   async tryMpEditorSetContent(content) {
-    const api = this.getMpEditorApi();
-    if (!api) return null;
-
     const status = await this.mpGetIsReady();
     if (!status.isReady || !status.isNew) {
       return null;
@@ -466,7 +522,7 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
   /**
    * 将Markdown转换为HTML
    */
-  async convertMarkdownToHtml(markdown, style = 'default') {
+  async convertMarkdownToHtml(markdown, style = 'default', mode = 'day') {
     try {
       console.log('🔄 转换Markdown为HTML:', markdown.substring(0, 50) + '...');
 
@@ -474,7 +530,8 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       const data = await window.ZiliuApiService.content.convert(
         markdown,
         'wechat',
-        style
+        style,
+        mode
       );
 
       if (data.success && data.data.inlineHtml) {
@@ -516,12 +573,51 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
   }
 
   /**
+   * 获取精选文章推荐的主题样式
+   */
+  getFeaturedArticlesStyles(style, mode) {
+    const isDark = mode === 'night';
+
+    const themeStyles = {
+      default: {
+        day: { accent: '#2563EB', bg: '#F9FAFB', border: '#E5E7EB', text: '#1F2937', link: '#2563EB' },
+        night: { accent: '#60A5FA', bg: 'rgba(30, 41, 59, 0.5)', border: '#334155', text: '#F1F5F9', link: '#60A5FA' }
+      },
+      minimal: {
+        day: { accent: '#1F2937', bg: '#FAFAF9', border: '#E5E7EB', text: '#1F2937', link: '#1F2937' },
+        night: { accent: '#E5E5E5', bg: 'rgba(23, 23, 23, 0.5)', border: '#404040', text: '#E5E5E5', link: '#E5E5E5' }
+      },
+      elegant: {
+        day: { accent: '#78350F', bg: '#FAFAF9', border: '#E7E5E4', text: '#451a03', link: '#92400E' },
+        night: { accent: '#D97706', bg: 'rgba(41, 37, 36, 0.6)', border: '#44403C', text: '#E7E5E4', link: '#D97706' }
+      },
+      print: {
+        day: { accent: '#D97706', bg: '#FEF3C7', border: '#FDE68A', text: '#78350F', link: '#92400E' },
+        night: { accent: '#F59E0B', bg: 'rgba(28, 25, 23, 0.6)', border: '#44403C', text: '#E7E5E4', link: '#F59E0B' }
+      },
+      card: {
+        day: { accent: '#10B981', bg: '#ECFDF5', border: '#A7F3D0', text: '#064E3B', link: '#059669' },
+        night: { accent: '#34D399', bg: 'rgba(6, 78, 59, 0.4)', border: '#059669', text: '#D1FAE5', link: '#6EE7B7' }
+      },
+      night: {
+        day: { accent: '#60A5FA', bg: 'rgba(30, 41, 59, 0.5)', border: '#334155', text: '#F1F5F9', link: '#60A5FA' },
+        night: { accent: '#60A5FA', bg: 'rgba(15, 23, 42, 0.6)', border: '#1E293B', text: '#F1F5F9', link: '#60A5FA' }
+      },
+      tech: {
+        day: { accent: '#6366F1', bg: '#EEF2FF', border: '#C7D2FE', text: '#1E1B4B', link: '#6366F1' },
+        night: { accent: '#818CF8', bg: 'rgba(30, 27, 75, 0.5)', border: '#4338CA', text: '#E0E7FF', link: '#818CF8' }
+      }
+    };
+
+    const theme = themeStyles[style] || themeStyles.default;
+    return isDark ? theme.night : theme.day;
+  }
+
+  /**
    * 处理特殊语法
    */
-  async processSpecialSyntax(content) {
-    // 处理 {{featured-articles:数量}} 语法
+  async processSpecialSyntax(content, style = 'default', mode = 'day') {
     const featuredArticlesRegex = /\{\{featured-articles:(\d+)\}\}/g;
-
     let processedContent = content;
     let match;
 
@@ -530,21 +626,31 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       const placeholder = match[0];
 
       try {
-        // 获取历史文章
         const articles = await this.fetchWeChatArticles(count);
+        const s = this.getFeaturedArticlesStyles(style, mode);
 
-        // 生成文章链接列表（使用p标签但不添加换行）
-        const articleLinks = articles.map(article => {
-          return `<p><a href="${article.url}" target="_blank">${article.title}</a></p>`;
+        const titleStyle = `margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: ${s.text}; border-bottom: 2px solid ${s.accent}; padding-bottom: 8px;`;
+        const containerStyle = `background: ${s.bg}; border: 1px solid ${s.border}; border-radius: 8px; padding: 16px; margin: 16px 0;`;
+        const itemStyle = `margin: 0 0 12px 0; padding: 0 0 12px 0; border-bottom: 1px solid ${s.border}; line-height: 1.6;`;
+        const lastItemStyle = `margin: 0; padding: 0; line-height: 1.6;`;
+        const linkStyle = `color: ${s.link}; text-decoration: none; font-weight: 500; border-bottom: 1px dashed ${s.link};`;
+
+        const articleLinks = articles.map((article, index) => {
+          const isLast = index === articles.length - 1;
+          const itemCss = isLast ? lastItemStyle : itemStyle;
+          return `<p style="${itemCss}"><a href="${article.url}" target="_blank" style="${linkStyle}">${article.title}</a></p>`;
         }).join('');
 
-        // 替换占位符
-        processedContent = processedContent.replace(placeholder, articleLinks);
+        const featuredSection = `
+<div style="${containerStyle}">
+  <h4 style="${titleStyle}">📚 精选文章推荐</h4>
+  ${articleLinks}
+</div>`;
 
-        console.log(`✅ 已替换 ${placeholder} 为 ${articles.length} 篇历史文章`);
+        processedContent = processedContent.replace(placeholder, featuredSection);
+        console.log(`✅ 已替换 ${placeholder} 为 ${articles.length} 篇历史文章（主题: ${style}, 模式: ${mode}）`);
       } catch (error) {
         console.error('获取历史文章失败:', error);
-        // 如果失败，保留原始占位符
         processedContent = processedContent.replace(placeholder, `<!-- 获取历史文章失败: ${error.message} -->`);
       }
     }

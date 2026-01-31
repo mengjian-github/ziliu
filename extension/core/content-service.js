@@ -127,7 +127,8 @@ class ZiliuContentService {
           contentForFill = await this.convertArticleFormat(
             sourceContent,
             targetFormat,
-            articleDetail.style || 'default'
+            articleDetail.style || 'default',
+            data.mode || 'day'
           );
         } else if (platformContentType === 'markdown') {
           contentForFill = originalMarkdown || sourceContent || '';
@@ -203,8 +204,8 @@ class ZiliuContentService {
   /**
    * 转换文章格式
    */
-  async convertArticleFormat(content, targetFormat, style = 'default') {
-    const response = await ZiliuApiService.content.convert(content || '', targetFormat, style);
+  async convertArticleFormat(content, targetFormat, style = 'default', mode = 'day') {
+    const response = await ZiliuApiService.content.convert(content || '', targetFormat, style, mode);
 
     if (!response.success) {
       throw new Error(response.error || '格式转换失败');

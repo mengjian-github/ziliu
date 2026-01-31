@@ -155,6 +155,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(savedState?.platform || 'wechat');
   const [selectedStyle, setSelectedStyle] = useState<'default' | 'minimal' | 'elegant' | 'tech' | 'card' | 'print' | 'night'>(savedState?.style || 'default');
+  const [wechatTheme, setWechatTheme] = useState<'day' | 'night'>('day');
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewText, setPreviewText] = useState('');
   const [isConverting, setIsConverting] = useState(false);
@@ -344,9 +345,9 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
     shortTextLoadInFlightRef.current.add(platform);
     const shouldUpdatePreview = options?.updatePreview && platform === selectedPlatformRef.current;
-      if (!options?.silent && shouldUpdatePreview) {
-        setIsGeneratingShortText(true);
-      }
+    if (!options?.silent && shouldUpdatePreview) {
+      setIsGeneratingShortText(true);
+    }
     try {
       const response = await fetch(`/api/short-text/content?articleId=${articleId}&platform=${platform}`);
       if (!response.ok) {
@@ -626,6 +627,18 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         });
       }
       return;
+      return;
+    }
+
+    // 微信公众号：优先本地实时转换，支持夜间模式
+    if (platform === 'wechat') {
+      import('@/lib/converter').then(({ convertToWechat }) => {
+        const html = convertToWechat(contentToPreview, style as any, wechatTheme);
+        setPreviewHtml(html);
+        setPreviewText('');
+        setIsConverting(false);
+      });
+      return;
     }
 
     setIsConverting(true);
@@ -645,8 +658,9 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
       const data = await response.json();
       if (data.success) {
-        // 微信公众号预览：用 inlineHtml 渲染，保证预览与最终粘贴到公众号编辑器的效果一致
-        const isWechatLike = platform === 'wechat' || platform === 'wechat_xiaolushu';
+        // 微信公众号预览：用 inlineHtml 渲染,保证预览与最终粘贴到公众号编辑器的效果一致
+        // Note: 'wechat' 已在前面单独处理（本地实时转换），这里只需判断 'wechat_xiaolushu'
+        const isWechatLike = platform === 'wechat_xiaolushu';
         const htmlForPreview = isWechatLike ? (data.data.inlineHtml || data.data.html) : data.data.html;
         setPreviewHtml(htmlForPreview);
         setPreviewText('');
@@ -667,7 +681,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [finalContent, selectedPlatform, selectedStyle, handlePreview]);
+  }, [finalContent, selectedPlatform, selectedStyle, handlePreview, wechatTheme]);
 
   // 平台切换时立即预览
   const handlePlatformChange = useCallback(async (platform: Platform) => {
@@ -787,6 +801,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               articleId,
               style: selectedStyle,
               platform: selectedPlatform,
+              mode: wechatTheme,
               // 透传生成的短图文数据
               generatedContent: shortTextData
             }
@@ -1178,7 +1193,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
               ) : (
                 <div className="flex-1 flex flex-col p-6">
                   <div className="flex-1">
-                    {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
+                    {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} selectedStyle={selectedStyle} wechatTheme={wechatTheme} onThemeChange={setWechatTheme} />}
                     {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
                     {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
                     {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
@@ -2065,26 +2080,32 @@ function Share2(props: any) {
       <circle cx="18" cy="19" r="3" />
       <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
       <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+      ```
     </svg>
   );
 }
 
 // 微信公众号预览
-function WechatPreview({ title, content }: { title: string; content: string }) {
-  const [wechatTheme, setWechatTheme] = useState<'day' | 'night'>(() => {
-    if (typeof window === 'undefined') return 'day';
-    try {
-      const saved = localStorage.getItem('wechat-preview-theme');
-      if (saved === 'night' || saved === 'day') return saved;
-    } catch { }
-    return 'night';
-  });
-
+function WechatPreview({
+  title,
+  content,
+  selectedStyle,
+  wechatTheme,
+  onThemeChange
+}: {
+  title: string;
+  content: string;
+  selectedStyle: string;
+  wechatTheme: 'day' | 'night';
+  onThemeChange: (theme: 'day' | 'night') => void;
+}) {
+  // 自动根据选中的样式切换设备预览的黑白模式
   useEffect(() => {
-    try {
-      localStorage.setItem('wechat-preview-theme', wechatTheme);
-    } catch { }
-  }, [wechatTheme]);
+    if (selectedStyle === 'night') {
+      onThemeChange('night');
+    }
+    // 移除自动切回day的逻辑，允许用户手动覆盖
+  }, [selectedStyle, onThemeChange]);
 
   const isNight = wechatTheme === 'night';
 
@@ -2099,7 +2120,7 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
       >
         <button
           type="button"
-          onClick={() => setWechatTheme('day')}
+          onClick={() => onThemeChange('day')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${wechatTheme === 'day'
             ? isNight
               ? 'bg-white/20 text-white'
@@ -2115,7 +2136,7 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
         </button>
         <button
           type="button"
-          onClick={() => setWechatTheme('night')}
+          onClick={() => onThemeChange('night')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${wechatTheme === 'night'
             ? isNight
               ? 'bg-white/20 text-white'
@@ -2142,7 +2163,7 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
             <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-32 h-8 bg-black rounded-full z-10"></div>
 
             {/* 状态栏 */}
-            <div className={`h-12 flex items-center justify-between px-6 pt-4 ${isNight ? 'bg-[#1c1c1e]' : 'bg-white'}`}>
+            <div className={`h-12 flex items-center justify-between px-6 pt-4 transition-colors duration-300 ${isNight ? 'bg-[#121212]' : 'bg-white'}`}>
               <div className={`text-sm font-semibold ${isNight ? 'text-white' : 'text-black'}`}>9:41</div>
               <div className="flex items-center space-x-1">
                 <div className="flex space-x-1">
@@ -2168,7 +2189,7 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
 
             {/* 微信公众号头部 */}
             <div
-              className={`border-b px-4 py-3 flex items-center ${isNight ? 'bg-[#1c1c1e] border-white/10' : 'bg-white border-gray-100'
+              className={`border-b px-4 py-3 flex items-center transition-colors duration-300 ${isNight ? 'bg-[#121212] border-white/10' : 'bg-white border-gray-100'
                 }`}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-[#2a80ff] to-secondary text-white shadow-[0_14px_36px_-18px_rgba(0,102,255,0.65)]">
@@ -2188,18 +2209,17 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
             </div>
 
             {/* 文章内容区域 */}
-            <div className={`flex-1 overflow-auto ${isNight ? 'bg-[#1c1c1e]' : 'bg-white'}`}>
+            <div className={`flex-1 overflow-auto transition-colors duration-300 ${isNight ? 'bg-[#0F172A]' : 'bg-white'}`}>
               <div className="px-4 py-4">
                 <div
-                  className={isNight ? 'wechat-preview text-[#f2f2f7]' : 'wechat-preview text-[#111827]'}
-                  data-wechat-theme={wechatTheme}
+                  className="w-full"
                   dangerouslySetInnerHTML={{ __html: content }}
                 />
               </div>
             </div>
 
             {/* 底部安全区域 */}
-            <div className={`h-8 ${isNight ? 'bg-[#1c1c1e]' : 'bg-white'}`}></div>
+            <div className={`h-8 transition-colors duration-300 ${isNight ? 'bg-[#121212]' : 'bg-white'}`}></div>
           </div>
         </div>
 

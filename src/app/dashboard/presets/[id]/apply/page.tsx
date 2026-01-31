@@ -62,11 +62,10 @@ export default function ApplyPresetPage() {
       .replace(/^1\. (.+)$/gm, '<li style="margin: 4px 0;">$1</li>')
       .replace(/^---$/gm, '<hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">')
       .replace(/\n/g, '<br>')
-      // 处理精选文章占位符
       .replace(/{{featured-articles:(\d+)}}/g, (match, count) => {
-        return `<div style="border: 2px dashed #3b82f6; padding: 16px; border-radius: 8px; background: #eff6ff; margin: 16px 0;">
-          <h4 style="color: #1d4ed8; margin: 0 0 8px 0;">📚 精选文章推荐</h4>
-          <p style="color: #1d4ed8; margin: 0; font-size: 14px;">插件将智能匹配 ${count} 篇相关文章并插入到此位置</p>
+        return `<div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #2563EB; border-bottom: 2px solid #3B82F6; padding-bottom: 8px;">📚 精选文章推荐</h4>
+          <p style="margin: 0; color: #4B5563; font-size: 14px;">插件将智能匹配并插入 ${count} 篇相关历史文章</p>
         </div>`;
       });
   };

@@ -82,28 +82,16 @@ class ZsxqPlatformPlugin extends BasePlatformPlugin {
 
   /**
    * 知识星球特有的内容处理
-   * 主要解决ol/ul标签显示问题
+   * 应用完整主题样式
    */
   async processContent(content, data) {
     console.log('🔧 处理知识星球内容格式');
     
     if (typeof content !== 'string') return content;
 
-    // 处理有序列表
-    let processedContent = content.replace(/<ol[^>]*>/gi, (match) => {
-      return '<ol style="padding-left: 20px; margin: 10px 0;">';
-    });
-
-    // 处理无序列表
-    processedContent = processedContent.replace(/<ul[^>]*>/gi, (match) => {
-      return '<ul style="padding-left: 20px; margin: 10px 0; list-style-type: disc;">';
-    });
-
-    // 确保列表项有适当的样式
-    processedContent = processedContent.replace(/<li[^>]*>/gi, (match) => {
-      return '<li style="margin: 5px 0;">';
-    });
-
+    // 知识星球需要特殊处理列表标签，因为其编辑器不完全支持标准HTML列表
+    let processedContent = this.convertListsForZsxq(content);
+    
     console.log('✅ 知识星球内容格式处理完成');
     return processedContent;
   }
@@ -991,7 +979,12 @@ class ZsxqPlatformPlugin extends BasePlatformPlugin {
     try {
       const groupId = group.groupId || group;
       
-      // 处理内容
+      // 获取当前选择的样式和模式
+      const storedData = await this.getStoredContentData(data.articleId);
+      const style = storedData?.style || 'default';
+      const mode = storedData?.mode || 'day';
+      
+      // 处理内容：调用convert API获取带样式的HTML
       let contentToPublish = '';
       
       // 添加预设开头内容
@@ -1000,11 +993,41 @@ class ZsxqPlatformPlugin extends BasePlatformPlugin {
         contentToPublish += currentPreset.headerContent + '\n\n';
       }
       
-      // 添加正文内容，并处理列表标签
+      // 获取带样式的HTML内容
       if (data.content) {
-        // 先处理转义字符，再处理列表标签
-        let processedContent = this.unescapeContent(data.content);
-        contentToPublish += this.convertListsForZsxq(processedContent);
+        try {
+          const convertResponse = await fetch(`${window.ZiliuApiService.baseUrl}/api/convert`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              content: data.content,
+              platform: 'zsxq',
+              style: style,
+              mode: mode
+            })
+          });
+          
+          const convertData = await convertResponse.json();
+          if (convertData.success && convertData.data?.inlineHtml) {
+            // 使用带内联样式的HTML
+            let styledHtml = convertData.data.inlineHtml;
+            // 处理列表标签以适配知识星球
+            styledHtml = this.convertListsForZsxq(styledHtml);
+            contentToPublish += styledHtml;
+          } else {
+            // 降级：使用原始内容
+            console.warn('转换失败，使用原始内容');
+            let processedContent = this.unescapeContent(data.content);
+            contentToPublish += this.convertListsForZsxq(processedContent);
+          }
+        } catch (error) {
+          console.error('调用convert API失败:', error);
+          // 降级：使用原始内容
+          let processedContent = this.unescapeContent(data.content);
+          contentToPublish += this.convertListsForZsxq(processedContent);
+        }
       }
       
       // 添加预设结尾内容
@@ -1034,6 +1057,29 @@ class ZsxqPlatformPlugin extends BasePlatformPlugin {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * 获取存储的内容数据（样式、模式等）
+   */
+  async getStoredContentData(articleId) {
+    try {
+      if (!articleId) return null;
+      
+      return new Promise((resolve) => {
+        chrome.storage.local.get(['ziliu_content'], (result) => {
+          const storedData = result.ziliu_content;
+          if (storedData && storedData.articleId === articleId) {
+            resolve(storedData);
+          } else {
+            resolve(null);
+          }
+        });
+      });
+    } catch (error) {
+      console.warn('获取存储数据失败:', error);
+      return null;
     }
   }
 
