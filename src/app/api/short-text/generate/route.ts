@@ -35,47 +35,79 @@ const OUTPUT_LIMITS: Record<ShortTextPlatform, { titleMax?: number; contentMax?:
 
 const PLATFORM_PROMPTS: Record<ShortTextPlatform, string> = {
   wechat_xiaolushu: `
-你是“微信小绿书（公众号图片消息）”运营助手。请把原始内容改写为适合发布的小绿书短图文文案。
+你是"微信小绿书（公众号图片消息）"运营助手。请把原始内容改写为适合发布的小绿书短图文文案。
 风格要求：类似小红书，但必须纯文字，不要使用Emoji或任何小图标/符号装饰。
 
 要求：
-1) 标题：可选，6-20个汉字（不要出现“标题：”前缀）
+1) 标题：可选，6-20个汉字（不要出现"标题："前缀）
 2) 正文：200-900字，纯文本，允许换行；不要出现Markdown语法；不要输出图片URL；避免贴长链接
 3) 话题/标签：3-5个，返回数组（不要带#号，直接给词）
-4) 可以根据配图信息自然地写“第1张图/图里…”等
+4) 可以根据配图信息自然地写"第1张图/图里…"等
+5) 每段不超过3行，留白感强
+6) 结尾设置互动引导："你觉得呢？"/"收藏备用"
 
 输出必须是严格 JSON（不要有任何额外文字）：
 {"title":"...","content":"...","tags":["..."]}`,
   xiaohongshu_note: `
-你是“小红书图文笔记”运营助手。请把原始内容改写为适合发布的小红书图文笔记文案。
+你是"小红书图文笔记"资深运营。请把原始内容改写为高互动率的小红书图文笔记。
 
-要求：
-1) 标题：6-20个汉字，偏爆款风格；要有场景/情绪/结果感（不要出现“标题：”前缀）
-2) 正文：200-900字，允许换行与emoji；不要出现Markdown语法；避免贴长链接；适当引导互动（如“评论区聊聊/你也遇到过吗”）
-3) 话题：5-10个，返回数组（不要带#号，直接给词）
-4) 可以根据配图信息自然地写“第1张图/图里…”等（但不要输出图片URL）
+风格要求：
+- 第一人称叙事："我试了XX后发现..."、"分享一个我用了3年的方法"
+- emoji适度：每2-3句用1个，不堆砌，优先用🔥💡✅❌📌等实用型
+- 语气真诚有分享感，像给朋友安利，不要AI腔
+- 绝对禁止使用"最好""第一""100%有效""史上最全"等绝对化用语（平台会限流）
 
-输出必须是严格 JSON（不要有任何额外文字）：
+标题要求：
+1) 6-20字，关键词前置，格式参考"关键词｜具体利益点"
+2) 有场景感/结果感/数字："用了3个月，终于搞懂了XX"
+3) 可适度用｜和emoji但不超过2个
+
+正文要求：
+1) 300-800字，分段≤3行
+2) 开头用痛点/场景/结果引入
+3) 中间用分点或小标题组织
+4) 结尾互动引导："你也遇到过吗？评论区聊聊"
+5) 不要Markdown语法、不输出图片URL
+
+话题要求：
+- 5-8个，1个大话题 + 3个精准话题 + 2个长尾话题
+- 不带#号，直接给词
+
+输出严格JSON（不要有任何额外文字）：
 {"title":"...","content":"...","tags":["..."]}`,
 
   weibo: `
-你是“微博”运营助手。请把原始内容改写为适合微博发布的短图文文案。
+你是"微博"资深运营。请把原始内容改写为微博爆款短文。
+
+风格：
+- 碎片化表达、观点鲜明、适度争议
+- 开头直接抛观点，不要铺垫
+- 结尾留互动钩子："你怎么看？"/"同意的转发"
+- 不要AI腔，不要"总而言之""综上所述"
 
 要求：
-1) 正文：80-220字（更短更好），信息密度高；以段落为主，自然表达、自然分段，能合并就不要硬拆
-2) 可包含 1-3 个话题词（返回 tags 数组，不要带#号）
-3) 不要出现Markdown语法；不要输出图片URL；避免硬广
+1) 80-220字，越短越好，信息密度高
+2) 以段落为主，自然表达、自然分段，能合并就不要硬拆
+3) 可包含 1-3 个话题词（返回 tags 数组，不要带#号）
+4) 不要出现Markdown语法；不要输出图片URL；避免硬广
 
 输出必须是严格 JSON（不要有任何额外文字）：
 {"content":"...","tags":["..."]}`,
 
   jike: `
-你是“即刻”运营助手。请把原始内容改写为适合即刻发布的短图文动态。
+你是即刻社区活跃用户。请把内容改写为即刻动态。
+
+风格：
+- 真诚的个人分享，像写给同行的笔记
+- 创业者/产品经理/开发者口吻
+- 可以分享数据："上线第3天，DAU突破XX"
+- 不要标题党，不要鸡汤，不要AI腔
 
 要求：
-1) 正文：120-300字，语气真诚、有个人视角；以段落为主，自然表达、自然分段，能合并就不要硬拆
-2) 可包含 1-3 个话题词（返回 tags 数组，不要带#号）
-3) 不要出现Markdown语法；不要输出图片URL；避免标题党
+1) 120-300字，自然分段
+2) 开头用"今天..."/"最近..."/"分享一个发现..."引入
+3) 不要Markdown语法；不要输出图片URL
+4) 1-3个话题词（返回 tags 数组，不要带#号）
 
 输出必须是严格 JSON（不要有任何额外文字）：
 {"content":"...","tags":["..."]}`,
@@ -89,10 +121,23 @@ Requirements:
 3) Prefer paragraph-style output; break lines only when it improves readability.
 4) No Markdown syntax; do not output image URLs.
 5) Return optional tags as a list of keywords (no #).
+6) If content naturally exceeds 280 chars, structure as a thread:
+   - First tweet = strongest hook/insight
+   - Use line breaks between tweets
+   - Last tweet includes CTA
+7) Avoid AI-speak like "In conclusion" or "It's worth noting"
 
 Output MUST be strict JSON only:
 {"content":"...","tags":["..."]}`,
 
+};
+
+const MODEL_MAP: Record<ShortTextPlatform, string> = {
+  xiaohongshu_note: 'openai/gpt-4o-mini',
+  wechat_xiaolushu: 'openai/gpt-4o-mini',
+  weibo: 'openai/gpt-4o-mini',
+  jike: 'openai/gpt-4o-mini',
+  x: 'openai/gpt-4o-mini',
 };
 
 const aiOutputSchema = z.object({
@@ -163,7 +208,7 @@ function buildShortTextCoverSuggestion(input: {
     .join('、');
   const base = cleanTitle || firstLine || '实用图文分享';
   const imagesText = imageHints ? `；可参考配图：${imageHints}` : '';
-  return `小红书爆款封面，突出“${base}”的主题与结果感${imagesText}`;
+  return `小红书爆款封面，突出"${base}"的主题与结果感${imagesText}`;
 }
 
 function buildShortTextCoverPrompt(suggestion: string, title?: string, content?: string): string {
@@ -306,7 +351,7 @@ ${imagesHint}
         'X-Title': 'Ziliu Short Text Generation',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5.2-chat',
+        model: MODEL_MAP[input.platform],
         messages: [{ role: 'user', content: fullPrompt }],
         max_tokens: 900,
         temperature: 0.8,
@@ -392,7 +437,7 @@ function parseJsonBestEffort(raw: string): unknown {
     }
   }
 
-  // 3) Minimal fallback – treat whole output as content
+  // 3) Minimal fallback - treat whole output as content
   return { content: raw };
 }
 
