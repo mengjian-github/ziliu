@@ -105,7 +105,7 @@ export default function ExtensionPage() {
       <div className="relative z-[60] bg-blue-600/20 border-b border-blue-500/30 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-2 flex items-center justify-center gap-3 text-sm">
           <Badge className="bg-blue-500 text-white border-none">NEW</Badge>
-          <span className="text-blue-100 font-medium">v2.0.3 版本已发布：优化公众号夜间模式样式</span>
+          <span className="text-blue-100 font-medium">v2.0.7 版本已发布：新增知识星球专属排版优化</span>
           <span className="hidden sm:inline text-blue-300/60 transition-transform group-hover:translate-x-1">🚀</span>
         </div>
       </div>
