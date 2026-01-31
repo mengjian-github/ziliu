@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Platform, isVideoPlatform, getPlatformType, PLATFORM_CONFIGS } from '@/types/platform-settings';
-import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon, Sparkles, Heart, MessageSquare, Star, User, MoreHorizontal, ChevronLeft, Send, Bookmark } from 'lucide-react';
+import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon, Sparkles, Heart, MessageSquare, Star, User, MoreHorizontal, ChevronLeft, Send, Bookmark, Clock, ShieldCheck, AlertTriangle, Info } from 'lucide-react';
+import { getPublishTimeInfo, checkCompliance } from '@/lib/platform-rules';
 import { PublishSettings } from './publish-settings';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { PlatformGuard, StyleGuard } from '@/lib/subscription/components/FeatureGuard';
@@ -1176,6 +1177,9 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
             )}
           </div>
         )}
+
+        {/* 智能发布助手：发布时间 + 合规检查 */}
+        <SmartPublishBar platform={selectedPlatform} content={finalContent || content} title={title} />
       </div>
 
 
@@ -2398,6 +2402,96 @@ function ZsxqPreview({ title, content }: { title: string; content: string }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// 智能发布助手组件
+function SmartPublishBar({ platform, content, title }: { platform: Platform; content: string; title: string }) {
+  const [showIssues, setShowIssues] = useState(false);
+
+  // 获取发布时间评估
+  const timeInfo = getPublishTimeInfo(platform);
+
+  // 合规检查（对标题+正文）
+  const textToCheck = `${title || ''}\n${content || ''}`;
+  const issues = content.trim() ? checkCompliance(textToCheck, platform) : [];
+  const forbiddenCount = issues.filter(i => i.type === 'forbidden').length;
+  const warningCount = issues.filter(i => i.type === 'warning').length;
+  const infoCount = issues.filter(i => i.type === 'info').length;
+  const hasIssues = issues.length > 0;
+
+  if (!content.trim()) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {/* 时间 + 合规 一行显示 */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {/* 发布时间指示 */}
+        <div className="flex items-center gap-2 text-xs">
+          <Clock className="h-3.5 w-3.5 text-zinc-500" />
+          <span className={
+            timeInfo.status === 'best' ? 'text-green-400' :
+            timeInfo.status === 'good' ? 'text-yellow-400' :
+            'text-zinc-500'
+          }>
+            {timeInfo.suggestion}
+          </span>
+        </div>
+
+        {/* 合规检查状态 */}
+        {hasIssues ? (
+          <button
+            onClick={() => setShowIssues(!showIssues)}
+            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors ${
+              forbiddenCount > 0
+                ? 'text-red-400 border-red-500/20 bg-red-500/10 hover:bg-red-500/20'
+                : warningCount > 0
+                  ? 'text-amber-400 border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20'
+                  : 'text-blue-400 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20'
+            }`}
+          >
+            {forbiddenCount > 0 ? (
+              <AlertTriangle className="h-3.5 w-3.5" />
+            ) : (
+              <Info className="h-3.5 w-3.5" />
+            )}
+            <span>
+              {forbiddenCount > 0 && `${forbiddenCount}项违规`}
+              {forbiddenCount > 0 && warningCount > 0 && ' · '}
+              {warningCount > 0 && `${warningCount}项警告`}
+              {forbiddenCount === 0 && warningCount === 0 && infoCount > 0 && `${infoCount}项提示`}
+            </span>
+            <span className="text-[10px] opacity-60">{showIssues ? '▲' : '▼'}</span>
+          </button>
+        ) : content.trim() ? (
+          <div className="flex items-center gap-1.5 text-xs text-green-400">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>内容合规</span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* 展开的问题详情 */}
+      {showIssues && issues.length > 0 && (
+        <div className="p-3 rounded-lg border border-white/5 bg-white/[0.02] space-y-1.5 max-h-40 overflow-auto">
+          {issues.map((issue, idx) => (
+            <div key={idx} className="flex items-start gap-2 text-xs">
+              <span className="mt-0.5 flex-shrink-0">
+                {issue.type === 'forbidden' ? '🔴' : issue.type === 'warning' ? '🟡' : '🔵'}
+              </span>
+              <span className={
+                issue.type === 'forbidden' ? 'text-red-400' :
+                issue.type === 'warning' ? 'text-amber-400' :
+                'text-blue-400'
+              }>
+                <span className="font-medium">「{issue.keyword}」</span>
+                {' '}{issue.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
