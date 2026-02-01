@@ -117,6 +117,12 @@ export const FEATURES: Record<string, FeatureConfig> = {
     description: '发布到 X（Twitter）',
     plans: ['pro']
   },
+  'linkedin-platform': {
+    id: 'linkedin-platform',
+    name: 'LinkedIn 平台',
+    description: '发布到 LinkedIn 职业动态',
+    plans: ['pro']
+  },
   'youtube-platform': {
     id: 'youtube-platform',
     name: 'YouTube 平台',

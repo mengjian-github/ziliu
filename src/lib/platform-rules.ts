@@ -117,6 +117,34 @@ const PUBLISH_SCHEDULES: Partial<Record<Platform, PlatformSchedule>> = {
       { start: 17, end: 18, label: '下班前' },
     ],
   },
+  x: {
+    best: [
+      { start: 8, end: 10, label: '早间话题发酵期' },
+      { start: 12, end: 13, label: '午间浏览高峰' },
+    ],
+    good: [
+      { start: 17, end: 19, label: '下班通勤时段' },
+      { start: 21, end: 23, label: '晚间活跃期' },
+    ],
+  },
+  youtube: {
+    best: [
+      { start: 14, end: 16, label: '下午发布（晚间进推荐池）' },
+    ],
+    good: [
+      { start: 10, end: 12, label: '周末上午' },
+      { start: 17, end: 19, label: '工作日傍晚' },
+    ],
+  },
+  zsxq: {
+    best: [
+      { start: 8, end: 10, label: '早起学习时段' },
+      { start: 20, end: 22, label: '晚间深度阅读' },
+    ],
+    good: [
+      { start: 12, end: 13, label: '午休浏览' },
+    ],
+  },
 };
 
 export type PublishTimeStatus = 'best' | 'good' | 'low';
@@ -210,12 +238,19 @@ const UNIVERSAL_FORBIDDEN = [
 // 各平台引流敏感词
 const TRAFFIC_SENSITIVE: Record<string, string[]> = {
   xiaohongshu_note: ['微信', 'wx', '公众号', '淘宝', 'tb', '链接在', '看我主页', '评论区留'],
-  douyin: ['微信', 'wx', '公众号', '淘宝'],
-  weibo: [],
-  zhihu: [],
-  bilibili: [],
-  jike: [],
-  linkedin: [],
+  xiaohongshu: ['微信', 'wx', '公众号', '淘宝', 'tb', '链接在', '看我主页'],
+  wechat_xiaolushu: ['微信', 'wx', '公众号', '淘宝', 'tb', '链接在', '看我主页'],
+  douyin: ['微信', 'wx', '公众号', '淘宝', '私信发', '主页看'],
+  weibo: ['淘口令', '复制这段话'],
+  zhihu: ['微信', 'wx', '公众号', '扫码加', '加我微信'],
+  bilibili: ['微信', 'wx', '公众号', '淘宝', '拼多多'],
+  jike: [],  // 即刻对引流非常友好
+  linkedin: ['微信', 'WeChat'],
+  x: [],  // X 对外链友好，但会降低推荐
+  video_wechat: ['淘宝', 'tb', '拼多多'],
+  youtube: [],  // YouTube 对外链友好
+  juejin: ['微信', 'wx', '公众号', '加群', '扫码'],
+  zsxq: [],  // 知识星球本身就是私域
 };
 
 /**
@@ -249,6 +284,51 @@ export function checkCompliance(
           type: 'forbidden',
           keyword: word,
           message: `小红书违禁词"${word}"，使用会导致限流`,
+          platform,
+        });
+      }
+    }
+  }
+
+  // 2b. 抖音特有违禁词（绝对化用语 + 引流敏感）
+  if (platform === 'douyin' || platform === 'video_wechat') {
+    const douyinForbidden = ['最好', '最佳', '第一', '唯一', '顶级', '100%', '百分百', '绝对', '秒杀', '吊打'];
+    for (const word of douyinForbidden) {
+      if (textToCheck.includes(word.toLowerCase())) {
+        issues.push({
+          type: 'warning',
+          keyword: word,
+          message: `${getPlatformName(platform)}绝对化用语"${word}"，口播中使用可能触发限流`,
+          platform,
+        });
+      }
+    }
+  }
+
+  // 2c. 掘金/知乎：营销内容检查
+  if (platform === 'juejin' || platform === 'zhihu') {
+    const marketingPatterns = ['免费领取', '限时优惠', '点击购买', '下单立减', '优惠券', '折扣码'];
+    for (const word of marketingPatterns) {
+      if (textToCheck.includes(word.toLowerCase())) {
+        issues.push({
+          type: 'warning',
+          keyword: word,
+          message: `${getPlatformName(platform)}对营销内容敏感，"${word}"可能导致文章被标记为广告`,
+          platform,
+        });
+      }
+    }
+  }
+
+  // 2d. LinkedIn：过度自我推销检查
+  if (platform === 'linkedin') {
+    const linkedinWarnings = ['buy now', 'limited offer', '立即购买', '限时', 'dm me for'];
+    for (const word of linkedinWarnings) {
+      if (textToCheck.toLowerCase().includes(word.toLowerCase())) {
+        issues.push({
+          type: 'info',
+          keyword: word,
+          message: `LinkedIn偏好价值分享而非硬推销，"${word}"可能降低帖子触达`,
           platform,
         });
       }
@@ -671,6 +751,192 @@ export const TRAFFIC_TEMPLATES: Partial<Record<Platform, TrafficTemplate[]>> = {
       template: '完整文章/资源链接放在评论区第一条了，需要的自取 ⬇️',
       risk: 'moderate',
       note: 'LinkedIn 会降权含外链的帖子，建议将链接放在评论区而非正文中',
+    },
+  ],
+  x: [
+    {
+      method: '个人主页链接',
+      template: 'More details in my bio link 👆',
+      risk: 'safe',
+      note: 'X 主页支持放一个外链，是最核心的引流位置',
+    },
+    {
+      method: 'Thread 最后一条附链接',
+      template: 'Full article/resource here: [链接]\n\nIf this was helpful, RT the first tweet to spread the word 🙏',
+      risk: 'safe',
+      note: 'Thread 最后一条放链接不影响前面推文的推荐权重',
+    },
+    {
+      method: '评论区置顶链接',
+      template: '链接放在评论区第一条了👇',
+      risk: 'safe',
+      note: '自己评论后在评论区自带链接，避免正文外链降权',
+    },
+    {
+      method: 'Pinned Tweet 引导',
+      template: 'I pinned a thread with all the resources. Check my profile 📌',
+      risk: 'safe',
+      note: '置顶推文是 X 官方功能，适合放长期有效的引流内容',
+    },
+    {
+      method: '正文内嵌链接',
+      template: '详细教程在这里：[链接]',
+      risk: 'moderate',
+      note: 'X 会降低含外链推文的推荐，但不会处罚。建议高价值内容再用',
+    },
+  ],
+  wechat_xiaolushu: [
+    {
+      method: '主页置顶',
+      template: '更多干货看我主页置顶，整理好了完整攻略 📌',
+      risk: 'safe',
+      note: '小绿书和公众号共用主页，置顶引导是最安全的方式',
+    },
+    {
+      method: '评论区互动引导',
+      template: '需要的朋友评论区扣"要"，我私信发 ～',
+      risk: 'safe',
+      note: '通过评论互动引导私信，增加内容互动权重',
+    },
+    {
+      method: '全网同名搜索',
+      template: '全网同名哦～搜"XXX"就能找到我，内容更全 ✨',
+      risk: 'moderate',
+      note: '不要直接提及具体平台名称，只说"全网同名"即可',
+    },
+    {
+      method: '公众号关注引导',
+      template: '关注我的公众号，回复关键词领取完整资料包 📦',
+      risk: 'safe',
+      note: '小绿书和公众号同属微信生态，互相引流是平台鼓励的行为',
+    },
+  ],
+  video_wechat: [
+    {
+      method: '主页引导',
+      template: '想了解更多？点我头像，主页有完整系列视频 🏠',
+      risk: 'safe',
+      note: '视频号主页引导是最安全的引流方式',
+    },
+    {
+      method: '评论区互动',
+      template: '想要资料的朋友，评论区扣"1"，我私信发你 📦',
+      risk: 'safe',
+      note: '评论互动有利于视频推荐，同时可以私信引导',
+    },
+    {
+      method: '公众号关联',
+      template: '更详细的图文教程在我的公众号，点击视频号头像→关联公众号即可直达 📱',
+      risk: 'safe',
+      note: '视频号可以关联公众号，这是微信官方的互导功能',
+    },
+    {
+      method: '直播预告引导',
+      template: '下次直播会详细讲解这个话题，点关注+预约不错过 🔔',
+      risk: 'safe',
+      note: '直播预约是视频号核心功能，引导预约有利于下次开播的初始流量',
+    },
+    {
+      method: '企业微信/微信群',
+      template: '加入我的交流群，群里每天分享实用技巧。群二维码在公众号菜单栏 💬',
+      risk: 'moderate',
+      note: '不要在视频中直接放微信号或群二维码，建议通过公众号中转',
+    },
+  ],
+  youtube: [
+    {
+      method: '视频描述区链接',
+      template: '📌 All resources mentioned in this video: [链接]\nDon\'t forget to subscribe and hit the bell 🔔',
+      risk: 'safe',
+      note: 'YouTube 描述区可以放任意外链，是最重要的引流位置',
+    },
+    {
+      method: '置顶评论',
+      template: '📌 PINNED: Links and resources from this video are in the description below ⬇️',
+      risk: 'safe',
+      note: '创作者可以置顶自己的评论，引导观众看描述区',
+    },
+    {
+      method: '片尾卡片/结束画面',
+      template: '看完这个视频，接下来推荐看这个👉 [用YouTube结束画面功能]',
+      risk: 'safe',
+      note: 'YouTube End Screen是官方功能，可以链接到其他视频、播放列表或频道',
+    },
+    {
+      method: '社区帖子引导',
+      template: '我在社区帖子中整理了完整的资源清单，去"社区"栏看看 📋',
+      risk: 'safe',
+      note: 'YouTube 社区功能支持图文、投票，适合补充视频内容',
+    },
+    {
+      method: '订阅+通知引导',
+      template: 'If you found this helpful, subscribe and turn on notifications so you don\'t miss the next one 🔔',
+      risk: 'safe',
+      note: '口播引导订阅是 YouTube 最常见且有效的引流方式',
+    },
+  ],
+  juejin: [
+    {
+      method: '文末引导关注',
+      template: '如果这篇对你有帮助，欢迎点赞、收藏、关注，你的支持是我持续输出的动力 ✨',
+      risk: 'safe',
+      note: '掘金社区鼓励互动，文末引导三连是常见做法',
+    },
+    {
+      method: '专栏系列引导',
+      template: '这是《XXX系列》的第N篇，关注专栏可以看到完整系列 📖',
+      risk: 'safe',
+      note: '掘金专栏功能适合做系列内容，引导关注专栏很自然',
+    },
+    {
+      method: '个人主页/社交链接',
+      template: '我的其他平台账号和开源项目在个人主页中，欢迎交流 🤝',
+      risk: 'safe',
+      note: '掘金个人主页支持填写 GitHub、个人网站等链接',
+    },
+    {
+      method: '沸点引导',
+      template: '关于这个话题的更多碎片化思考，我会发在沸点里，欢迎围观 💬',
+      risk: 'safe',
+      note: '掘金沸点类似微博/即刻，适合发布短内容',
+    },
+    {
+      method: '文中自然提及公众号',
+      template: '更多技术干货可以关注我的公众号「XXX」，回复关键词获取源码',
+      risk: 'moderate',
+      note: '掘金对公众号引导有一定容忍度，但不宜过于频繁，一篇文章提一次即可',
+    },
+  ],
+  zsxq: [
+    {
+      method: '精华主题引导',
+      template: '这个话题的完整分析在精华区，直接搜索关键词就能找到 🔍',
+      risk: 'safe',
+      note: '知识星球内部引导查看精华内容，帮助新成员快速找到价值',
+    },
+    {
+      method: '星球专属内容预告',
+      template: '下周会分享XXX的完整方法论，星球成员专属福利，敬请期待 🎁',
+      risk: 'safe',
+      note: '预告星球专属内容，增加成员留存和活跃度',
+    },
+    {
+      method: '问答互动',
+      template: '有问题随时提问，我会在24小时内详细回复。置顶主题有提问模板 📝',
+      risk: 'safe',
+      note: '知识星球的核心价值就是提问互动，引导提问是最好的活跃方式',
+    },
+    {
+      method: '星球内分享外部链接',
+      template: '相关的深度文章/工具链接：[链接]',
+      risk: 'safe',
+      note: '知识星球是私域空间，分享外部链接完全自由，不受限制',
+    },
+    {
+      method: '邀请好友加入',
+      template: '觉得星球有价值的话，可以分享给身边需要的朋友，一起学习进步 🚀',
+      risk: 'safe',
+      note: '知识星球支持邀请返利，适当引导分享可以扩大星球规模',
     },
   ],
 };
