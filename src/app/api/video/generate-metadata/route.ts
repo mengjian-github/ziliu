@@ -174,7 +174,7 @@ ${content}
         'X-Title': 'Ziliu Video Metadata Generation',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5.2-chat', // 使用性价比高的模型
+        model: 'openai/gpt-4.1-mini', // 使用性价比高的模型
         messages: [
           {
             role: 'user',

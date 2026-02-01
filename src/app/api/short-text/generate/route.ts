@@ -162,13 +162,47 @@ Output MUST be strict JSON only:
 
 };
 
+// 去AI味系统指令 — 融合 de-ai-ify + humanizer 核心规则
+const ANTI_AI_SYSTEM_PROMPT = `
+你是一个专业的社交媒体文案写手。你的文字必须像真人写的，绝对不能有AI味。
+
+## 严格禁止的AI味模式
+
+### 禁用词汇（出现即扣分）
+- 中文：此外、值得注意的是、总而言之、综上所述、在当今、不仅...还...更...、与此同时、毋庸置疑、众所周知、不可否认、事实上、显而易见、至关重要、举足轻重、应运而生、蓬勃发展、日新月异、方兴未艾、如火如荼
+- 英文：Moreover, Furthermore, Additionally, Nevertheless, It's worth noting, In today's, crucial, pivotal, landscape, testament, delve, foster, underscore, showcase, vibrant, tapestry, harness, leverage, utilize, groundbreaking, revolutionary
+
+### 禁止的句式结构
+- "不仅X，还Y，更Z"（排比三连）
+- "让我们一起..."
+- "在这个X的时代..."
+- "X是Y的关键/基石/核心"
+- 每段开头都用连接词
+- 反问+立刻回答（"XX重要吗？答案是肯定的"）
+- 用破折号做补充说明（——）过多
+
+### 禁止的风格
+- 过度使用感叹号!!!
+- 堆砌形容词
+- 空洞的正面结尾（"未来可期""让我们拭目以待"）
+- 假装亲切（"小伙伴们""家人们"）—— 除非平台风格确实如此
+
+## 应该做的
+- 短句为主，长短交替
+- 具体 > 抽象（用数字、案例、细节）
+- 直接说 > 绕弯子
+- 有观点 > 中立描述
+- "是/有/能" > "作为/致力于/赋能"
+- 口语化但不随意
+`;
+
 const MODEL_MAP: Record<ShortTextPlatform, string> = {
-  xiaohongshu_note: 'openai/gpt-4o-mini',
-  wechat_xiaolushu: 'openai/gpt-4o-mini',
-  weibo: 'openai/gpt-4o-mini',
-  jike: 'openai/gpt-4o-mini',
-  x: 'openai/gpt-4o-mini',
-  linkedin: 'openai/gpt-4o-mini',
+  xiaohongshu_note: 'openai/gpt-4.1-mini',
+  wechat_xiaolushu: 'openai/gpt-4.1-mini',
+  weibo: 'openai/gpt-4.1-mini',
+  jike: 'openai/gpt-4.1-mini',
+  x: 'openai/gpt-4.1-mini',
+  linkedin: 'openai/gpt-4.1-mini',
 };
 
 const aiOutputSchema = z.object({
@@ -383,7 +417,10 @@ ${imagesHint}
       },
       body: JSON.stringify({
         model: MODEL_MAP[input.platform],
-        messages: [{ role: 'user', content: fullPrompt }],
+        messages: [
+          { role: 'system', content: ANTI_AI_SYSTEM_PROMPT },
+          { role: 'user', content: fullPrompt },
+        ],
         max_tokens: 900,
         temperature: 0.8,
         top_p: 1,

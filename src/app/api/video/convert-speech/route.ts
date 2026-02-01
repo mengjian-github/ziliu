@@ -142,7 +142,7 @@ ${content}
       },
       body: JSON.stringify({
         // 选择性价比高的模型，比如Claude-3-haiku或GPT-3.5
-        model: 'openai/gpt-5.2-chat', 
+        model: 'openai/gpt-4.1-mini', 
         messages: [
           {
             role: 'user',
