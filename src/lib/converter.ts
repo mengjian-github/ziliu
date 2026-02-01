@@ -313,10 +313,27 @@ function preprocessHtmlForWechat(html: string, styleKey: keyof typeof WECHAT_STY
     .replace(/<section[^>]*>/g, '<div>')
     .replace(/<\/section>/g, '</div>');
 
-  // 6. 表格支持：包裹 scroll wrapper
+  // 6. 表格支持：包裹 scroll wrapper + 斑马纹
   processedHtml = processedHtml.replace(
     /<table[^>]*>([\s\S]*?)<\/table>/gi,
-    (match) => `<section style="overflow-x: auto; max-width: 100%; margin: 20px 0;"><table style="border-collapse: collapse; width: 100%; font-size: 14px; min-width: 100%;">${match.replace(/<table[^>]*>/i, '').replace(/<\/table>/i, '')}</table></section>`
+    (match) => {
+      // 先提取表格内部内容
+      let tableInner = match.replace(/<table[^>]*>/i, '').replace(/<\/table>/i, '');
+      // 为偶数行 <tr> 添加斑马纹背景
+      let rowIndex = 0;
+      tableInner = tableInner.replace(/<tr([^>]*)>/gi, (trMatch, trAttrs) => {
+        rowIndex++;
+        // 跳过第一行（通常是 thead tr），从第2行开始算偶数行
+        if (rowIndex > 1 && rowIndex % 2 === 0) {
+          if (trAttrs && trAttrs.includes('style=')) {
+            return trMatch.replace(/style="([^"]*)"/, 'style="$1; background: rgba(127,127,127,0.04);"');
+          }
+          return `<tr${trAttrs} style="background: rgba(127,127,127,0.04);">`;
+        }
+        return trMatch;
+      });
+      return `<section style="overflow-x: auto; max-width: 100%; margin: 20px 0;"><table style="border-collapse: collapse; width: 100%; font-size: 14px; min-width: 100%;">${tableInner}</table></section>`;
+    }
   );
 
   // 7. 将 <hr> 转换为安全的分割线容器
