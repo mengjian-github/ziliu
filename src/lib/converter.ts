@@ -55,6 +55,12 @@ export function convertToWechatInline(
     styledHtml = addWechatDarkModeAttrs(styledHtml, darkInlineStyles);
   }
 
+  // 修复内容中的硬编码浅色背景（如精选文章推荐卡片），使其兼容暗色模式
+  // 将常见的浅色背景替换为透明，避免在暗色模式下出现白色色块
+  styledHtml = styledHtml
+    .replace(/(<div[^>]*style="[^"]*?)background:\s*#(?:F9FAFB|FFFFFF|fff|FFF|f9fafb|ffffff|F3F4F6|f3f4f6|EFF6FF|eff6ff|F0F9FF|f0f9ff)([^"]*")/gi, '$1background: transparent$2')
+    .replace(/(<div[^>]*style="[^"]*?)background-color:\s*#(?:F9FAFB|FFFFFF|fff|FFF|f9fafb|ffffff|F3F4F6|f3f4f6|EFF6FF|eff6ff|F0F9FF|f0f9ff)([^"]*")/gi, '$1background-color: transparent$2');
+
   // 如果主题定义了根样式，包裹一层
   const rootStyle = mode === 'night' ? (theme.rootStyleDark || theme.rootStyle) : theme.rootStyle;
   if (rootStyle) {
