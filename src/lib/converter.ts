@@ -400,7 +400,7 @@ function applyInlineStyles(html: string, styles: Record<string, string>): string
 
   styledHtml = styledHtml.replace(
     /(<li[^>]*>\s*<p[^>]*style=")([^"]*)(")/gi,
-    (_m, prefix, style, suffix) => `${prefix}${style.trim()}; margin: 0;${suffix}`
+    (_m, prefix, style, suffix) => `${prefix}${style.trim()}; margin: 4px 0; text-align: left;${suffix}`
   );
 
   // 添加微信编辑器需要的属性
