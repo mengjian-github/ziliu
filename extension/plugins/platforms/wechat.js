@@ -627,28 +627,23 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
       try {
         const articles = await this.fetchWeChatArticles(count);
-        const s = this.getFeaturedArticlesStyles(style, mode);
 
-        const titleStyle = `margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: ${s.text}; border-bottom: 2px solid ${s.accent}; padding-bottom: 8px;`;
-        const containerStyle = `background: ${s.bg}; border: 1px solid ${s.border}; border-radius: 8px; padding: 16px; margin: 16px 0;`;
-        const itemStyle = `margin: 0 0 12px 0; padding: 0 0 12px 0; border-bottom: 1px solid ${s.border}; line-height: 1.6;`;
-        const lastItemStyle = `margin: 0; padding: 0; line-height: 1.6;`;
-        const linkStyle = `color: ${s.link}; text-decoration: none; font-weight: 500; border-bottom: 1px dashed ${s.link};`;
+        // 构建 markdown，走主题转换 API 统一渲染
+        const articleLinks = articles.map(a => `- [${a.title}](${a.url})`).join('\n');
+        const markdown = `---\n\n### 📚 精选文章推荐\n\n${articleLinks}`;
 
-        const articleLinks = articles.map((article, index) => {
-          const isLast = index === articles.length - 1;
-          const itemCss = isLast ? lastItemStyle : itemStyle;
-          return `<p style="${itemCss}"><a href="${article.url}" target="_blank" style="${linkStyle}">${article.title}</a></p>`;
-        }).join('');
+        let featuredHtml;
+        try {
+          featuredHtml = await this.convertMarkdownToHtml(markdown, style, mode);
+          console.log(`✅ 精选文章通过主题 API 渲染成功（主题: ${style}, 模式: ${mode}）`);
+        } catch (e) {
+          // 降级：简单 HTML
+          console.warn('⚠️ 主题 API 渲染失败，使用降级方案:', e);
+          featuredHtml = this.simpleMarkdownToHtml(markdown);
+        }
 
-        const featuredSection = `
-<div style="${containerStyle}">
-  <h4 style="${titleStyle}">📚 精选文章推荐</h4>
-  ${articleLinks}
-</div>`;
-
-        processedContent = processedContent.replace(placeholder, featuredSection);
-        console.log(`✅ 已替换 ${placeholder} 为 ${articles.length} 篇历史文章（主题: ${style}, 模式: ${mode}）`);
+        processedContent = processedContent.replace(placeholder, featuredHtml);
+        console.log(`✅ 已替换 ${placeholder} 为 ${articles.length} 篇历史文章`);
       } catch (error) {
         console.error('获取历史文章失败:', error);
         processedContent = processedContent.replace(placeholder, `<!-- 获取历史文章失败: ${error.message} -->`);

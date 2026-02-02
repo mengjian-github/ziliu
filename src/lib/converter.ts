@@ -449,20 +449,20 @@ export function convertToZsxq(markdown: string): string {
 
   const html = marked(processMathFormulas(markdown)) as string;
 
-  // zsxq 安全的样式定义（只用白名单属性）
+  // zsxq 安全的样式定义（只用白名单属性，与清爽简约主题对齐）
   const S = {
-    h1: 'display: block; font-size: 24px; color: #1a1a1a; margin: 32px 0 16px; line-height: 1.4',
-    h2: 'display: block; font-size: 20px; color: #2563EB; margin: 28px 0 14px; line-height: 1.4',
-    h3: 'display: block; font-size: 18px; color: #1a1a1a; margin: 24px 0 12px; line-height: 1.4',
-    h4: 'display: block; font-size: 17px; color: #374151; margin: 20px 0 10px; line-height: 1.4',
-    p:  'display: block; font-size: 16px; color: #374151; margin: 14px 0; line-height: 1.9; text-align: justify',
-    blockquote: 'display: block; color: #6B7280; font-size: 15px; margin: 16px 0; line-height: 1.8',
-    pre: 'display: block; font-size: 13px; color: #1F2937; margin: 16px 0; line-height: 1.6',
+    h1: 'display: block; font-size: 24px; color: #1a1a1a; margin: 36px 0 20px; line-height: 1.5; text-align: center',
+    h2: 'display: block; font-size: 20px; color: #2563EB; margin: 40px 0 20px; line-height: 1.5; text-align: center',
+    h3: 'display: block; font-size: 17px; color: #1a1a1a; margin: 32px 0 14px; line-height: 1.4',
+    h4: 'display: block; font-size: 17px; color: #374151; margin: 24px 0 10px; line-height: 1.4',
+    p:  'display: block; font-size: 16px; color: #333333; margin: 20px 0; line-height: 2.0; text-align: left',
+    blockquote: 'display: block; color: #6B7280; font-size: 15px; margin: 20px 0; line-height: 1.8; border-left: 4px solid #2563EB; padding-left: 16px',
+    pre: 'display: block; font-size: 13px; color: #1F2937; margin: 20px 0; line-height: 1.6',
     code: 'display: inline; font-size: 14px; color: #2563EB',
-    li:  'display: block; font-size: 16px; color: #374151; margin: 6px 0; line-height: 1.8',
-    img: 'display: block; margin: 18px 0',
+    li:  'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9',
+    img: 'display: block; margin: 24px 0',
     a:   'color: #2563EB',
-    hr:  'display: block; margin: 28px 0; line-height: 0.5; text-align: center; color: #D1D5DB',
+    hr:  'display: block; margin: 36px 0; line-height: 0.5; text-align: center; color: #D1D5DB',
     th:  'font-size: 14px; color: #1F2937; text-align: left',
     td:  'font-size: 14px; color: #374151',
     strong: 'color: #111827',
@@ -475,7 +475,7 @@ export function convertToZsxq(markdown: string): string {
     .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_, t) =>
       `<p style="${S.h1}"><strong style="${S.strong}">${t}</strong></p>`)
     .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_, t) =>
-      `<p style="${S.h2}"><strong>${t}</strong></p>`)
+      `<p style="${S.h2}"><strong style="color: inherit">${t}</strong></p>`)
     .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_, t) =>
       `<p style="${S.h3}"><strong style="${S.strong}">${t}</strong></p>`)
     .replace(/<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi, (_, t) =>
@@ -489,8 +489,8 @@ export function convertToZsxq(markdown: string): string {
   });
 
   // --- 引用块 ---
-  result = result.replace(/<blockquote>/gi, `<blockquote style="${S.blockquote}">「`);
-  result = result.replace(/<\/blockquote>/gi, '」</blockquote>');
+  result = result.replace(/<blockquote>/gi, `<blockquote style="${S.blockquote}">`);
+  result = result.replace(/<\/blockquote>/gi, '</blockquote>');
 
   // --- 代码块 ---
   // 保护代码块内容
