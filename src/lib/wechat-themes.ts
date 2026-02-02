@@ -351,14 +351,14 @@ export const WECHAT_STYLES: Record<string, ThemeDefinition> = {
         accent: '#78350F',
         css: `
       .wechat-content { font-family: ${FONTS.serif}; line-height: 2.0; color: #292524; background: #FDFCF9; padding: 0; }
-      .wechat-content h1 { font-family: ${FONTS.serif}; font-size: 30px; font-weight: 700; margin: 40px 0 24px; text-align: center; color: #451a03; letter-spacing: 3px; border-top: 3px double #78350F; border-bottom: 3px double #78350F; padding: 16px 0; }
+      .wechat-content h1 { font-family: ${FONTS.serif}; font-size: 28px; font-weight: 700; margin: 32px 0 20px; text-align: center; color: #451a03; letter-spacing: 2px; border-top: 3px double #78350F; border-bottom: 3px double #78350F; padding: 14px 0; }
       .wechat-content h2 { font-family: ${FONTS.serif}; font-size: 24px; font-weight: 600; margin: 36px 0 20px; text-align: center; color: #451a03; position: relative; padding-bottom: 12px; }
       .wechat-content h2::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 80px; height: 1px; background: linear-gradient(90deg, transparent, #78350F, transparent); }
       .wechat-content h3 { font-size: 19px; font-weight: 600; margin: 28px 0 14px; color: #78350F; text-align: center; font-style: italic; }
-      .wechat-content p { font-size: 17px; margin: 24px 0; text-align: justify; text-indent: 2em; letter-spacing: 0.5px; color: #44403C; line-height: 2.0; }
+      .wechat-content p { font-size: 17px; margin: 20px 0; text-align: left; text-indent: 2em; letter-spacing: 0.5px; color: #44403C; line-height: 2.0; }
       .wechat-content li { letter-spacing: 0.5px; text-align: left; margin-bottom: 12px; }
-      .wechat-content li p { text-align: left; margin: 4px 0; }
-      .wechat-content blockquote { border: none; background: linear-gradient(135deg, #F5F5F4 0%, #FAFAF9 100%); padding: 24px 32px; margin: 32px 0; font-family: ${FONTS.serif}; color: #78716C; font-style: italic; text-align: center; font-size: 18px; border-radius: 8px; border-left: 3px solid #A8A29E; }
+      .wechat-content li p { text-align: left; text-indent: 0; margin: 4px 0; }
+      .wechat-content blockquote { border: none; background: linear-gradient(135deg, #F5F5F4 0%, #FAFAF9 100%); padding: 20px 24px; margin: 28px 0; font-family: ${FONTS.serif}; color: #78716C; font-style: italic; text-align: center; font-size: 16px; border-radius: 8px; border-left: 3px solid #A8A29E; }
       .wechat-content code { background: #F5F5F4; padding: 2px 8px; border-radius: 4px; font-family: ${FONTS.code}; font-size: 14px; color: #78350F; border: 1px solid #E7E5E4; }
       .wechat-content pre { background: #FAFAF9; padding: 0; border-radius: 8px; margin: 24px 0; overflow-x: auto; border: 1px solid #E7E5E4; font-family: ${FONTS.code}; font-size: 13px; line-height: 1.7; color: #57534E; }
       .wechat-content pre code { background: transparent; border: none; padding: 0; color: inherit; }
@@ -370,14 +370,14 @@ export const WECHAT_STYLES: Record<string, ThemeDefinition> = {
     `,
         cssDark: `
       .wechat-content { font-family: ${FONTS.serif}; line-height: 2.0; color: #D6D3D1; background: #1C1917; padding: 0; }
-      .wechat-content h1 { font-family: ${FONTS.serif}; font-size: 30px; font-weight: 700; margin: 40px 0 24px; text-align: center; color: #E7E5E4; letter-spacing: 2px; border-top: 3px double #A8A29E; border-bottom: 3px double #A8A29E; padding: 16px 0; }
+      .wechat-content h1 { font-family: ${FONTS.serif}; font-size: 28px; font-weight: 700; margin: 32px 0 20px; text-align: center; color: #E7E5E4; letter-spacing: 2px; border-top: 3px double #A8A29E; border-bottom: 3px double #A8A29E; padding: 14px 0; }
       .wechat-content h2 { font-family: ${FONTS.serif}; font-size: 24px; font-weight: 600; margin: 36px 0 20px; text-align: center; color: #E7E5E4; position: relative; padding-bottom: 12px; }
       .wechat-content h2::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 80px; height: 1px; background: linear-gradient(90deg, transparent, #A8A29E, transparent); }
       .wechat-content h3 { font-size: 19px; font-weight: 600; margin: 28px 0 14px; color: #A8A29E; text-align: center; font-style: italic; }
-      .wechat-content p { font-size: 17px; margin: 24px 0; text-align: justify; text-indent: 2em; letter-spacing: 0.5px; color: #D6D3D1; line-height: 2.0; }
+      .wechat-content p { font-size: 17px; margin: 20px 0; text-align: left; text-indent: 2em; letter-spacing: 0.5px; color: #D6D3D1; line-height: 2.0; }
       .wechat-content li { letter-spacing: 0.5px; text-align: left; margin-bottom: 12px; }
-      .wechat-content li p { text-align: left; margin: 4px 0; }
-      .wechat-content blockquote { border: none; background: linear-gradient(135deg, #292524 0%, #1C1917 100%); padding: 24px 32px; margin: 32px 0; font-family: ${FONTS.serif}; color: #A8A29E; font-style: italic; text-align: center; font-size: 18px; border-radius: 8px; border-left: 3px solid #78716C; }
+      .wechat-content li p { text-align: left; text-indent: 0; margin: 4px 0; }
+      .wechat-content blockquote { border: none; background: linear-gradient(135deg, #292524 0%, #1C1917 100%); padding: 20px 24px; margin: 28px 0; font-family: ${FONTS.serif}; color: #A8A29E; font-style: italic; text-align: center; font-size: 16px; border-radius: 8px; border-left: 3px solid #78716C; }
       .wechat-content code { background: #292524; padding: 2px 8px; border-radius: 4px; font-family: ${FONTS.code}; font-size: 14px; color: #D97706; border: 1px solid #44403C; }
       .wechat-content pre { background: #292524; padding: 0; border-radius: 8px; margin: 24px 0; overflow-x: auto; border: 1px solid #44403C; font-family: ${FONTS.code}; font-size: 13px; line-height: 1.7; color: #D6D3D1; }
       .wechat-content pre code { background: transparent; border: none; padding: 0; color: inherit; }
@@ -404,11 +404,11 @@ export const WECHAT_STYLES: Record<string, ThemeDefinition> = {
                 quoteColor: '#78716C',
                 linkColor: '#92400E'
             }),
-            h1: `display: block; font-family: ${FONTS.serif}; font-size: 30px; font-weight: 700; margin: 40px 0 24px; text-align: center; color: #451a03; letter-spacing: 3px; border-top: 3px double #78350F; border-bottom: 3px double #78350F; padding: 16px 0; line-height: 1.4;`,
+            h1: `display: block; font-family: ${FONTS.serif}; font-size: 28px; font-weight: 700; margin: 32px 0 20px; text-align: center; color: #451a03; letter-spacing: 2px; border-top: 3px double #78350F; border-bottom: 3px double #78350F; padding: 14px 0; line-height: 1.4;`,
             h2: `display: block; font-family: ${FONTS.serif}; font-size: 24px; font-weight: 600; margin: 36px 0 20px; text-align: center; color: #451a03; line-height: 1.4; padding-bottom: 12px; background-image: linear-gradient(90deg, transparent, #78350F, transparent); background-size: 80px 1px; background-repeat: no-repeat; background-position: center bottom;`,
             h3: `display: block; font-size: 19px; font-weight: 600; margin: 28px 0 14px; color: #78350F; text-align: center; font-style: italic; line-height: 1.4; font-family: ${FONTS.serif};`,
-            p: `display: block; font-size: 17px; margin: 24px 0; text-align: justify; text-indent: 2em; letter-spacing: 0.5px; color: #44403C; line-height: 2.0; font-family: ${FONTS.serif};`,
-            blockquote: `display: block; border: none; background: #F5F5F4; padding: 24px 32px; margin: 32px 0; font-family: ${FONTS.serif}; color: #78716C; font-style: italic; text-align: center; font-size: 18px; border-radius: 8px; border-left: 3px solid #A8A29E; letter-spacing: 0.5px;`,
+            p: `display: block; font-size: 17px; margin: 20px 0; text-align: left; text-indent: 2em; letter-spacing: 0.5px; color: #44403C; line-height: 2.0; font-family: ${FONTS.serif};`,
+            blockquote: `display: block; border: none; background: #F5F5F4; padding: 20px 24px; margin: 28px 0; font-family: ${FONTS.serif}; color: #78716C; font-style: italic; text-align: center; font-size: 16px; border-radius: 8px; border-left: 3px solid #A8A29E; letter-spacing: 0.5px;`,
             img: `display: block; max-width: 100%; margin: 28px auto; border: 8px solid #fff; box-shadow: 0 8px 24px rgba(120, 53, 15, 0.12);`,
             th: `border: 1px solid #E7E5E4; padding: 12px; background: #F5F5F4; font-weight: 600; color: #451a03; font-family: ${FONTS.serif}; letter-spacing: 0.5px;`,
             td: `border: 1px solid #E7E5E4; padding: 12px; color: #57534E; letter-spacing: 0.5px;`,
@@ -429,11 +429,11 @@ export const WECHAT_STYLES: Record<string, ThemeDefinition> = {
                 linkColor: '#D97706',
                 imgOpacity: '0.95'
             }),
-            h1: `display: block; font-family: ${FONTS.serif}; font-size: 30px; font-weight: 700; margin: 40px 0 24px; text-align: center; color: #E7E5E4; letter-spacing: 2px; border-top: 3px double #A8A29E; border-bottom: 3px double #A8A29E; padding: 16px 0; line-height: 1.4;`,
+            h1: `display: block; font-family: ${FONTS.serif}; font-size: 28px; font-weight: 700; margin: 32px 0 20px; text-align: center; color: #E7E5E4; letter-spacing: 2px; border-top: 3px double #A8A29E; border-bottom: 3px double #A8A29E; padding: 14px 0; line-height: 1.4;`,
             h2: `display: block; font-family: ${FONTS.serif}; font-size: 24px; font-weight: 600; margin: 36px 0 20px; text-align: center; color: #E7E5E4; line-height: 1.4; padding-bottom: 12px; background-image: linear-gradient(90deg, transparent, #A8A29E, transparent); background-size: 80px 1px; background-repeat: no-repeat; background-position: center bottom;`,
             h3: `display: block; font-size: 19px; font-weight: 600; margin: 28px 0 14px; color: #A8A29E; text-align: center; font-style: italic; line-height: 1.4; font-family: ${FONTS.serif};`,
-            p: `display: block; font-size: 17px; margin: 24px 0; text-align: justify; text-indent: 2em; letter-spacing: 0.5px; color: #D6D3D1; line-height: 2.0; font-family: ${FONTS.serif};`,
-            blockquote: `display: block; border: none; background: #292524; padding: 24px 32px; margin: 32px 0; font-family: ${FONTS.serif}; color: #A8A29E; font-style: italic; text-align: center; font-size: 18px; border-radius: 8px; border-left: 3px solid #78716C; letter-spacing: 0.5px;`,
+            p: `display: block; font-size: 17px; margin: 20px 0; text-align: left; text-indent: 2em; letter-spacing: 0.5px; color: #D6D3D1; line-height: 2.0; font-family: ${FONTS.serif};`,
+            blockquote: `display: block; border: none; background: #292524; padding: 20px 24px; margin: 28px 0; font-family: ${FONTS.serif}; color: #A8A29E; font-style: italic; text-align: center; font-size: 16px; border-radius: 8px; border-left: 3px solid #78716C; letter-spacing: 0.5px;`,
             img: `display: block; max-width: 100%; margin: 28px auto; border: 8px solid #292524; box-shadow: 0 8px 24px rgba(0,0,0,0.4); opacity: 0.95;`,
             th: `border: 1px solid #44403C; padding: 12px; background: #292524; font-weight: 600; color: #E7E5E4; font-family: ${FONTS.serif}; letter-spacing: 0.5px;`,
             td: `border: 1px solid #44403C; padding: 12px; color: #D6D3D1; letter-spacing: 0.5px;`,
