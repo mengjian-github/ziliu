@@ -649,10 +649,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
       return;
     }
 
-    // 知识星球：使用专属转换器（适配 zsxq CSS 白名单）
+    // 知识星球：使用专属转换器（适配 zsxq CSS 白名单，跟随主题）
     if (platform === 'zsxq') {
       import('@/lib/converter').then(({ convertToZsxq }) => {
-        const html = convertToZsxq(contentToPreview);
+        const html = convertToZsxq(contentToPreview, style);
         setPreviewHtml(html);
         setPreviewText('');
         setIsConverting(false);

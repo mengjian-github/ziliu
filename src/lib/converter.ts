@@ -444,24 +444,39 @@ function applyInlineStyles(html: string, styles: Record<string, string>): string
  * - 保持良好的 margin 垂直节奏
  * - 不使用任何会被剥掉的属性
  */
-export function convertToZsxq(markdown: string): string {
+export function convertToZsxq(markdown: string, styleKey: string = 'default'): string {
   marked.setOptions({ breaks: true, gfm: true });
 
   const html = marked(processMathFormulas(markdown)) as string;
 
-  // zsxq 安全的样式定义（只用白名单属性，与清爽简约主题对齐）
+  // 从主题系统读取 inline 样式，提取安全的 CSS 属性给知识星球
+  const theme = WECHAT_STYLES[styleKey] || WECHAT_STYLES.default;
+  const themeInline = theme.inline;
+
+  // 知识星球 CSS 白名单属性提取器：只保留安全属性
+  const zsxqSafe = (style: string): string => {
+    const safeProps = ['display', 'font-size', 'font-weight', 'color', 'margin', 'line-height', 'text-align', 'border-left', 'padding-left', 'padding-bottom', 'border-bottom'];
+    const parts: string[] = [];
+    for (const prop of safeProps) {
+      const val = extractCssProperty(style, prop);
+      if (val) parts.push(`${prop}: ${val}`);
+    }
+    return parts.join('; ');
+  };
+
+  // 从主题 inline 样式中提取知识星球安全样式
   const S = {
-    h1: 'display: block; font-size: 24px; color: #1a1a1a; margin: 36px 0 20px; line-height: 1.5; text-align: center',
-    h2: 'display: block; font-size: 20px; color: #2563EB; margin: 40px 0 20px; line-height: 1.5; text-align: center',
-    h3: 'display: block; font-size: 17px; color: #1a1a1a; margin: 32px 0 14px; line-height: 1.4',
-    h4: 'display: block; font-size: 17px; color: #374151; margin: 24px 0 10px; line-height: 1.4',
-    p:  'display: block; font-size: 16px; color: #333333; margin: 20px 0; line-height: 2.0; text-align: left',
-    blockquote: 'display: block; color: #6B7280; font-size: 15px; margin: 20px 0; line-height: 1.8; border-left: 4px solid #2563EB; padding-left: 16px',
+    h1: zsxqSafe(themeInline.h1 || '') || 'display: block; font-size: 24px; color: #1a1a1a; margin: 36px 0 20px; line-height: 1.5; text-align: center',
+    h2: zsxqSafe(themeInline.h2 || '') || 'display: block; font-size: 20px; color: #2563EB; margin: 40px 0 20px; line-height: 1.5; text-align: center',
+    h3: zsxqSafe(themeInline.h3 || '') || 'display: block; font-size: 17px; color: #1a1a1a; margin: 32px 0 14px; line-height: 1.4',
+    h4: zsxqSafe(themeInline.h3 || '') || 'display: block; font-size: 17px; color: #374151; margin: 24px 0 10px; line-height: 1.4',
+    p:  zsxqSafe(themeInline.p || '') || 'display: block; font-size: 16px; color: #333333; margin: 20px 0; line-height: 2.0; text-align: left',
+    blockquote: zsxqSafe(themeInline.blockquote || '') || 'display: block; color: #6B7280; font-size: 15px; margin: 20px 0; line-height: 1.8; border-left: 4px solid #2563EB; padding-left: 16px',
     pre: 'display: block; font-size: 13px; color: #1F2937; margin: 20px 0; line-height: 1.6',
-    code: 'display: inline; font-size: 14px; color: #2563EB',
-    li:  'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9',
+    code: `display: inline; font-size: 14px; color: ${theme.accent}`,
+    li:  zsxqSafe(themeInline.li || '') || 'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9',
     img: 'display: block; margin: 24px 0',
-    a:   'color: #2563EB',
+    a:   `color: ${theme.accent}`,
     hr:  'display: block; margin: 36px 0; line-height: 0.5; text-align: center; color: #D1D5DB',
     th:  'font-size: 14px; color: #1F2937; text-align: left',
     td:  'font-size: 14px; color: #374151',
@@ -572,9 +587,9 @@ export function previewConversion(markdown: string, styleKey: keyof typeof WECHA
   const wordCount = markdown.replace(/\s/g, '').length;
   const readingTime = Math.ceil(wordCount / 300);
 
-  // 知识星球使用专属转换器
+  // 知识星球使用专属转换器（跟随主题）
   if (platform === 'zsxq') {
-    const html = convertToZsxq(markdown);
+    const html = convertToZsxq(markdown, styleKey as string);
     return {
       html,
       inlineHtml: html,
