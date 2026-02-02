@@ -474,7 +474,8 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default'): s
     blockquote: zsxqSafe(themeInline.blockquote || '') || 'display: block; color: #6B7280; font-size: 15px; margin: 20px 0; line-height: 1.8; border-left: 4px solid #2563EB; padding-left: 16px',
     pre: 'display: block; font-size: 13px; color: #1F2937; margin: 20px 0; line-height: 1.6',
     code: `display: inline; font-size: 14px; color: ${theme.accent}`,
-    li:  zsxqSafe(themeInline.li || '') || 'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9',
+    // 知识星球列表项已转为 <p> + 文本符号（• / 1.），必须 display:block 避免浏览器渲染额外圆点
+    li:  (zsxqSafe(themeInline.li || '') || 'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9').replace(/display:\s*list-item/gi, 'display: block'),
     img: 'display: block; margin: 24px 0',
     a:   `color: ${theme.accent}`,
     hr:  'display: block; margin: 36px 0; line-height: 0.5; text-align: center; color: #D1D5DB',
