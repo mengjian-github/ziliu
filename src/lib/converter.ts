@@ -487,15 +487,16 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default'): s
   let result = html;
 
   // --- 标题：转为 <p> + <strong>，用 font-size 和 color 区分层次 ---
+  // 所有标题的 <strong> 使用 color: inherit，让主题色从 <p> 的 style 继承下来
   result = result
     .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_, t) =>
-      `<p style="${S.h1}"><strong style="${S.strong}">${t}</strong></p>`)
+      `<p style="${S.h1}"><strong style="color: inherit">${t}</strong></p>`)
     .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_, t) =>
       `<p style="${S.h2}"><strong style="color: inherit">${t}</strong></p>`)
     .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_, t) =>
-      `<p style="${S.h3}"><strong style="${S.strong}">${t}</strong></p>`)
+      `<p style="${S.h3}"><strong style="color: inherit">${t}</strong></p>`)
     .replace(/<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi, (_, t) =>
-      `<p style="${S.h4}"><strong style="${S.strong}">${t}</strong></p>`);
+      `<p style="${S.h4}"><strong style="color: inherit">${t}</strong></p>`);
 
   // --- 段落 ---
   result = result.replace(/<p([^>]*)>/gi, (match, attrs) => {
