@@ -464,18 +464,36 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default'): s
     return parts.join('; ');
   };
 
+  // 知识星球是白底，检测颜色是否太浅（在白底上看不见），如果是则替换为主题 accent 色
+  const ensureVisibleColor = (style: string): string => {
+    const colorMatch = style.match(/color:\s*(#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\)|white|#fff)/i);
+    if (!colorMatch) return style;
+    const color = colorMatch[1].toLowerCase().trim();
+    // 检测白色或接近白色的颜色
+    const isLight = color === '#fff' || color === '#ffffff' || color === 'white' ||
+      /^#f[0-9a-f]{2}f[0-9a-f]{2}f[0-9a-f]{2}$/i.test(color) || // #fXfXfX 模式
+      /^#[e-f][0-9a-f][e-f][0-9a-f][e-f][0-9a-f]$/i.test(color); // 高亮色
+    if (isLight) {
+      return style.replace(/color:\s*[^;]+/, `color: ${theme.accent}`);
+    }
+    return style;
+  };
+
   // 从主题 inline 样式中提取知识星球安全样式
   const S = {
-    h1: zsxqSafe(themeInline.h1 || '') || 'display: block; font-size: 24px; color: #1a1a1a; margin: 36px 0 20px; line-height: 1.5; text-align: center',
-    h2: zsxqSafe(themeInline.h2 || '') || 'display: block; font-size: 20px; color: #2563EB; margin: 40px 0 20px; line-height: 1.5; text-align: center',
-    h3: zsxqSafe(themeInline.h3 || '') || 'display: block; font-size: 17px; color: #1a1a1a; margin: 32px 0 14px; line-height: 1.4',
-    h4: zsxqSafe(themeInline.h3 || '') || 'display: block; font-size: 17px; color: #374151; margin: 24px 0 10px; line-height: 1.4',
+    // 标题: 确保可见色 + display 强制 block（zsxq 不支持 inline-block 背景效果）
+    h1: ensureVisibleColor(zsxqSafe(themeInline.h1 || '')).replace(/display:\s*inline-block/gi, 'display: block') || 'display: block; font-size: 24px; color: #1a1a1a; margin: 36px 0 20px; line-height: 1.5; text-align: center',
+    h2: ensureVisibleColor(zsxqSafe(themeInline.h2 || '')).replace(/display:\s*inline-block/gi, 'display: block') || 'display: block; font-size: 20px; color: #2563EB; margin: 40px 0 20px; line-height: 1.5; text-align: center',
+    h3: ensureVisibleColor(zsxqSafe(themeInline.h3 || '')).replace(/display:\s*inline-block/gi, 'display: block') || 'display: block; font-size: 17px; color: #1a1a1a; margin: 32px 0 14px; line-height: 1.4',
+    h4: ensureVisibleColor(zsxqSafe(themeInline.h3 || '')).replace(/display:\s*inline-block/gi, 'display: block') || 'display: block; font-size: 17px; color: #374151; margin: 24px 0 10px; line-height: 1.4',
     p:  zsxqSafe(themeInline.p || '') || 'display: block; font-size: 16px; color: #333333; margin: 20px 0; line-height: 2.0; text-align: left',
     blockquote: zsxqSafe(themeInline.blockquote || '') || 'display: block; color: #6B7280; font-size: 15px; margin: 20px 0; line-height: 1.8; border-left: 4px solid #2563EB; padding-left: 16px',
     pre: 'display: block; font-size: 13px; color: #1F2937; margin: 20px 0; line-height: 1.6',
     code: `display: inline; font-size: 14px; color: ${theme.accent}`,
     // 知识星球列表项已转为 <p> + 文本符号（• / 1.），必须 display:block 避免浏览器渲染额外圆点
-    li:  (zsxqSafe(themeInline.li || '') || 'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9').replace(/display:\s*list-item/gi, 'display: block'),
+    li:  (zsxqSafe(themeInline.li || '') || 'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9')
+      .replace(/display:\s*list-item/gi, 'display: block')
+      .replace(/display:\s*inline-block/gi, 'display: block'),
     img: 'display: block; margin: 24px 0',
     a:   `color: ${theme.accent}`,
     hr:  'display: block; margin: 36px 0; line-height: 0.5; text-align: center; color: #D1D5DB',
