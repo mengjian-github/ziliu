@@ -285,10 +285,10 @@ function convertHtmlToMarkdownWithTurndown(html: string): string {
 
   // 添加自定义表格规则，处理没有表头的飞书表格
   turndownService.addRule('feishuTable', {
-    filter: function (node: HTMLElement) {
+    filter: function (node: Node) {
       return node.nodeName === 'TABLE';
     },
-    replacement: function (_content: string, node: HTMLElement) {
+    replacement: function (_content: string, node: Node) {
       const table = node as HTMLTableElement;
       const rows = Array.from(table.rows);
       if (rows.length === 0) return '';
