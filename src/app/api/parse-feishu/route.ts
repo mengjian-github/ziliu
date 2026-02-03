@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import TurndownService from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { checkImageQuota, uploadImageFromUrl } from '@/lib/services/image-service';
@@ -279,6 +280,43 @@ function convertHtmlToMarkdownWithTurndown(html: string): string {
     linkReferenceStyle: 'full'
   });
 
+  // 启用 GFM 插件（支持表格、删除线、任务列表）
+  turndownService.use(gfm);
+
+  // 添加自定义表格规则，处理没有表头的飞书表格
+  turndownService.addRule('feishuTable', {
+    filter: function (node: HTMLElement) {
+      return node.nodeName === 'TABLE';
+    },
+    replacement: function (_content: string, node: HTMLElement) {
+      const table = node as HTMLTableElement;
+      const rows = Array.from(table.rows);
+      if (rows.length === 0) return '';
+
+      const result: string[] = [];
+      
+      rows.forEach((row, rowIndex) => {
+        const cells = Array.from(row.cells);
+        const cellContents = cells.map(cell => {
+          // 获取单元格文本内容，清理换行
+          let text = cell.textContent?.trim() || '';
+          text = text.replace(/\n/g, ' ').replace(/\|/g, '\\|');
+          return text;
+        });
+        
+        result.push('| ' + cellContents.join(' | ') + ' |');
+        
+        // 在第一行后添加分隔行
+        if (rowIndex === 0) {
+          const separator = cells.map(() => '---').join(' | ');
+          result.push('| ' + separator + ' |');
+        }
+      });
+
+      return '\n\n' + result.join('\n') + '\n\n';
+    }
+  });
+
   // 针对飞书特殊结构的预处理
   let cleanHtml = html;
 
@@ -303,18 +341,33 @@ function convertHtmlToMarkdownWithTurndown(html: string): string {
     }
   );
 
-  // 清理飞书特有的属性
+  // 清理飞书特有的属性（但保留表格结构）
   cleanHtml = cleanHtml
     .replace(/data-[^=]*="[^"]*"/g, '') // 移除data-*属性
     .replace(/style="[^"]*"/g, '') // 移除style属性
     .replace(/class="[^"]*"/g, '') // 移除class属性
     .replace(/id="[^"]*"/g, ''); // 移除id属性
 
+  // 修复不完整的表格结构（飞书复制可能缺少 <table> 开始标签）
+  if (cleanHtml.includes('<tr') && !cleanHtml.includes('<table')) {
+    cleanHtml = '<table>' + cleanHtml;
+  }
+  if (cleanHtml.includes('</table>') && !cleanHtml.includes('<table')) {
+    cleanHtml = '<table>' + cleanHtml;
+  }
+  // 如果有 </tbody> 但没有 <tbody>
+  if (cleanHtml.includes('</tbody>') && !cleanHtml.includes('<tbody')) {
+    cleanHtml = cleanHtml.replace(/<table>/g, '<table><tbody>');
+  }
+
   // 直接使用 turndown 转换
   let markdown = turndownService.turndown(cleanHtml);
 
   // 后处理
   markdown = markdown
+    .replace(/\*\*\*\*/g, '** **') // 修复连续加粗问题（**文字1****文字2** → **文字1** **文字2**）
+    .replace(/\*\*\s+\*\*/g, ' ') // 移除空的加粗标记（** ** → 空格）
+    .replace(/\$/g, '\\$') // 转义 $ 符号，防止被解析为 LaTeX 公式
     .replace(/[ \t]+$/gm, '') // 移除行尾空白
     .replace(/\n{3,}/g, '\n\n') // 清理多余换行
     .replace(/^\n+/, '') // 移除开头换行

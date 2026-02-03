@@ -6,7 +6,7 @@ import { z } from 'zod';
 const convertSchema = z.object({
   content: z.string().min(1, '内容不能为空'),
   platform: z.enum(['wechat', 'zhihu', 'juejin', 'zsxq', 'wechat_xiaolushu']).default('wechat'),
-  style: z.enum(['default', 'minimal', 'elegant', 'tech', 'card', 'print', 'night']).default('default'),
+  style: z.enum(['default', 'minimal', 'elegant', 'tech', 'card', 'print', 'night', 'wechatHot', 'blogger']).default('default'),
   mode: z.enum(['day', 'night']).default('day'),
 });
 

@@ -176,6 +176,43 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       } catch (e) {
         return { success: false, error: (e && e.message) || '设置失败' };
       }
+    },
+
+    // 在页面 MAIN world 调用微信公众号 MP_Editor_JSAPI（绕开 CSP 禁止 inline script 注入）
+    mpJsApiInvoke: async ({ apiName, apiParam }) => {
+      try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const activeTab = tabs[0];
+        if (!activeTab?.id) throw new Error('No active tab');
+
+        const [{ result }] = await chrome.scripting.executeScript({
+          target: { tabId: activeTab.id },
+          world: 'MAIN',
+          func: (apiNameArg, apiParamArg) => {
+            try {
+              const mpApi = window.MP_Editor_JSAPI || window.__MP_Editor_JSAPI__;
+              if (!mpApi || typeof mpApi.invoke !== 'function') {
+                return { ok: false, hasApi: false };
+              }
+              mpApi.invoke({
+                apiName: apiNameArg,
+                apiParam: apiParamArg || {},
+                sucCb: () => {},
+                errCb: () => {}
+              });
+              return { ok: true, hasApi: true };
+            } catch (e) {
+              return { ok: false, hasApi: true, error: e?.message || String(e) };
+            }
+          },
+          args: [apiName, apiParam]
+        });
+
+        return { success: true, data: result };
+      } catch (e) {
+        console.error('❌ mpJsApiInvoke failed:', e);
+        return { success: false, error: e?.message || String(e) };
+      }
     }
   };
 

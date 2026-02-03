@@ -177,18 +177,46 @@ function addWechatDarkModeAttrs(html: string, darkStyles: Record<string, string>
 
 // 处理 LaTeX 公式
 function processMathFormulas(markdown: string): string {
-  return markdown
+  // 先保护转义的 \$ 符号，避免被当作公式处理
+  const ESCAPED_DOLLAR_PLACEHOLDER = '__ESCAPED_DOLLAR__';
+  let result = markdown.replace(/\\\$/g, ESCAPED_DOLLAR_PLACEHOLDER);
+  
+  // 保护美元金额（$后直接跟数字），避免被当作公式
+  // 例如：$20、$199.99、$1,000
+  const DOLLAR_AMOUNT_PLACEHOLDER = '__DOLLAR_AMOUNT__';
+  const dollarAmounts: string[] = [];
+  result = result.replace(/\$(\d[\d,\.]*)/g, (match, amount) => {
+    dollarAmounts.push(amount);
+    return `${DOLLAR_AMOUNT_PLACEHOLDER}${dollarAmounts.length - 1}__`;
+  });
+  
+  result = result
     // 处理块级公式 $$...$$
     .replace(/\$\$([\s\S]+?)\$\$/g, (_match, formula) => {
       const encoded = encodeURIComponent(formula.trim());
       // 使用 Codecogs 生成图片，使用 \dpi{300} 提高清晰度
       return `<img class="formula-block" style="display:block; margin: 16px auto; max-width: 100%; height: auto;" src="https://latex.codecogs.com/png.latex?\\dpi{300}&space;${encoded}" alt="${formula.trim()}" />`;
     })
-    // 处理行内公式 $...$
+    // 处理行内公式 $...$（真正的 LaTeX 公式，如 $x^2$、$\frac{a}{b}$）
+    // 要求公式内容包含至少一个 LaTeX 特殊字符或命令
     .replace(/\$([^\s\n$](?:[^\n$]*?[^\s\n$])?)\$/g, (_match, formula) => {
+      // 检查是否像真正的 LaTeX 公式（包含 \、^、_、{、} 等）
+      const looksLikeLatex = /[\\^_{}]|\\[a-zA-Z]+/.test(formula);
+      if (!looksLikeLatex) {
+        // 不像公式，保持原样
+        return _match;
+      }
       const encoded = encodeURIComponent(formula.trim());
       return `<img class="formula-inline" style="display:inline-block; vertical-align:middle; margin: 0 4px; height: auto;" src="https://latex.codecogs.com/png.latex?\\dpi{300}&space;${encoded}" alt="${formula.trim()}" />`;
     });
+  
+  // 恢复美元金额
+  result = result.replace(/__DOLLAR_AMOUNT__(\d+)__/g, (_, index) => {
+    return '$' + dollarAmounts[parseInt(index)];
+  });
+  
+  // 恢复转义的 $ 符号为普通的 $
+  return result.replace(new RegExp(ESCAPED_DOLLAR_PLACEHOLDER, 'g'), '$');
 }
 
 // 预处理HTML，解决微信公众号编辑器的格式问题
@@ -444,7 +472,7 @@ function applyInlineStyles(html: string, styles: Record<string, string>): string
  * - 保持良好的 margin 垂直节奏
  * - 不使用任何会被剥掉的属性
  */
-export function convertToZsxq(markdown: string, styleKey: string = 'default'): string {
+export function convertToZsxq(markdown: string, styleKey: string = 'default', title?: string): string {
   marked.setOptions({ breaks: true, gfm: true });
 
   const html = marked(processMathFormulas(markdown)) as string;
@@ -598,6 +626,13 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default'): s
     .replace(/>\s+</g, '><') // 清理标签间空白
     .replace(/<section[^>]*>/gi, '<div>')
     .replace(/<\/section>/gi, '</div>');
+
+  // --- 知识星球特殊标题标签 ---
+  // 知识星球列表预览需要用 <e type="text_bold" title="xxx" /> 格式的标题
+  if (title && title.trim()) {
+    const escapedTitle = title.trim().replace(/"/g, '&quot;');
+    result = `<e type="text_bold" title="${escapedTitle}" />${result}`;
+  }
 
   return result;
 }

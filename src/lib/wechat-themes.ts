@@ -69,7 +69,7 @@ const createInlineStyles = (config: any) => ({
 
     table: `border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 14px; border-radius: 8px; overflow: hidden;`,
 
-    th: `border: 1px solid ${config.borderColor || COLORS.border}; padding: 12px; background: ${config.preBg || COLORS.bgCode}; font-weight: 700; color: ${config.titleColor || COLORS.textPrimary}; text-align: left; letter-spacing: 0.5px;`,
+    th: `border: 1px solid ${config.borderColor || COLORS.border}; padding: 12px; background: ${config.thBg || COLORS.bgCode}; font-weight: 700; color: ${config.thColor || config.titleColor || COLORS.textPrimary}; text-align: left; letter-spacing: 0.5px;`,
 
     td: `border: 1px solid ${config.borderColor || COLORS.border}; padding: 12px; color: ${config.textColor || COLORS.textPrimary}; letter-spacing: 0.5px;`,
 
@@ -358,7 +358,7 @@ export const WECHAT_STYLES: Record<string, ThemeDefinition> = {
         name: '复古书刊',
         accent: '#92400E',
         css: `
-      .wechat-content { font-family: ${FONTS.serif}; line-height: 1.9; color: #292524; background: #FFFBEB; padding: 0; }
+      .wechat-content { font-family: ${FONTS.serif}; line-height: 1.9; color: #292524; padding: 0; }
       .wechat-content h1 { font-family: ${FONTS.serif}; font-size: 28px; font-weight: 700; margin: 36px 0 20px; text-align: center; color: #78350F; border-bottom: 2px solid #D97706; padding-bottom: 16px; letter-spacing: 2px; }
       .wechat-content h2 { font-family: ${FONTS.serif}; font-size: 22px; font-weight: 700; margin: 28px 0 16px; color: #78350F; text-align: center; border-bottom: 1px dashed #D97706; padding-bottom: 10px; position: relative; }
       .wechat-content h2::before { content: '❧'; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); background: #FFFBEB; padding: 0 12px; color: #D97706; font-size: 14px; }
@@ -378,7 +378,7 @@ export const WECHAT_STYLES: Record<string, ThemeDefinition> = {
       .wechat-content hr { border: none; border-top: 1px dashed #D97706; margin: 28px 0; }
     `,
         cssDark: `
-      .wechat-content { font-family: ${FONTS.serif}; line-height: 1.9; color: #D6D3D1; background: #292524; padding: 0; }
+      .wechat-content { font-family: ${FONTS.serif}; line-height: 1.9; color: #D6D3D1; padding: 0; }
       .wechat-content h1 { font-family: ${FONTS.serif}; font-size: 28px; font-weight: 700; margin: 36px 0 20px; text-align: center; color: #E7E5E4; border-bottom: 2px solid #D97706; padding-bottom: 16px; letter-spacing: 2px; }
       .wechat-content h2 { font-family: ${FONTS.serif}; font-size: 22px; font-weight: 700; margin: 28px 0 16px; color: #E7E5E4; text-align: center; border-bottom: 1px dashed #D97706; padding-bottom: 10px; position: relative; }
       .wechat-content h2::before { content: '❧'; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); background: #292524; padding: 0 12px; color: #D97706; font-size: 14px; }
@@ -397,8 +397,8 @@ export const WECHAT_STYLES: Record<string, ThemeDefinition> = {
       .wechat-content td { border: 1px solid #44403C; padding: 10px; color: #D6D3D1; letter-spacing: 0.5px; }
       .wechat-content hr { border: none; border-top: 1px dashed #D97706; margin: 28px 0; }
     `,
-        rootStyle: `background-color: #FFFBEB; color: #44403C; padding: 0;`,
-        rootStyleDark: `background-color: #292524; color: #D6D3D1; padding: 0;`,
+        rootStyle: `color: #44403C; padding: 0;`,
+        rootStyleDark: `color: #D6D3D1; padding: 0;`,
         inline: {
             ...createInlineStyles({
                 accent: '#92400E',

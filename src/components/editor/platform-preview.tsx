@@ -11,6 +11,7 @@ import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
 import { useExtensionDetector } from '@/hooks/useExtensionDetector';
 import { useRouter } from 'next/navigation';
 import { extractImagesFromMarkdown, markdownToPlainText as markdownToPlainTextUtil, type ExtractedImage } from '@/lib/markdown-utils';
+import { WECHAT_STYLES } from '@/lib/wechat-themes';
 
 interface PlatformPreviewProps {
   title: string;
@@ -650,9 +651,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     }
 
     // 知识星球：使用专属转换器（适配 zsxq CSS 白名单，跟随主题）
+    // 注意：标题会被加入内容开头，这样列表预览也能显示标题
     if (platform === 'zsxq') {
       import('@/lib/converter').then(({ convertToZsxq }) => {
-        const html = convertToZsxq(contentToPreview, style);
+        const html = convertToZsxq(contentToPreview, style, title);
         setPreviewHtml(html);
         setPreviewText('');
         setIsConverting(false);
@@ -691,7 +693,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
     } finally {
       setIsConverting(false);
     }
-  }, [finalContent, content, shortTextCache, generateShortTextContent, loadShortTextContent, selectedPlatform, articleId, wechatTheme]);
+  }, [finalContent, content, shortTextCache, generateShortTextContent, loadShortTextContent, selectedPlatform, articleId, wechatTheme, title]);
 
   // 自动预览
   useEffect(() => {
@@ -1035,9 +1037,6 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     </option>
                     <option value="blogger" disabled={!hasFeature('advanced-styles')}>
                       知识博主（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
-                    </option>
-                    <option value="night" disabled={!hasFeature('advanced-styles')}>
-                      夜幕墨黑（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
                     </option>
                   </select>
                 </>
@@ -2138,6 +2137,19 @@ function WechatPreview({
 
   const isNight = wechatTheme === 'night';
 
+  // 从主题中提取背景色
+  const theme = WECHAT_STYLES[selectedStyle as keyof typeof WECHAT_STYLES] || WECHAT_STYLES.default;
+  const rootStyle = isNight ? (theme.rootStyleDark || theme.rootStyle) : theme.rootStyle;
+  
+  // 解析背景色
+  let themeBgColor = '';
+  if (rootStyle) {
+    const bgMatch = rootStyle.match(/background(?:-color)?:\s*([^;]+)/i);
+    if (bgMatch) {
+      themeBgColor = bgMatch[1].trim();
+    }
+  }
+
   return (
     <div
       className={`p-6 flex flex-col items-center justify-center gap-6 min-h-full bg-transparent`}
@@ -2218,8 +2230,8 @@ function WechatPreview({
 
             {/* 微信公众号头部 */}
             <div
-              className={`border-b px-4 py-3 flex items-center transition-colors duration-300 ${isNight ? 'bg-[#121212] border-white/10' : 'bg-white border-gray-100'
-                }`}
+              className={`border-b px-4 py-3 flex items-center transition-colors duration-300 ${isNight ? 'border-white/10' : 'border-gray-100'}`}
+              style={themeBgColor ? { backgroundColor: themeBgColor } : { backgroundColor: isNight ? '#121212' : 'white' }}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-[#2a80ff] to-secondary text-white shadow-[0_14px_36px_-18px_rgba(0,102,255,0.65)]">
                 <span className="text-sm font-semibold">Z</span>
@@ -2238,7 +2250,10 @@ function WechatPreview({
             </div>
 
             {/* 文章内容区域 */}
-            <div className={`flex-1 overflow-auto transition-colors duration-300 ${isNight ? 'bg-[#0F172A]' : 'bg-white'}`}>
+            <div 
+              className="flex-1 overflow-auto transition-colors duration-300"
+              style={themeBgColor ? { backgroundColor: themeBgColor } : { backgroundColor: isNight ? '#0F172A' : 'white' }}
+            >
               <div className="px-4 py-4">
                 <div
                   className="w-full"
@@ -2248,7 +2263,10 @@ function WechatPreview({
             </div>
 
             {/* 底部安全区域 */}
-            <div className={`h-8 transition-colors duration-300 ${isNight ? 'bg-[#121212]' : 'bg-white'}`}></div>
+            <div 
+              className="h-8 transition-colors duration-300"
+              style={themeBgColor ? { backgroundColor: themeBgColor } : { backgroundColor: isNight ? '#121212' : 'white' }}
+            ></div>
           </div>
         </div>
 

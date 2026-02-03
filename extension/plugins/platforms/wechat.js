@@ -170,6 +170,9 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       hasContent: !!content,
       contentPreview: content?.substring(0, 100) + '...'
     });
+    console.log('🔍 [DEBUG] content 是否像HTML:', content?.trim().startsWith('<') ? '是' : '否（可能是Markdown）');
+    console.log('🔍 [DEBUG] content 包含表格HTML:', content?.includes('<table') ? '是' : '否');
+    console.log('🔍 [DEBUG] content 包含Markdown表格:', content?.includes('| --- |') ? '是（Markdown表格语法）' : '否');
 
     try {
       // 兜底：如果消息里没有带 preset，尝试从全局选中预设获取
@@ -185,6 +188,8 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
       // 构建完整内容：开头 + 正文 + 结尾
       let fullContent = content;
+      console.log('🔍 [DEBUG] fullContent 初始值前300字符:', fullContent?.substring(0, 300));
+      console.log('🔍 [DEBUG] fullContent 初始是否HTML:', fullContent?.trim().startsWith('<') ? '是' : '否（❌ 可能是Markdown！）');
 
       // 如果有预设，应用开头和结尾内容
       if (data.preset) {
@@ -221,6 +226,10 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
 
       // 清理HTML内容
       const cleanContent = this.cleanHtmlContent(finalContent);
+      console.log('🔍 [DEBUG] cleanContent (清理后) 前300字符:', cleanContent?.substring(0, 300));
+      console.log('🔍 [DEBUG] cleanContent 是否HTML:', cleanContent?.trim().startsWith('<') ? '是' : '否');
+      console.log('🔍 [DEBUG] cleanContent 包含<table:', cleanContent?.includes('<table') ? '是' : '否');
+      console.log('🔍 [DEBUG] cleanContent 包含Markdown表格:', cleanContent?.includes('| --- |') ? '是（❌ Markdown 未转换！）' : '否 ✓');
 
       // 优先尝试使用微信公众号官方 JSAPI（新编辑器）
       const mpJsApiResult = await this.tryMpEditorSetContent(cleanContent);
@@ -268,53 +277,37 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
       };
 
       const timeoutId = setTimeout(() => {
+        // 有些场景下微信 JSAPI 的回调无法通过 postMessage 回传到 content-script（你反馈的情况）
+        // 这里不再 hard-fail；超时则返回一个“未知成功”结果，交给上层按需要决定是否回退。
         window.removeEventListener('message', handleMessage);
-        reject(new Error(`JSAPI调用超时: ${apiName}`));
-      }, 5000);
+        resolve({ __timeout: true, apiName });
+      }, 1200);
 
       window.addEventListener('message', handleMessage);
 
-      // 注入脚本到页面上下文执行
       const scriptContent = `
         (function() {
           try {
-            if (!window.__MP_Editor_JSAPI__) {
-              window.postMessage({ 
-                type: 'MP_JSAPI_RES', 
-                requestId: '${requestId}', 
-                success: false, 
-                error: 'window.__MP_Editor_JSAPI__ not found' 
-              }, '*');
+            var mpApi = window.MP_Editor_JSAPI || window.__MP_Editor_JSAPI__;
+            if (!mpApi) {
+              window.postMessage({ type: 'MP_JSAPI_RES', requestId: '${requestId}', success: false, error: 'MP_Editor_JSAPI not found' }, '*');
               return;
             }
-            
-            window.__MP_Editor_JSAPI__.invoke({
+            mpApi.invoke({
               apiName: '${apiName}',
               apiParam: ${JSON.stringify(apiParam || {})},
               sucCb: (res) => {
-                window.postMessage({ 
-                  type: 'MP_JSAPI_RES', 
-                  requestId: '${requestId}', 
-                  success: true, 
-                  data: res 
-                }, '*');
+                try { window.postMessage({ type: 'MP_JSAPI_RES', requestId: '${requestId}', success: true, data: res }, '*'); } catch (e) {}
               },
               errCb: (err) => {
-                window.postMessage({ 
-                  type: 'MP_JSAPI_RES', 
-                  requestId: '${requestId}', 
-                  success: false, 
-                  error: err 
-                }, '*');
+                try {
+                  var msg = (typeof err === 'string') ? err : (err && (err.errMsg || err.message)) || 'JSAPI error';
+                  window.postMessage({ type: 'MP_JSAPI_RES', requestId: '${requestId}', success: false, error: msg }, '*');
+                } catch (e) {}
               }
             });
           } catch (e) {
-            window.postMessage({ 
-              type: 'MP_JSAPI_RES', 
-              requestId: '${requestId}', 
-              success: false, 
-              error: e.message 
-            }, '*');
+            try { window.postMessage({ type: 'MP_JSAPI_RES', requestId: '${requestId}', success: false, error: e.message }, '*'); } catch (e2) {}
           }
         })();
       `;
@@ -330,6 +323,27 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
         reject(e);
       }
     });
+  }
+
+  // 不依赖回调回传的“只管调用”版本（用于 set_content 等：你反馈能生效但收不到回调）
+  // ⚠️ 不能用注入 <script> 的方式（mp.weixin.qq.com CSP 会拦截 inline script）
+  // 这里通过 background 的 chrome.scripting.executeScript(world:'MAIN') 调用，绕开 CSP。
+  async mpInvokeFireAndForget(apiName, apiParam) {
+    try {
+      if (!chrome?.runtime?.sendMessage) return false;
+
+      const resp = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({
+          action: 'mpJsApiInvoke',
+          data: { apiName, apiParam }
+        }, (r) => resolve(r));
+      });
+
+      if (!resp?.success) return false;
+      return !!resp?.data?.ok;
+    } catch (e) {
+      return false;
+    }
   }
 
   /**
@@ -352,19 +366,27 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    * 使用微信编辑器 JSAPI 设置全文内容（新编辑器）
    */
   async tryMpEditorSetContent(content) {
-    const status = await this.mpGetIsReady();
-    if (!status.isReady || !status.isNew) {
-      return null;
+    // 不再依赖 isReady/isNew，也不强依赖回调。
+    // 你反馈：回调接收不到，但设置内容本身是 OK 的。
+
+    console.log('🔍 [DEBUG] 尝试使用 MP JSAPI 设置内容（不依赖回调）');
+
+    // 优先使用 mp_editor_insert_html（你指定）
+    const firedInsert = await this.mpInvokeFireAndForget('mp_editor_insert_html', { html: content, isSelect: false });
+    if (firedInsert) {
+      console.log('✅ [DEBUG] mp_editor_insert_html 已触发（不等待回调）');
+      return { success: true, value: content, type: 'MPJSAPI_insert_html_fire' };
     }
 
-    try {
-      await this.mpInvoke('mp_editor_set_content', { content });
-      console.log('✅ 使用 MP 编辑器 JSAPI 设置内容成功');
-      return { success: true, value: content, type: 'MPJSAPI' };
-    } catch (error) {
-      console.warn('⚠️ MP 编辑器 JSAPI 设置内容失败，回退原逻辑:', error);
-      return { success: false, error: error?.message || 'mp_editor_set_content 失败' };
+    // 兜底：再尝试 set_content
+    const fired = await this.mpInvokeFireAndForget('mp_editor_set_content', { content });
+    if (fired) {
+      console.log('✅ [DEBUG] mp_editor_set_content 已触发（不等待回调）');
+      return { success: true, value: content, type: 'MPJSAPI_set_content_fire' };
     }
+
+    // 都不可用则回退
+    return null;
   }
 
   /**
@@ -372,6 +394,9 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
    */
   async fillProseMirrorEditor(element, content) {
     console.log('📝 填充ProseMirror编辑器');
+    console.log('🔍 [DEBUG] 即将填充的 content 前300字符:', content?.substring(0, 300));
+    console.log('🔍 [DEBUG] 即将填充的 content 是否HTML:', content?.trim().startsWith('<') ? '是' : '否');
+    console.log('🔍 [DEBUG] 即将填充的 content 包含<table:', content?.includes('<table') ? '是' : '否');
     console.log('🔍 ProseMirror元素详情:', {
       tag: element.tagName,
       classes: element.className,
@@ -386,14 +411,64 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
     console.log('🧹 清空现有内容');
     element.innerHTML = '';
 
-    // 设置新内容
-    console.log('📄 设置新内容 (长度:', content.length, ')');
-    element.innerHTML = content;
+    // 方案1: 尝试使用 Clipboard API 模拟粘贴（ProseMirror 更友好）
+    let pasteSuccess = false;
+    try {
+      console.log('📋 尝试使用 Clipboard API 模拟粘贴...');
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text/html', content);
+      clipboardData.setData('text/plain', content.replace(/<[^>]*>/g, '')); // 纯文本备用
+      
+      const pasteEvent = new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: clipboardData
+      });
+      
+      element.dispatchEvent(pasteEvent);
+      await this.delay(300);
+      
+      // 检查粘贴是否成功（编辑器内容是否有变化）
+      if (element.innerHTML && element.innerHTML.length > 10) {
+        pasteSuccess = true;
+        console.log('✅ Clipboard API 粘贴成功');
+      }
+    } catch (e) {
+      console.warn('⚠️ Clipboard API 粘贴失败:', e);
+    }
+
+    // 方案2: 如果粘贴失败，尝试 execCommand insertHTML
+    if (!pasteSuccess) {
+      try {
+        console.log('📋 尝试使用 execCommand insertHTML...');
+        element.focus();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        const inserted = document.execCommand('insertHTML', false, content);
+        if (inserted && element.innerHTML && element.innerHTML.length > 10) {
+          pasteSuccess = true;
+          console.log('✅ execCommand insertHTML 成功');
+        }
+      } catch (e) {
+        console.warn('⚠️ execCommand insertHTML 失败:', e);
+      }
+    }
+
+    // 方案3: 最后兜底使用 innerHTML
+    if (!pasteSuccess) {
+      console.log('📄 使用 innerHTML 兜底方案 (长度:', content.length, ')');
+      element.innerHTML = content;
+    }
 
     // 验证内容是否设置成功
     console.log('✅ 验证内容设置结果:', {
       newLength: element.innerHTML?.length,
-      preview: element.innerHTML?.substring(0, 100) + '...'
+      preview: element.innerHTML?.substring(0, 100) + '...',
+      containsTable: element.innerHTML?.includes('<table') ? '是' : '否'
     });
 
     // 触发ProseMirror的更新事件
@@ -1256,52 +1331,12 @@ class WeChatPlatformPlugin extends BasePlatformPlugin {
   cleanHtmlContent(html) {
     if (!html) return '';
 
-    // 注意：不再处理代码块和引用块的样式，因为convert接口已经处理过了
-    // 只保留必要的HTML清理，不覆盖已有的内联样式
-    let processedHtml = html;
+    // ⚠️ 重要：不要在插件侧重写 <ol>/<ul>/<li> 结构。
+    // 原因：微信公众号新编辑器（ProseMirror）对列表结构非常敏感，
+    // 我们之前把 <ol> 改成 div+span 会导致“有序列表格式异常”。
+    // 目前列表的样式与结构应完全由服务端 convertToWechatInline 产出，保持原样最稳定。
 
-    // 处理有序列表 - 用div模拟，避免微信ol问题
-    processedHtml = processedHtml.replace(
-      /<ol[^>]*>([\s\S]*?)<\/ol>/g,
-      (_, content) => {
-        // 提取所有li内容
-        const listItems = [];
-        let itemMatch;
-        const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
-
-        while ((itemMatch = liRegex.exec(content)) !== null) {
-          listItems.push(itemMatch[1]);
-        }
-
-        // 生成带编号的div列表
-        const numberedItems = listItems.map((item, index) => {
-          return `<div style="padding-left: 0; line-height: 1.3; font-size: 16px; display: flex; align-items: baseline;">
-            <span style="color: #666; font-weight: bold; margin-right: 12px; min-width: 24px; flex-shrink: 0; text-align: right;">${index + 1}.</span>
-            <span style="flex: 1; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3;">${item}</span>
-          </div>`;
-        }).join('');
-
-        return `<div>${numberedItems}</div>`;
-      }
-    );
-
-    // 处理无序列表 - 移动端优化
-    processedHtml = processedHtml.replace(
-      /<ul[^>]*>([\s\S]*?)<\/ul>/g,
-      (_, content) => {
-        return `<ul style="margin: 16px 0; padding-left: 20px; line-height: 1.8; font-size: 16px;">${content}</ul>`;
-      }
-    );
-
-    // 处理无序列表项 - 移动端优化
-    processedHtml = processedHtml.replace(
-      /<li[^>]*>([\s\S]*?)<\/li>/g,
-      (_, content) => {
-        return `<li style="margin: 8px 0; padding-left: 8px; line-height: 1.8; word-wrap: break-word; overflow-wrap: break-word;">${content}</li>`;
-      }
-    );
-
-    return processedHtml;
+    return html;
   }
 
   /**

@@ -166,8 +166,9 @@ export function getPublishTimeInfo(platform: Platform, hour?: number): PublishTi
     return { status: 'good', label: '', suggestion: '该平台暂无时间建议' };
   }
 
-  // 默认使用北京时间
-  const h = hour ?? new Date(Date.now() + 8 * 3600000).getHours();
+  // 默认使用北京时间 (UTC+8)
+  // 注意：使用 getUTCHours 避免客户端时区重复转换
+  const h = hour ?? ((new Date().getUTCHours() + 8) % 24);
 
   // 检查最佳时段
   for (const slot of schedule.best) {

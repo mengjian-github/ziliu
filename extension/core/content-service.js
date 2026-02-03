@@ -124,6 +124,9 @@ class ZiliuContentService {
           // zsxq 使用专属转换器（CSS 白名单限制）
           const targetFormat = platformId === 'zsxq' ? 'zsxq' : (platformId === 'zhihu' ? 'zhihu' : 'wechat');
           console.log('📝 处理普通平台数据，转换为HTML格式:', targetFormat);
+          console.log('🔍 [DEBUG] sourceContent 类型:', typeof sourceContent);
+          console.log('🔍 [DEBUG] sourceContent 前150字符:', sourceContent?.substring(0, 150));
+          console.log('🔍 [DEBUG] articleDetail.style:', articleDetail.style);
 
           contentForFill = await this.convertArticleFormat(
             sourceContent,
@@ -131,6 +134,10 @@ class ZiliuContentService {
             articleDetail.style || 'default',
             data.mode || 'day'
           );
+          
+          console.log('🔍 [DEBUG] contentForFill 前200字符:', contentForFill?.substring(0, 200));
+          console.log('🔍 [DEBUG] contentForFill 是否像HTML:', contentForFill?.startsWith('<') ? '是' : '否（可能是Markdown）');
+          console.log('🔍 [DEBUG] contentForFill 包含表格HTML:', contentForFill?.includes('<table') ? '是' : '否');
         } else if (platformContentType === 'markdown') {
           contentForFill = originalMarkdown || sourceContent || '';
           contentForFill = this.applyPresetToContent(contentForFill, preset, 'markdown');
@@ -206,7 +213,12 @@ class ZiliuContentService {
    * 转换文章格式
    */
   async convertArticleFormat(content, targetFormat, style = 'default', mode = 'day') {
+    console.log('🔄 [DEBUG] convertArticleFormat 调用参数:', { targetFormat, style, mode });
+    console.log('🔄 [DEBUG] 输入内容前100字符:', content?.substring(0, 100));
+    
     const response = await ZiliuApiService.content.convert(content || '', targetFormat, style, mode);
+
+    console.log('🔄 [DEBUG] convert API 响应 success:', response.success);
 
     if (!response.success) {
       throw new Error(response.error || '格式转换失败');
@@ -215,6 +227,11 @@ class ZiliuContentService {
     // 按照legacy的逻辑，返回inlineHtml字段
     if (response.data?.inlineHtml) {
       console.log('✅ 使用 convert API 生成内联样式 HTML');
+      console.log('🔄 [DEBUG] inlineHtml 前200字符:', response.data.inlineHtml?.substring(0, 200));
+      // 检查是否包含 formula 公式
+      if (response.data.inlineHtml?.includes('formula-inline') || response.data.inlineHtml?.includes('latex.codecogs')) {
+        console.warn('⚠️ [DEBUG] 检测到公式标签! 可能有 $ 被误转为公式');
+      }
       return response.data.inlineHtml;
     } else {
       console.warn('⚠️ convert API 返回格式异常，使用原始内容');

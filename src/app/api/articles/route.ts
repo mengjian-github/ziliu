@@ -46,7 +46,7 @@ const createArticleSchema = z.object({
   title: z.string().min(1, '标题不能为空').max(500, '标题过长'),
   content: z.string().min(1, '内容不能为空'),
   status: z.enum(['draft', 'published']).default('published'),
-  style: z.enum(['default', 'minimal', 'elegant', 'tech', 'card', 'print', 'night']).optional()
+  style: z.enum(['default', 'minimal', 'elegant', 'tech', 'card', 'print', 'night', 'wechatHot', 'blogger']).optional()
 });
 
 // 创建文章
