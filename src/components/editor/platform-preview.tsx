@@ -162,7 +162,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   const savedState = getSavedState();
 
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(savedState?.platform || 'wechat');
-  const [selectedStyle, setSelectedStyle] = useState<'default' | 'minimal' | 'elegant' | 'tech' | 'card' | 'print' | 'night'>(savedState?.style || 'default');
+  const [selectedStyle, setSelectedStyle] = useState<'default' | 'minimal' | 'elegant' | 'tech' | 'card' | 'print' | 'wechatHot' | 'blogger' | 'night'>(savedState?.style || 'default');
   const [wechatTheme, setWechatTheme] = useState<'day' | 'night'>('day');
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewText, setPreviewText] = useState('');
@@ -1029,6 +1029,12 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                     </option>
                     <option value="print" disabled={!hasFeature('advanced-styles')}>
                       书刊印刷（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                    <option value="wechatHot" disabled={!hasFeature('advanced-styles')}>
+                      公众号爆款（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
+                    </option>
+                    <option value="blogger" disabled={!hasFeature('advanced-styles')}>
+                      知识博主（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
                     </option>
                     <option value="night" disabled={!hasFeature('advanced-styles')}>
                       夜幕墨黑（Pro） {!hasFeature('advanced-styles') ? '👑' : ''}
