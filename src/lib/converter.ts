@@ -629,9 +629,10 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default', ti
 
   // --- 知识星球特殊标题标签 ---
   // 知识星球列表预览需要用 <e type="text_bold" title="xxx" /> 格式的标题
+  // 标题和内容之间加两个换行，让间距更舒服
   if (title && title.trim()) {
     const escapedTitle = title.trim().replace(/"/g, '&quot;');
-    result = `<e type="text_bold" title="${escapedTitle}" />${result}`;
+    result = `<e type="text_bold" title="${escapedTitle}" />\n\n${result}`;
   }
 
   return result;
