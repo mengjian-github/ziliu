@@ -538,6 +538,8 @@ window.ZiliuPluginConfig = {
       editorUrl: 'https://www.linkedin.com/feed/',
       selectors: {
         content: [
+          // LinkedIn 2024+ 使用 Quill 编辑器
+          'div.ql-editor[contenteditable="true"]',
           // 发帖弹窗优先（避免误选消息输入框）
           'div[role="dialog"] div[role="textbox"][contenteditable="true"]',
           // 兼容不同语言/版本的占位属性
@@ -548,12 +550,16 @@ window.ZiliuPluginConfig = {
           'div[role="textbox"][contenteditable="true"][aria-label*="Text"]'
         ]
       },
+      // LinkedIn 把发帖弹窗放在 Shadow DOM 里
+      shadowHosts: ['#interop-outlet'],
       features: ['content'],
       contentType: 'text',
       specialHandling: {
         initDelay: 1500,
         waitForEditor: true,
         maxWaitTime: 10000,
+        // Shadow DOM 宿主列表
+        shadowHosts: ['#interop-outlet'],
         buttonConfig: {
           fillButton: {
             text: '填充动态',

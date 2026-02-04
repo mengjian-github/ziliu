@@ -132,10 +132,11 @@ class BasePlatformPlugin {
   }
 
   /**
-   * 查找单个元素
+   * 查找单个元素（支持 Shadow DOM）
    */
   findElement(selector) {
     try {
+      // 1. 先尝试普通 DOM 查询
       const first = document.querySelector(selector);
       if (first && this.isElementVisible(first)) return first;
 
@@ -145,11 +146,53 @@ class BasePlatformPlugin {
         if (this.isElementVisible(el)) return el;
       }
 
-      return first;
+      if (first) return first;
+
+      // 2. 如果配置了 shadowHost，尝试在 Shadow DOM 中查找
+      const shadowHosts = this.config.shadowHosts || this.specialHandling?.shadowHosts;
+      if (shadowHosts && shadowHosts.length > 0) {
+        const shadowEl = this.findElementInShadowDOM(selector, shadowHosts);
+        if (shadowEl) return shadowEl;
+      }
+
+      return null;
     } catch (error) {
       console.warn(`元素选择器错误 [${this.id}]:`, { selector, error });
       return null;
     }
+  }
+
+  /**
+   * 在指定的 Shadow DOM 宿主中查找元素
+   */
+  findElementInShadowDOM(selector, shadowHosts) {
+    for (const hostSelector of shadowHosts) {
+      try {
+        const host = document.querySelector(hostSelector);
+        if (!host?.shadowRoot) continue;
+
+        const el = host.shadowRoot.querySelector(selector);
+        if (el && this.isElementVisible(el)) {
+          console.log(`🔍 在 Shadow DOM (${hostSelector}) 中找到元素:`, selector);
+          return el;
+        }
+
+        // 递归查找嵌套的 Shadow DOM
+        const nestedHosts = host.shadowRoot.querySelectorAll('*');
+        for (const nested of nestedHosts) {
+          if (nested.shadowRoot) {
+            const nestedEl = nested.shadowRoot.querySelector(selector);
+            if (nestedEl && this.isElementVisible(nestedEl)) {
+              console.log(`🔍 在嵌套 Shadow DOM 中找到元素:`, selector);
+              return nestedEl;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`Shadow DOM 查询失败 [${hostSelector}]:`, e);
+      }
+    }
+    return null;
   }
 
   /**
