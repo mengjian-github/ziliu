@@ -1375,7 +1375,8 @@ class ZsxqPlatformPlugin extends BasePlatformPlugin {
     const titleText = (_title || '').trim();
     if (titleText) {
       const encodedTitle = encodeURIComponent(titleText);
-      result = `<e type="text_bold" title="${encodedTitle}" />\n`;
+      // 标题后加两个换行，确保视觉上有空行分隔
+      result = `<e type="text_bold" title="${encodedTitle}" />\n\n`;
     }
 
     // 摘要：简短预览，最多 150 字

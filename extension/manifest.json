@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "字流助手",
-  "version": "2.0.12",
+  "version": "2.0.13",
   "description": "字流助手 - 智能检测剪贴板内容并填充到公众号编辑器",
   "permissions": [
     "activeTab",
