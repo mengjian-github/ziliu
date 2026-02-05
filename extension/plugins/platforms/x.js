@@ -24,14 +24,16 @@ class XPlugin extends BasePlatformPlugin {
             const editor = elements.elements.content;
             let text = (data.content || '').toString();
 
-            // X 字数限制（默认 280；若有配置且更小则用更小值）
+            // X 字数限制：Premium 用户可发 4000 字，普通用户 280 字
+            // 这里不做截断，让用户自己决定（可能是 Premium 用户）
+            // 如果超长，X 会自动提示，用户可以手动调整
             const configLimit = this.config?.specialHandling?.contentLimit?.max;
-            const hardLimit = 280;
+            const softLimit = 4000; // X Premium 上限
             const limit = (typeof configLimit === 'number' && configLimit > 0)
-                ? Math.min(configLimit, hardLimit)
-                : hardLimit;
+                ? configLimit
+                : softLimit;
             if (text.length > limit) {
-                console.warn(`⚠️ X 内容超长，已截断到 ${limit} 字`);
+                console.warn(`⚠️ X 内容超长 (${text.length}/${limit})，可能需要手动调整`);
                 text = text.substring(0, limit);
             }
 
