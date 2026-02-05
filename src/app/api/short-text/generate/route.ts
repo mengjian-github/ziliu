@@ -205,6 +205,16 @@ const MODEL_MAP: Record<ShortTextPlatform, string> = {
   linkedin: 'openai/gpt-4.1-mini',
 };
 
+// Token limits based on platform content limits (rough: 1.5 chars per token for Chinese)
+const TOKEN_LIMITS: Record<ShortTextPlatform, number> = {
+  wechat_xiaolushu: 900,   // contentMax: 1000
+  xiaohongshu_note: 900,   // contentMax: 1000
+  weibo: 1500,             // contentMax: 2000
+  jike: 1500,              // contentMax: 2000
+  x: 3000,                 // contentMax: 4000
+  linkedin: 2500,          // contentMax: 3000
+};
+
 const aiOutputSchema = z.object({
   title: z.string().optional(),
   content: z.string().min(1),
@@ -421,7 +431,7 @@ ${imagesHint}
           { role: 'system', content: ANTI_AI_SYSTEM_PROMPT },
           { role: 'user', content: fullPrompt },
         ],
-        max_tokens: 900,
+        max_tokens: TOKEN_LIMITS[input.platform],
         temperature: 0.8,
         top_p: 1,
       }),
