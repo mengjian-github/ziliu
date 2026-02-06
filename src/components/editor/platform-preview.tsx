@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Platform, isVideoPlatform, getPlatformType, PLATFORM_CONFIGS } from '@/types/platform-settings';
-import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon, Sparkles, Heart, MessageSquare, Star, User, MoreHorizontal, ChevronLeft, Send, Bookmark, Clock, ShieldCheck, AlertTriangle, Info, Wand2, Check, Link } from 'lucide-react';
+import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy, Crown, Sun, Moon, Sparkles, Heart, MessageSquare, Star, User, MoreHorizontal, ChevronLeft, ChevronDown, ChevronUp, Send, Bookmark, Clock, ShieldCheck, AlertTriangle, Info, Wand2, Check, Link } from 'lucide-react';
 import { getPublishTimeInfo, checkCompliance, getTrafficTemplates, type TrafficTemplate } from '@/lib/platform-rules';
 import { PublishSettings } from './publish-settings';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
@@ -162,6 +162,9 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
   const savedState = getSavedState();
 
+  // 平台选择器折叠状态
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(savedState?.isCollapsed || false);
+
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(savedState?.platform || 'wechat');
   const [selectedStyle, setSelectedStyle] = useState<'default' | 'minimal' | 'elegant' | 'tech' | 'card' | 'print' | 'wechatHot' | 'blogger' | 'night'>(savedState?.style || 'default');
   const [wechatTheme, setWechatTheme] = useState<'day' | 'night'>('day');
@@ -186,7 +189,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   const prefetchedVideoRef = useRef(false);
 
   // 保存状态到localStorage
-  const saveState = useCallback((platform: Platform, style: string, settings: any) => {
+  const saveState = useCallback((platform: Platform, style: string, settings: any, collapsed?: boolean) => {
     if (typeof window === 'undefined') return;
 
     try {
@@ -194,6 +197,7 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
         platform,
         style,
         settings,
+        isCollapsed: collapsed !== undefined ? collapsed : isCollapsed,
         timestamp: Date.now()
       };
       localStorage.setItem(storageKey, JSON.stringify(state));
@@ -705,6 +709,14 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
   }, [finalContent, selectedPlatform, selectedStyle, handlePreview, wechatTheme]);
 
   // 平台切换时立即预览
+  
+  // 切换折叠状态
+  const toggleCollapse = useCallback(() => {
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    saveState(selectedPlatform, selectedStyle, appliedSettings, newCollapsed);
+  }, [isCollapsed, selectedPlatform, selectedStyle, appliedSettings, saveState]);
+
   const handlePlatformChange = useCallback(async (platform: Platform) => {
     setSelectedPlatform(platform);
 
@@ -865,9 +877,63 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
 
         {/* 平台选择器 */}
         <div className="mb-4">
-          <div className="flex items-center space-x-2 mb-3">
+          <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-zinc-400">发布平台:</span>
+            <button
+              onClick={toggleCollapse}
+              className="flex items-center space-x-1 px-2 py-1 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+              title={isCollapsed ? "展开平台选择" : "收起平台选择"}
+            >
+              {isCollapsed ? (
+                <>
+                  <ChevronDown className="h-3 w-3" />
+                  <span>展开</span>
+                </>
+              ) : (
+                <>
+                  <ChevronUp className="h-3 w-3" />
+                  <span>收起</span>
+                </>
+              )}
+            </button>
           </div>
+
+          {/* 折叠状态：只显示当前选中平台的下拉菜单 */}
+          {isCollapsed ? (
+            <div className="bg-white/5 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-zinc-500">当前平台</span>
+                <select
+                  value={selectedPlatform}
+                  onChange={(e) => handlePlatformChange(e.target.value as Platform)}
+                  className="bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-sm text-white hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <optgroup label="长图文平台">
+                    {longTextPlatforms.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.icon} {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="短图文平台">
+                    {shortTextPlatforms.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.icon} {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="视频平台">
+                    {videoPlatforms.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.icon} {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+          ) : (
+            <>
 
           {/* 长图文平台 */}
           <div className="mb-3">
@@ -988,7 +1054,10 @@ export function PlatformPreview({ title, content, articleId }: PlatformPreviewPr
                 );
               })}
             </div>
-          </div>
+                </div>
+            </div>
+          </>
+          )}
         </div>
 
         {/* 长图文/短图文：发布设置 + 去发布 */}
