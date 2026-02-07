@@ -198,7 +198,7 @@ export class ImageUploadService {
    */
   private validateFile(file: File): { valid: boolean; error?: string } {
     const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB（受 Vercel Serverless 4.5MB body 限制）
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       return {
@@ -210,7 +210,7 @@ export class ImageUploadService {
     if (file.size > MAX_FILE_SIZE) {
       return {
         valid: false,
-        error: '文件大小超过限制（最大 10MB）'
+        error: '文件大小超过限制（最大 4MB），建议先压缩图片再上传'
       };
     }
 
