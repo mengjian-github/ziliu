@@ -546,7 +546,8 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default', ti
       `<p style="${S.h4}"><strong style="color: inherit">${t}</strong></p>`);
 
   // --- 段落 ---
-  result = result.replace(/<p([^>]*)>/gi, (match, attrs) => {
+  // 注意：/<p([^>]*)>/gi 会误匹配 <pre>（<p + re + >），必须用 /<p\b/ 精确匹配
+  result = result.replace(/<p\b([^>]*)>/gi, (match, attrs) => {
     // 跳过已处理的（带 style 的）
     if (attrs && attrs.includes('style=')) return match;
     return `<p style="${S.p}">`;
