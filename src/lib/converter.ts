@@ -516,7 +516,8 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default', ti
     h4: ensureVisibleColor(zsxqSafe(themeInline.h3 || '')).replace(/display:\s*inline-block/gi, 'display: block') || 'display: block; font-size: 17px; color: #374151; margin: 24px 0 10px; line-height: 1.4',
     p:  zsxqSafe(themeInline.p || '') || 'display: block; font-size: 16px; color: #333333; margin: 20px 0; line-height: 2.0; text-align: left',
     blockquote: zsxqSafe(themeInline.blockquote || '') || 'display: block; color: #6B7280; font-size: 15px; margin: 20px 0; line-height: 1.8; border-left: 4px solid #2563EB; padding-left: 16px',
-    pre: 'display: block; font-size: 13px; color: #1F2937; margin: 20px 0; line-height: 1.6',
+    pre: 'display: block; font-size: 13px; color: #6B7280; margin: 20px 0; line-height: 1.6',
+    codeBlock: `display: block; font-size: 13px; color: #6B7280; margin: 16px 0; line-height: 1.8`,
     code: `display: inline; font-size: 14px; color: ${theme.accent}`,
     // 知识星球列表项已转为 <p> + 文本符号（• / 1.），必须 display:block 避免浏览器渲染额外圆点
     li:  (zsxqSafe(themeInline.li || '') || 'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9')
@@ -556,14 +557,22 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default', ti
   result = result.replace(/<\/blockquote>/gi, '</blockquote>');
 
   // --- 代码块 ---
-  // 保护代码块内容
+  // 知识星球不支持 background/padding/font-family/border-radius/white-space，
+  // <br/> 在某些上下文也不生效，所以每行用独立 <p> 保证换行
   result = result.replace(
     /<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
-    (_match, codeAttrs, codeContent) => {
-      const protectedCode = String(codeContent)
-        .replace(/\t/g, '    ')
-        .replace(/\n/g, '<br/>');
-      return `<p style="${S.pre}"><code${codeAttrs} style="${S.code}">${protectedCode}</code></p>`;
+    (_match, _codeAttrs, codeContent) => {
+      const decoded = String(codeContent)
+        .replace(/\t/g, '    ');
+      const lines = decoded.split('\n');
+      // 去掉末尾空行
+      while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
+      const codeLines = lines.map(line => {
+        // 用 nbsp 保持缩进和空格
+        const preserved = line.replace(/ /g, '\u00a0');
+        return `<p style="${S.codeBlock}">${preserved || '\u00a0'}</p>`;
+      }).join('');
+      return codeLines;
     }
   );
 
