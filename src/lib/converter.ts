@@ -517,7 +517,10 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default', ti
     p:  zsxqSafe(themeInline.p || '') || 'display: block; font-size: 16px; color: #333333; margin: 20px 0; line-height: 2.0; text-align: left',
     blockquote: zsxqSafe(themeInline.blockquote || '') || 'display: block; color: #6B7280; font-size: 15px; margin: 20px 0; line-height: 1.8; border-left: 4px solid #2563EB; padding-left: 16px',
     pre: 'display: block; font-size: 13px; color: #6B7280; margin: 20px 0; line-height: 1.6',
-    codeBlock: `display: block; font-size: 13px; color: #6B7280; margin: 16px 0; line-height: 1.8`,
+    codeBlock: `display: block; font-size: 13px; color: #6B7280; margin: 2px 0; line-height: 1.7; padding-left: 16px; border-left: 3px solid #E5E7EB`,
+    codeBlockFirst: `display: block; font-size: 13px; color: #6B7280; margin: 16px 0 2px; line-height: 1.7; padding-left: 16px; border-left: 3px solid #E5E7EB`,
+    codeBlockLast: `display: block; font-size: 13px; color: #6B7280; margin: 2px 0 16px; line-height: 1.7; padding-left: 16px; border-left: 3px solid #E5E7EB`,
+    codeBlockSingle: `display: block; font-size: 13px; color: #6B7280; margin: 16px 0; line-height: 1.7; padding-left: 16px; border-left: 3px solid #E5E7EB`,
     code: `display: inline; font-size: 14px; color: ${theme.accent}`,
     // 知识星球列表项已转为 <p> + 文本符号（• / 1.），必须 display:block 避免浏览器渲染额外圆点
     li:  (zsxqSafe(themeInline.li || '') || 'display: block; font-size: 16px; color: #333333; margin: 8px 0; line-height: 1.9')
@@ -568,10 +571,14 @@ export function convertToZsxq(markdown: string, styleKey: string = 'default', ti
       const lines = decoded.split('\n');
       // 去掉末尾空行
       while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
-      const codeLines = lines.map(line => {
+      const codeLines = lines.map((line, i) => {
         // 用 nbsp 保持缩进和空格
         const preserved = line.replace(/ /g, '\u00a0');
-        return `<p style="${S.codeBlock}">${preserved || '\u00a0'}</p>`;
+        const style = lines.length === 1 ? S.codeBlockSingle
+          : i === 0 ? S.codeBlockFirst
+          : i === lines.length - 1 ? S.codeBlockLast
+          : S.codeBlock;
+        return `<p style="${style}">${preserved || '\u00a0'}</p>`;
       }).join('');
       return codeLines;
     }
