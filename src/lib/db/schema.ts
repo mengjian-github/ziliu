@@ -139,6 +139,17 @@ export const shortTextContents = sqliteTable('short_text_contents', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// API Keys表
+export const apiKeys = sqliteTable('api_keys', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  key: text('key').notNull().unique(), // ziliu_sk_xxxx
+  name: text('name').notNull(), // 描述性名称，如 "pipeline-bot"
+  lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }), // null = 永不过期
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -156,3 +167,5 @@ export type VideoContent = typeof videoContents.$inferSelect;
 export type NewVideoContent = typeof videoContents.$inferInsert;
 export type ShortTextContent = typeof shortTextContents.$inferSelect;
 export type NewShortTextContent = typeof shortTextContents.$inferInsert;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;

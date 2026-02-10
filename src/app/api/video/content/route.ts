@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/middleware/api-key-auth';
 import { db } from '@/lib/db';
 import { videoContents } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -30,8 +29,8 @@ const saveVideoContentSchema = z.object({
 // GET - 读取视频内容
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const user = await getAuthUser(request);
+    if (!user?.id) {
       return NextResponse.json({ success: false, error: '未登录' }, { status: 401 });
     }
 
@@ -94,8 +93,8 @@ export async function GET(request: NextRequest) {
 // POST - 保存视频内容
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const user = await getAuthUser(request);
+    if (!user?.id) {
       return NextResponse.json({ success: false, error: '未登录' }, { status: 401 });
     }
 
@@ -116,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     const contentData = {
       articleId: validatedData.articleId,
-      userId: session.user.id!,
+      userId: user.id,
       platform: validatedData.platform,
       videoTitle: validatedData.videoTitle,
       videoDescription: validatedData.videoDescription,

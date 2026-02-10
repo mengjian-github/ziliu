@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getAuthUser } from '@/lib/middleware/api-key-auth';
 import { db, articles } from '@/lib/db';
 import { ensureArticleStyleColumn } from '@/lib/db/utils';
 import { eq, and } from 'drizzle-orm';
@@ -48,8 +49,8 @@ export async function GET(
   try {
     const { id: articleId } = await context.params;
     await ensureArticleStyleColumn();
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const user = await getAuthUser(request);
+    if (!user?.id) {
       const response = NextResponse.json({
         success: false,
         error: '请先登录',
@@ -64,7 +65,7 @@ export async function GET(
     const article = await db.query.articles.findFirst({
       where: and(
         eq(articles.id, articleId),
-        eq(articles.userId, session.user.id)
+        eq(articles.userId, user.id)
       ),
     });
 
@@ -146,8 +147,8 @@ export async function PUT(
   try {
     const { id: articleId } = await context.params;
     await ensureArticleStyleColumn();
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const user = await getAuthUser(request);
+    if (!user?.id) {
       const response = NextResponse.json({
         success: false,
         error: '请先登录',
@@ -162,7 +163,7 @@ export async function PUT(
     const existingArticle = await db.query.articles.findFirst({
       where: and(
         eq(articles.id, articleId),
-        eq(articles.userId, session.user.id)
+        eq(articles.userId, user.id)
       ),
     });
 
@@ -212,8 +213,8 @@ export async function DELETE(
   try {
     const { id: articleId } = await context.params;
     await ensureArticleStyleColumn();
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const user = await getAuthUser(request);
+    if (!user?.id) {
       const response = NextResponse.json({
         success: false,
         error: '请先登录',
@@ -226,7 +227,7 @@ export async function DELETE(
     const existingArticle = await db.query.articles.findFirst({
       where: and(
         eq(articles.id, articleId),
-        eq(articles.userId, session.user.id)
+        eq(articles.userId, user.id)
       ),
     });
 

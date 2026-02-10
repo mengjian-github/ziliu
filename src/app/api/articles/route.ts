@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getAuthUser } from '@/lib/middleware/api-key-auth';
 import { db, articles } from '@/lib/db';
 import { ensureArticleStyleColumn } from '@/lib/db/utils';
 import { eq, desc, count } from 'drizzle-orm';
@@ -52,8 +53,8 @@ const createArticleSchema = z.object({
 // 创建文章
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const user = await getAuthUser(request);
+    if (!user?.id) {
       const response = NextResponse.json({
         success: false,
         error: '请先登录',
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     await ensureArticleStyleColumn();
 
     const [newArticle] = await db.insert(articles).values({
-      userId: session.user.id,
+      userId: user.id,
       title,
       content,
       style: style || 'default',
@@ -109,8 +110,8 @@ export async function POST(request: NextRequest) {
 // 获取用户的文章列表
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const user = await getAuthUser(request);
+    if (!user?.id) {
       const response = NextResponse.json({
         success: false,
         error: '请先登录',
@@ -124,10 +125,10 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
 
     // 构建查询条件
-    let whereCondition = eq(articles.userId, session.user.id);
+    let whereCondition = eq(articles.userId, user.id);
 
     if (status && (status === 'draft' || status === 'published')) {
-      whereCondition = eq(articles.userId, session.user.id);
+      whereCondition = eq(articles.userId, user.id);
       // 这里需要添加状态过滤，但为了简化先不实现
     }
 
