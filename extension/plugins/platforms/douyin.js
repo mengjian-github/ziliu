@@ -131,7 +131,9 @@ class DouyinPlugin extends BasePlatformPlugin {
         hasContent: !!data.content,
         hasVideoTitle: !!data.videoTitle,
         hasVideoDescription: !!data.videoDescription,
-        hasTags: !!data.tags
+        hasTags: !!data.tags,
+        hasCoverImage: !!data.coverImage,
+        hasCoverImage43: !!data.coverImage43
       }
     });
 
@@ -210,6 +212,20 @@ class DouyinPlugin extends BasePlatformPlugin {
               if (addedTags > 0) fillCount++;
             }
           }
+        }
+      }
+
+      // 填充封面图片
+      const coverImage = data.coverImage;  // 用于竖封面 3:4
+      const coverImage43 = data.coverImage43 || data.coverImage;  // 用于横封面 4:3
+      if (coverImage || coverImage43) {
+        console.log('🖼️ 开始填充抖音封面');
+        results.cover = await this.fillDouyinCover(coverImage, coverImage43);
+        if (results.cover.success) {
+          fillCount++;
+          console.log('✅ 抖音封面填充完成');
+        } else {
+          console.warn('⚠️ 抖音封面填充失败:', results.cover.error);
         }
       }
 
@@ -479,10 +495,220 @@ class DouyinPlugin extends BasePlatformPlugin {
   }
 
   /**
+   * 填充抖音封面（竖封面 3:4 + 横封面 4:3）
+   */
+  async fillDouyinCover(coverImage, coverImage43) {
+    try {
+      console.log('🖼️ 抖音封面填充开始', {
+        hasCoverImage: !!coverImage,
+        hasCoverImage43: !!coverImage43
+      });
+
+      // 1. 点击竖封面区域打开弹窗
+      const coverControls = document.querySelectorAll('.coverControl-CjlzqC .cover-Jg3T4p');
+      if (!coverControls || coverControls.length === 0) {
+        // 尝试通用选择器
+        const fallbackTrigger = Array.from(document.querySelectorAll('div'))
+          .find(el => el.textContent.trim() === '选择封面' && el.offsetParent !== null);
+        if (fallbackTrigger) {
+          fallbackTrigger.click();
+        } else {
+          throw new Error('未找到封面设置入口');
+        }
+      } else {
+        coverControls[0].click(); // 点击第一个（竖封面）
+      }
+
+      await this.sleep(2000);
+
+      // 2. 在弹窗中找到上传按钮并上传竖封面
+      if (coverImage) {
+        const verticalSuccess = await this.uploadCoverInModal(coverImage);
+        console.log('🖼️ 竖封面上传结果:', verticalSuccess);
+
+        if (verticalSuccess) {
+          // 等待上传处理完成
+          await this.sleep(2000);
+
+          // 点击"完成"按钮
+          const doneBtn = Array.from(document.querySelectorAll('button'))
+            .find(btn => btn.textContent.trim() === '完成');
+          if (doneBtn) {
+            doneBtn.click();
+            await this.sleep(1000);
+          }
+        }
+      }
+
+      // 3. 如果有横封面，切换到横封面 tab 并上传
+      if (coverImage43) {
+        // 先检查弹窗是否还开着，如果不在就重新打开
+        let modal = document.querySelector('.semi-modal, [class*="modal"]');
+        if (!modal || !modal.offsetParent) {
+          // 重新打开 —— 点击横封面区域
+          if (coverControls && coverControls.length > 1) {
+            coverControls[1].click();
+          } else {
+            // 点击第一个也行，弹窗里可以切换 tab
+            const trigger = document.querySelector('.coverControl-CjlzqC .cover-Jg3T4p');
+            if (trigger) trigger.click();
+          }
+          await this.sleep(2000);
+        }
+
+        // 点击"设置横封面" tab
+        const horizontalTab = Array.from(document.querySelectorAll('span, div, button'))
+          .find(el => el.textContent.trim() === '设置横封面' && el.offsetParent !== null);
+        if (horizontalTab) {
+          horizontalTab.click();
+          await this.sleep(1000);
+        }
+
+        const horizontalSuccess = await this.uploadCoverInModal(coverImage43);
+        console.log('🖼️ 横封面上传结果:', horizontalSuccess);
+
+        if (horizontalSuccess) {
+          await this.sleep(2000);
+
+          // 点击"完成"按钮
+          const doneBtn = Array.from(document.querySelectorAll('button'))
+            .find(btn => btn.textContent.trim() === '完成');
+          if (doneBtn) {
+            doneBtn.click();
+            await this.sleep(1000);
+          }
+        }
+      }
+
+      // 关闭可能残留的弹窗
+      const closeBtn = document.querySelector('[class*="close"]');
+      if (closeBtn && closeBtn.closest('[class*="modal"]')) {
+        closeBtn.click();
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 抖音封面填充失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 在封面弹窗内上传图片
+   */
+  async uploadCoverInModal(imageUrl) {
+    try {
+      // 1. 找到"上传封面"按钮并点击
+      const uploadBtn = Array.from(document.querySelectorAll('div, span, button'))
+        .find(el => {
+          const text = el.textContent.trim();
+          return (text === '上传封面' || text === '+ 上传封面' || text.includes('上传封面'))
+            && el.offsetParent !== null
+            && el.offsetWidth > 0;
+        });
+
+      if (uploadBtn) {
+        console.log('🖱️ 点击上传封面按钮');
+        uploadBtn.click();
+        await this.sleep(1000);
+      }
+
+      // 2. 找到 file input（弹窗内的图片上传输入框）
+      let fileInput = null;
+      for (let i = 0; i < 10; i++) {
+        // 优先找 semi-upload 组件内的 input
+        const inputs = document.querySelectorAll('input[type="file"][accept*="image"]');
+        for (const input of inputs) {
+          // 确保是在弹窗/封面上传区域内的 input
+          const parent = input.closest('.semi-upload, [class*="modal"], [class*="upload"]');
+          if (parent && input.offsetParent !== null) {
+            fileInput = input;
+            break;
+          }
+        }
+        if (fileInput) break;
+
+        // 兜底：找所有图片类型 file input
+        if (i > 5) {
+          fileInput = document.querySelector('.semi-upload-hidden-input[accept*="image"]') ||
+            document.querySelector('input[type="file"][accept*="image"]');
+          if (fileInput) break;
+        }
+        await this.sleep(500);
+      }
+
+      if (!fileInput) {
+        console.error('❌ 未找到文件上传输入框');
+        return false;
+      }
+
+      console.log('🎯 找到文件输入框，开始注入图片');
+
+      // 3. 获取图片 Blob
+      const blob = await this.fetchImageBlob(imageUrl);
+      if (!blob) {
+        console.error('❌ 无法获取图片数据');
+        return false;
+      }
+
+      // 4. 创建 File 对象并注入
+      const file = new File([blob], 'cover.png', { type: 'image/png' });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      fileInput.files = dataTransfer.files;
+
+      // 5. 触发事件
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      fileInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+      console.log('✅ 封面图片已注入到输入框');
+      await this.sleep(2000);
+
+      return true;
+    } catch (error) {
+      console.error('❌ 弹窗内封面上传失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 获取图片 Blob 数据
+   */
+  async fetchImageBlob(url) {
+    // 优先使用字流的工具服务
+    if (window.ZiliuUtilsService && typeof window.ZiliuUtilsService.fetchImageBlob === 'function') {
+      return await window.ZiliuUtilsService.fetchImageBlob(url);
+    }
+
+    // 如果是 data URL，直接转 Blob
+    if (url.startsWith('data:')) {
+      try {
+        const response = await fetch(url);
+        return await response.blob();
+      } catch (e) {
+        console.error('❌ Data URL 转 Blob 失败:', e);
+        return null;
+      }
+    }
+
+    // 尝试直接 fetch
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return await response.blob();
+      }
+    } catch (e) {
+      console.error('❌ 图片获取失败:', e);
+    }
+
+    return null;
+  }
+
+  /**
    * 检查平台特性支持
    */
   supportsFeature(feature) {
-    const supportedFeatures = ['videoTitle', 'videoDescription', 'tags'];
+    const supportedFeatures = ['videoTitle', 'videoDescription', 'tags', 'coverImage'];
     return supportedFeatures.includes(feature);
   }
 
